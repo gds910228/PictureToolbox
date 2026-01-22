@@ -1,0 +1,16 @@
+{
+  "name": "image-toolbox-miniprogram",
+  "version": "1.0.0",
+  "description": "图片工具箱微信小程序 - 简单高效的图片处理工具",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "图片处理",
+    "小程序",
+    "工具"
+  ],
+  "author": "",
+  "license": "MIT"
+}

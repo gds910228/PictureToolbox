@@ -1,0 +1,369 @@
+/* pages/watermark/watermark.wxss */
+.container {
+  padding: 32rpx;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+}
+
+/* 上传区域 */
+.upload-section {
+  margin-bottom: 32rpx;
+}
+
+.upload-placeholder {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 80rpx 40rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx dashed #ddd;
+}
+
+.upload-icon {
+  font-size: 80rpx;
+  margin-bottom: 20rpx;
+}
+
+.upload-text {
+  font-size: 32rpx;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 8rpx;
+}
+
+.upload-hint {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.image-preview {
+  position: relative;
+  background-color: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+
+.image-preview image {
+  width: 100%;
+  height: 400rpx;
+}
+
+.reupload-btn {
+  position: absolute;
+  bottom: 20rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 12rpx 32rpx;
+  border-radius: 40rpx;
+  font-size: 24rpx;
+}
+
+/* 区块 */
+.section {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 24rpx;
+  display: flex;
+  align-items: center;
+}
+
+.ai-icon {
+  margin-right: 8rpx;
+}
+
+.section-desc {
+  font-size: 24rpx;
+  color: #999;
+  margin-top: -8rpx;
+}
+
+.ai-generate-btn {
+  margin-left: auto;
+  font-size: 24rpx;
+  color: #4A90E2;
+  font-weight: normal;
+}
+
+/* 水印类型选择 */
+.type-selector {
+  display: flex;
+  gap: 16rpx;
+}
+
+.type-option {
+  flex: 1;
+  background-color: #f5f5f5;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 2rpx solid transparent;
+  transition: all 0.3s;
+}
+
+.type-option.active {
+  background-color: #e8f4ff;
+  border-color: #4A90E2;
+}
+
+.type-icon {
+  font-size: 48rpx;
+  margin-bottom: 8rpx;
+}
+
+.type-name {
+  font-size: 28rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+/* 水印模式选择 */
+.mode-selector {
+  display: flex;
+  gap: 8rpx;
+  flex-wrap: wrap;
+}
+
+.mode-option {
+  flex: 1;
+  min-width: 140rpx;
+  background-color: #f5f5f5;
+  border-radius: 8rpx;
+  padding: 16rpx 12rpx;
+  text-align: center;
+  border: 2rpx solid transparent;
+  transition: all 0.3s;
+}
+
+.mode-option.active {
+  background-color: #e8f4ff;
+  border-color: #4A90E2;
+}
+
+.mode-name {
+  font-size: 26rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+.mode-desc {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #999;
+  text-align: center;
+}
+
+/* AI建议 */
+.ai-loading {
+  text-align: center;
+  padding: 40rpx;
+  color: #999;
+}
+
+.ai-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.suggestion-tag {
+  background-color: #f0f8ff;
+  color: #4A90E2;
+  padding: 12rpx 24rpx;
+  border-radius: 40rpx;
+  font-size: 26rpx;
+  border: 1rpx solid #4A90E2;
+}
+
+.ai-empty {
+  text-align: center;
+  padding: 40rpx;
+  color: #999;
+  font-size: 26rpx;
+}
+
+/* 表单项 */
+.form-item {
+  margin-bottom: 32rpx;
+}
+
+.form-label {
+  display: block;
+  font-size: 28rpx;
+  color: #666;
+  margin-bottom: 16rpx;
+}
+
+.form-input {
+  width: 100%;
+  background-color: #f5f5f5;
+  border-radius: 8rpx;
+  padding: 20rpx 24rpx;
+  font-size: 28rpx;
+}
+
+.form-slider {
+  width: 100%;
+}
+
+/* 颜色选择器 */
+.color-picker {
+  display: flex;
+  gap: 16rpx;
+}
+
+.color-option {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 12rpx;
+  border: 3rpx solid transparent;
+  position: relative;
+}
+
+.color-option.active {
+  border-color: #4A90E2;
+}
+
+/* 位置网格 */
+.position-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8rpx;
+  margin-top: 16rpx;
+}
+
+.position-cell {
+  aspect-ratio: 1;
+  background-color: #f5f5f5;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  color: #4A90E2;
+  border: 2rpx solid transparent;
+}
+
+.position-cell.active {
+  background-color: #e8f4ff;
+  border-color: #4A90E2;
+}
+
+/* 水印图片上传 */
+.watermark-image-upload {
+  margin-bottom: 24rpx;
+}
+
+.upload-watermark-btn {
+  background-color: #f5f5f5;
+  border-radius: 12rpx;
+  padding: 40rpx;
+  text-align: center;
+  color: #666;
+  font-size: 28rpx;
+}
+
+.watermark-image-preview {
+  position: relative;
+  background-color: #f5f5f5;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
+.watermark-image-preview image {
+  width: 100%;
+  height: 200rpx;
+}
+
+/* 操作按钮 */
+.action-buttons {
+  margin-bottom: 32rpx;
+}
+
+.action-btn {
+  width: 100%;
+  height: 88rpx;
+  border-radius: 44rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  border: none;
+}
+
+.action-btn.primary {
+  background-color: #4A90E2;
+  color: #fff;
+}
+
+.action-btn[disabled] {
+  background-color: #ccc;
+  color: #fff;
+}
+
+/* 结果展示 */
+.result-section {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin-bottom: 32rpx;
+}
+
+.result-preview {
+  background-color: #f5f5f5;
+  border-radius: 12rpx;
+  overflow: hidden;
+  margin-bottom: 24rpx;
+}
+
+.result-preview image {
+  width: 100%;
+  height: 400rpx;
+}
+
+.result-actions {
+  display: flex;
+  gap: 16rpx;
+}
+
+.result-btn {
+  flex: 1;
+  height: 80rpx;
+  background-color: #4A90E2;
+  color: #fff;
+  border-radius: 40rpx;
+  font-size: 28rpx;
+  border: none;
+}
+
+/* 额外样式 */
+.selected-count {
+  font-size: 24rpx;
+  color: #4A90E2;
+  font-weight: normal;
+}
+
+.form-hint {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #999;
+  line-height: 1.4;
+}

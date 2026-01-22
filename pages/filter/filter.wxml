@@ -1,0 +1,243 @@
+<!--pages/filter/filter.wxml-->
+<view class="container">
+  <!-- 上传区域 -->
+  <view class="upload-section">
+    <view wx:if="{{!imageSrc}}" class="upload-placeholder" bindtap="chooseImage">
+      <text class="upload-icon">📷</text>
+      <text class="upload-text">点击选择图片</text>
+      <text class="upload-hint">支持相册和拍照</text>
+    </view>
+
+    <view wx:else class="image-preview">
+      <image src="{{imageSrc}}" mode="aspectFit" bindtap="previewImage" data-url="{{imageSrc}}"></image>
+      <view class="reupload-btn" bindtap="chooseImage">重新选择</view>
+    </view>
+  </view>
+
+  <!-- 滤镜类型选择 -->
+  <view class="section" wx:if="{{imageSrc}}">
+    <view class="section-title">滤镜类型</view>
+    <view class="type-selector">
+      <view
+        class="type-option {{filterType === 'preset' ? 'active' : ''}}"
+        data-type="preset"
+        bindtap="switchFilterType"
+      >
+        <text class="type-icon">✨</text>
+        <text class="type-name">预设滤镜</text>
+      </view>
+      <view
+        class="type-option {{filterType === 'adjust' ? 'active' : ''}}"
+        data-type="adjust"
+        bindtap="switchFilterType"
+      >
+        <text class="type-icon">🎛️</text>
+        <text class="type-name">手动调节</text>
+      </view>
+      <view
+        class="type-option {{filterType === 'ai' ? 'active' : ''}}"
+        data-type="ai"
+        bindtap="switchFilterType"
+      >
+        <text class="type-icon">🤖</text>
+        <text class="type-name">AI风格</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- AI智能增强开关 -->
+  <view class="section" wx:if="{{imageSrc && filterType !== 'ai'}}">
+    <view class="section-header">
+      <view class="section-title">
+        <text class="ai-icon">🤖</text>
+        AI智能增强
+      </view>
+      <switch checked="{{useAISmart}}" bindchange="toggleAISmart" color="#4A90E2" />
+    </view>
+
+    <view wx:if="{{useAISmart}}" class="ai-smart-type">
+      <radio-group bindchange="onAISmartTypeChange">
+        <label class="radio-option">
+          <radio value="auto" checked="{{aiSmartType === 'auto'}}" color="#4A90E2" />
+          <text>自动分析</text>
+        </label>
+        <label class="radio-option">
+          <radio value="portrait" checked="{{aiSmartType === 'portrait'}}" color="#4A90E2" />
+          <text>人像优化</text>
+        </label>
+        <label class="radio-option">
+          <radio value="landscape" checked="{{aiSmartType === 'landscape'}}" color="#4A90E2" />
+          <text>风景增强</text>
+        </label>
+        <label class="radio-option">
+          <radio value="food" checked="{{aiSmartType === 'food'}}" color="#4A90E2" />
+          <text>美食优化</text>
+        </label>
+      </radio-group>
+    </view>
+
+    <!-- AI推荐 -->
+    <view wx:if="{{useAISmart && aiRecommendations.length > 0}}" class="ai-recommendations">
+      <view class="recommendation-title">AI推荐</view>
+      <view
+        class="recommendation-item"
+        wx:for="{{aiRecommendations}}"
+        wx:key="name"
+        data-recommendation="{{item}}"
+        bindtap="applyRecommendation"
+      >
+        <view class="rec-name">{{item.name}}</view>
+        <view class="rec-reason">{{item.reason}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 预设滤镜 -->
+  <view class="section" wx:if="{{filterType === 'preset' && imageSrc}}">
+    <view class="section-title">选择滤镜</view>
+    <scroll-view scroll-x class="preset-scroll">
+      <view class="preset-list">
+        <view
+          class="preset-item {{selectedPresetIndex === index ? 'active' : ''}}"
+          wx:for="{{presets}}"
+          wx:key="name"
+          data-index="{{index}}"
+          bindtap="selectPreset"
+        >
+          <view class="preset-icon">{{item.icon}}</view>
+          <view class="preset-name">{{item.name}}</view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 手动调节 -->
+  <view class="section" wx:if="{{filterType === 'adjust' && imageSrc}}">
+    <view class="section-title">手动调节</view>
+
+    <!-- 亮度 -->
+    <view class="form-item">
+      <view class="form-label">
+        <text>亮度</text>
+        <text class="form-value">{{brightness}}%</text>
+      </view>
+      <slider
+        class="form-slider"
+        min="0"
+        max="200"
+        value="{{brightness}}"
+        bindchange="onBrightnessChange"
+        activeColor="#4A90E2"
+      />
+    </view>
+
+    <!-- 对比度 -->
+    <view class="form-item">
+      <view class="form-label">
+        <text>对比度</text>
+        <text class="form-value">{{contrast}}%</text>
+      </view>
+      <slider
+        class="form-slider"
+        min="0"
+        max="200"
+        value="{{contrast}}"
+        bindchange="onContrastChange"
+        activeColor="#4A90E2"
+      />
+    </view>
+
+    <!-- 饱和度 -->
+    <view class="form-item">
+      <view class="form-label">
+        <text>饱和度</text>
+        <text class="form-value">{{saturate}}%</text>
+      </view>
+      <slider
+        class="form-slider"
+        min="0"
+        max="200"
+        value="{{saturate}}"
+        bindchange="onSaturateChange"
+        activeColor="#4A90E2"
+      />
+    </view>
+
+    <!-- 模糊 -->
+    <view class="form-item">
+      <view class="form-label">
+        <text>模糊</text>
+        <text class="form-value">{{blur}}px</text>
+      </view>
+      <slider
+        class="form-slider"
+        min="0"
+        max="20"
+        value="{{blur}}"
+        bindchange="onBlurChange"
+        activeColor="#4A90E2"
+      />
+    </view>
+
+    <!-- 色相旋转 -->
+    <view class="form-item">
+      <view class="form-label">
+        <text>色相</text>
+        <text class="form-value">{{hueRotate}}°</text>
+      </view>
+      <slider
+        class="form-slider"
+        min="0"
+        max="360"
+        value="{{hueRotate}}"
+        bindchange="onHueRotateChange"
+        activeColor="#4A90E2"
+      />
+    </view>
+
+    <!-- 重置按钮 -->
+    <view class="reset-btn" bindtap="resetParams">
+      <text>重置参数</text>
+    </view>
+  </view>
+
+  <!-- AI风格 -->
+  <view class="section" wx:if="{{filterType === 'ai' && imageSrc}}">
+    <view class="section-title">AI风格迁移</view>
+    <view class="ai-styles">
+      <view
+        class="ai-style-item {{selectedAIStyle === index ? 'active' : ''}}"
+        wx:for="{{aiStyles}}"
+        wx:key="name"
+        data-index="{{index}}"
+        bindtap="selectAIStyle"
+      >
+        <view class="ai-style-name">{{item.name}}</view>
+        <view class="ai-style-desc">{{item.desc}}</view>
+        <view class="ai-style-badge" wx:if="{{selectedAIStyle === index}}">已选择</view>
+      </view>
+    </view>
+    <view class="ai-tip">
+      <text class="tip-icon">💡</text>
+      <text>AI风格迁移需要10-20秒，请耐心等待</text>
+    </view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="action-buttons" wx:if="{{imageSrc}}">
+    <button class="action-btn primary" bindtap="startApplyFilter" disabled="{{processing}}">
+      {{filterType === 'ai' ? 'AI生成' : '应用滤镜'}}
+    </button>
+  </view>
+
+  <!-- 结果展示 -->
+  <view class="result-section" wx:if="{{showResult}}">
+    <view class="section-title">处理结果</view>
+    <view class="result-preview">
+      <image src="{{processedSrc}}" mode="aspectFit" bindtap="previewImage" data-url="{{processedSrc}}"></image>
+    </view>
+    <view class="result-actions">
+      <button class="result-btn" bindtap="saveImage">保存图片</button>
+    </view>
+  </view>
+</view>

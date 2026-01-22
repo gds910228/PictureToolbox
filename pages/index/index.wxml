@@ -1,0 +1,49 @@
+<!--pages/index/index.wxml-->
+<view class="container">
+  <!-- 头部区域 -->
+  <view class="header">
+    <view class="title">图片工具箱</view>
+    <view class="subtitle">简单高效的图片处理工具</view>
+  </view>
+
+  <!-- 工具列表 -->
+  <view class="tools-grid">
+    <view
+      class="tool-card {{item.available ? '' : 'disabled'}}"
+      wx:for="{{tools}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      data-name="{{item.name}}"
+      data-url="{{item.url}}"
+      data-available="{{item.available}}"
+      bindtap="onToolTap"
+    >
+      <view class="tool-icon">{{item.icon}}</view>
+      <view class="tool-name">{{item.name}}</view>
+      <view class="tool-desc">{{item.desc}}</view>
+      <!-- 修复：明确判断布尔值 -->
+      <view class="tool-status" wx:if="{{item.available === false}}">敬请期待</view>
+    </view>
+  </view>
+
+  <!-- 特性说明 -->
+  <view class="features">
+    <view class="feature-item">
+      <text class="feature-icon">💰</text>
+      <text class="feature-text">完全免费使用</text>
+    </view>
+    <view class="feature-item">
+      <text class="feature-icon">🔒</text>
+      <text class="feature-text">本地处理保护隐私</text>
+    </view>
+    <view class="feature-item">
+      <text class="feature-icon">⚡</text>
+      <text class="feature-text">处理速度快</text>
+    </view>
+  </view>
+
+  <!-- 底部信息 -->
+  <view class="footer">
+    <text class="footer-text">让图片处理更简单 ✨</text>
+  </view>
+</view>

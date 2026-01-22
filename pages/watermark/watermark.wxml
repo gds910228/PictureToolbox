@@ -1,0 +1,448 @@
+<!--pages/watermark/watermark.wxml-->
+<view class="container">
+  <!-- 上传区域 -->
+  <view class="upload-section">
+    <view wx:if="{{!imageSrc}}" class="upload-placeholder" bindtap="chooseImage">
+      <text class="upload-icon">📷</text>
+      <text class="upload-text">点击选择图片</text>
+      <text class="upload-hint">支持相册和拍照</text>
+    </view>
+
+    <view wx:else class="image-preview">
+      <image src="{{imageSrc}}" mode="aspectFit" bindtap="previewImage" data-url="{{imageSrc}}"></image>
+      <view class="reupload-btn" bindtap="chooseImage">重新选择</view>
+    </view>
+  </view>
+
+  <!-- 水印类型选择 -->
+  <view class="section" wx:if="{{imageSrc}}">
+    <view class="section-title">水印类型</view>
+    <view class="type-selector">
+      <view
+        class="type-option {{watermarkType === 'text' ? 'active' : ''}}"
+        data-type="text"
+        bindtap="switchWatermarkType"
+      >
+        <text class="type-icon">📝</text>
+        <text class="type-name">文字水印</text>
+      </view>
+      <view
+        class="type-option {{watermarkType === 'image' ? 'active' : ''}}"
+        data-type="image"
+        bindtap="switchWatermarkType"
+      >
+        <text class="type-icon">🖼️</text>
+        <text class="type-name">图片水印</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 水印模式选择 -->
+  <view class="section" wx:if="{{imageSrc}}">
+    <view class="section-title">水印模式</view>
+    <view class="mode-selector">
+      <view
+        class="mode-option {{watermarkMode === 'single' ? 'active' : ''}}"
+        data-mode="single"
+        bindtap="switchWatermarkMode"
+      >
+        <text class="mode-name">单位置</text>
+      </view>
+      <view
+        class="mode-option {{watermarkMode === 'multi' ? 'active' : ''}}"
+        data-mode="multi"
+        bindtap="switchWatermarkMode"
+      >
+        <text class="mode-name">多位置</text>
+      </view>
+      <view
+        class="mode-option {{watermarkMode === 'tile' ? 'active' : ''}}"
+        data-mode="tile"
+        bindtap="switchWatermarkMode"
+      >
+        <text class="mode-name">平铺模式</text>
+      </view>
+      <view
+        class="mode-option {{watermarkMode === 'diagonal' ? 'active' : ''}}"
+        data-mode="diagonal"
+        bindtap="switchWatermarkMode"
+      >
+        <text class="mode-name">对角线</text>
+      </view>
+    </view>
+
+    <!-- 模式说明 -->
+    <view class="mode-desc">
+      <text wx:if="{{watermarkMode === 'single'}}">单个位置添加水印</text>
+      <text wx:if="{{watermarkMode === 'multi'}}">可选择多个位置同时添加</text>
+      <text wx:if="{{watermarkMode === 'tile'}}">平铺覆盖全图，防盗图神器</text>
+      <text wx:if="{{watermarkMode === 'diagonal'}}">左上+右下对角水印</text>
+    </view>
+  </view>
+
+  <!-- 文字水印设置 -->
+  <view class="section" wx:if="{{watermarkType === 'text' && imageSrc}}">
+    <view class="section-title">文字设置</view>
+
+    <!-- 输入文字 -->
+    <view class="form-item">
+      <text class="form-label">水印文字</text>
+      <input
+        class="form-input"
+        value="{{watermarkText}}"
+        bindinput="onWatermarkTextInput"
+        placeholder="请输入水印文字"
+        maxlength="50"
+      />
+    </view>
+
+    <!-- 字体大小 -->
+    <view class="form-item">
+      <text class="form-label">字体大小</text>
+      <slider
+        class="form-slider"
+        min="12"
+        max="72"
+        value="{{fontSize}}"
+        bindchange="onFontSizeChange"
+        show-value
+        activeColor="#4A90E2"
+      />
+    </view>
+
+    <!-- 颜色选择 -->
+    <view class="form-item">
+      <text class="form-label">文字颜色</text>
+      <view class="color-picker">
+        <view
+          class="color-option {{fontColor === '#FFFFFF' ? 'active' : ''}}"
+          style="background-color: #FFFFFF;"
+          data-color="#FFFFFF"
+          bindtap="onColorChange"
+        ></view>
+        <view
+          class="color-option {{fontColor === '#000000' ? 'active' : ''}}"
+          style="background-color: #000000;"
+          data-color="#000000"
+          bindtap="onColorChange"
+        ></view>
+        <view
+          class="color-option {{fontColor === '#FF0000' ? 'active' : ''}}"
+          style="background-color: #FF0000;"
+          data-color="#FF0000"
+          bindtap="onColorChange"
+        ></view>
+        <view
+          class="color-option {{fontColor === '#00FF00' ? 'active' : ''}}"
+          style="background-color: #00FF00;"
+          data-color="#00FF00"
+          bindtap="onColorChange"
+        ></view>
+        <view
+          class="color-option {{fontColor === '#0000FF' ? 'active' : ''}}"
+          style="background-color: #0000FF;"
+          data-color="#0000FF"
+          bindtap="onColorChange"
+        ></view>
+      </view>
+    </view>
+
+    <!-- 透明度 -->
+    <view class="form-item">
+      <text class="form-label">透明度</text>
+      <slider
+        class="form-slider"
+        min="10"
+        max="100"
+        value="{{opacity * 100}}"
+        bindchange="onOpacityChange"
+        show-value
+        activeColor="#4A90E2"
+      />
+    </view>
+
+    <!-- 平铺模式参数 -->
+    <view wx:if="{{watermarkMode === 'tile'}}">
+      <!-- 间距 -->
+      <view class="form-item">
+        <text class="form-label">平铺间距</text>
+        <slider
+          class="form-slider"
+          min="80"
+          max="300"
+          value="{{tileSpacing}}"
+          bindchange="onTileSpacingChange"
+          show-value
+          activeColor="#4A90E2"
+        />
+      </view>
+
+      <!-- 旋转角度 -->
+      <view class="form-item">
+        <text class="form-label">旋转角度</text>
+        <slider
+          class="form-slider"
+          min="-90"
+          max="90"
+          value="{{tileRotation}}"
+          bindchange="onTileRotationChange"
+          show-value
+          activeColor="#4A90E2"
+        />
+        <view class="form-hint">推荐-30°或-45°，防盗效果更好</view>
+      </view>
+    </view>
+
+    <!-- 位置选择 -->
+    <view class="form-item" wx:if="{{watermarkMode === 'single' || watermarkMode === 'multi'}}">
+      <text class="form-label">
+        {{watermarkMode === 'single' ? '水印位置' : '选择位置'}}
+        <text wx:if="{{watermarkMode === 'multi' && selectedPositions.length > 0}}" class="selected-count">
+          (已选{{selectedPositions.length}}个)
+        </text>
+      </text>
+      <view class="position-grid">
+        <view
+          class="position-cell {{positionClass1}}"
+          data-position="1"
+          bindtap="selectPosition"
+        >
+          <text wx:if="{{positionClass1 === 'active'}}">✓</text>
+        </view>
+        <view
+          class="position-cell {{positionClass2}}"
+          data-position="2"
+          bindtap="selectPosition"
+        >
+          <text wx:if="{{positionClass2 === 'active'}}">✓</text>
+        </view>
+        <view
+          class="position-cell {{positionClass3}}"
+          data-position="3"
+          bindtap="selectPosition"
+        >
+          <text wx:if="{{positionClass3 === 'active'}}">✓</text>
+        </view>
+        <view
+          class="position-cell {{positionClass4}}"
+          data-position="4"
+          bindtap="selectPosition"
+        >
+          <text wx:if="{{positionClass4 === 'active'}}">✓</text>
+        </view>
+        <view
+          class="position-cell {{positionClass5}}"
+          data-position="5"
+          bindtap="selectPosition"
+        >
+          <text wx:if="{{positionClass5 === 'active'}}">✓</text>
+        </view>
+        <view
+          class="position-cell {{positionClass6}}"
+          data-position="6"
+          bindtap="selectPosition"
+        >
+          <text wx:if="{{positionClass6 === 'active'}}">✓</text>
+        </view>
+        <view
+          class="position-cell {{positionClass7}}"
+          data-position="7"
+          bindtap="selectPosition"
+        >
+          <text wx:if="{{positionClass7 === 'active'}}">✓</text>
+        </view>
+        <view
+          class="position-cell {{positionClass8}}"
+          data-position="8"
+          bindtap="selectPosition"
+        >
+          <text wx:if="{{positionClass8 === 'active'}}">✓</text>
+        </view>
+        <view
+          class="position-cell {{positionClass9}}"
+          data-position="9"
+          bindtap="selectPosition"
+        >
+          <text wx:if="{{positionClass9 === 'active'}}">✓</text>
+        </view>
+      </view>
+
+      <view class="form-hint" wx:if="{{watermarkMode === 'multi'}}">
+        点击选择多个位置，再次点击取消
+      </view>
+    </view>
+  </view>
+
+  <!-- 图片水印设置 -->
+  <view class="section" wx:if="{{watermarkType === 'image' && imageSrc}}">
+    <view class="section-title">图片设置</view>
+
+    <!-- 选择水印图片 -->
+    <view class="watermark-image-upload">
+      <view wx:if="{{!watermarkImage}}" class="upload-watermark-btn" bindtap="chooseWatermarkImage">
+        <text>选择水印图片</text>
+      </view>
+      <view wx:else class="watermark-image-preview">
+        <image src="{{watermarkImage}}" mode="aspectFit"></image>
+        <view class="reupload-btn" bindtap="chooseWatermarkImage">更换</view>
+      </view>
+    </view>
+
+    <!-- 缩放比例 -->
+    <view class="form-item" wx:if="{{watermarkImage}}">
+      <text class="form-label">缩放比例</text>
+      <slider
+        class="form-slider"
+        min="5"
+        max="50"
+        value="{{imageScale}}"
+        bindchange="onImageScaleChange"
+        show-value
+        activeColor="#4A90E2"
+      />
+    </view>
+
+    <!-- 透明度 -->
+    <view class="form-item" wx:if="{{watermarkImage}}">
+      <text class="form-label">透明度</text>
+      <slider
+        class="form-slider"
+        min="10"
+        max="100"
+        value="{{opacity * 100}}"
+        bindchange="onOpacityChange"
+        show-value
+        activeColor="#4A90E2"
+      />
+    </view>
+
+    <!-- 平铺模式参数 -->
+    <view wx:if="{{watermarkMode === 'tile' && watermarkImage}}">
+      <!-- 间距 -->
+      <view class="form-item">
+        <text class="form-label">平铺间距</text>
+        <slider
+          class="form-slider"
+          min="80"
+          max="300"
+          value="{{tileSpacing}}"
+          bindchange="onTileSpacingChange"
+          show-value
+          activeColor="#4A90E2"
+        />
+      </view>
+
+      <!-- 旋转角度 -->
+      <view class="form-item">
+        <text class="form-label">旋转角度</text>
+        <slider
+          class="form-slider"
+          min="-90"
+          max="90"
+          value="{{tileRotation}}"
+          bindchange="onTileRotationChange"
+          show-value
+          activeColor="#4A90E2"
+        />
+        <view class="form-hint">推荐-30°或-45°，防盗效果更好</view>
+      </view>
+    </view>
+
+    <!-- 位置选择 -->
+    <view class="form-item" wx:if="{{watermarkMode === 'single' || watermarkMode === 'multi'}}">
+      <text class="form-label">
+        {{watermarkMode === 'single' ? '水印位置' : '选择位置'}}
+        <text wx:if="{{watermarkMode === 'multi' && selectedPositions.length > 0}}" class="selected-count">
+          (已选{{selectedPositions.length}}个)
+        </text>
+      </text>
+      <view class="position-grid">
+        <view
+          class="position-cell {{positionClass1}}"
+          data-position="1"
+          bindtap="selectPosition"
+        >
+          <text wx:if="{{positionClass1 === 'active'}}">✓</text>
+        </view>
+        <view
+          class="position-cell {{positionClass2}}"
+          data-position="2"
+          bindtap="selectPosition"
+        >
+          <text wx:if="{{positionClass2 === 'active'}}">✓</text>
+        </view>
+        <view
+          class="position-cell {{positionClass3}}"
+          data-position="3"
+          bindtap="selectPosition"
+        >
+          <text wx:if="{{positionClass3 === 'active'}}">✓</text>
+        </view>
+        <view
+          class="position-cell {{positionClass4}}"
+          data-position="4"
+          bindtap="selectPosition"
+        >
+          <text wx:if="{{positionClass4 === 'active'}}">✓</text>
+        </view>
+        <view
+          class="position-cell {{positionClass5}}"
+          data-position="5"
+          bindtap="selectPosition"
+        >
+          <text wx:if="{{positionClass5 === 'active'}}">✓</text>
+        </view>
+        <view
+          class="position-cell {{positionClass6}}"
+          data-position="6"
+          bindtap="selectPosition"
+        >
+          <text wx:if="{{positionClass6 === 'active'}}">✓</text>
+        </view>
+        <view
+          class="position-cell {{positionClass7}}"
+          data-position="7"
+          bindtap="selectPosition"
+        >
+          <text wx:if="{{positionClass7 === 'active'}}">✓</text>
+        </view>
+        <view
+          class="position-cell {{positionClass8}}"
+          data-position="8"
+          bindtap="selectPosition"
+        >
+          <text wx:if="{{positionClass8 === 'active'}}">✓</text>
+        </view>
+        <view
+          class="position-cell {{positionClass9}}"
+          data-position="9"
+          bindtap="selectPosition"
+        >
+          <text wx:if="{{positionClass9 === 'active'}}">✓</text>
+        </view>
+      </view>
+
+      <view class="form-hint" wx:if="{{watermarkMode === 'multi'}}">
+        点击选择多个位置，再次点击取消
+      </view>
+    </view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="action-buttons" wx:if="{{imageSrc}}">
+    <button class="action-btn primary" bindtap="startAddWatermark" disabled="{{processing}}">
+      {{processing ? '处理中...' : '添加水印'}}
+    </button>
+  </view>
+
+  <!-- 结果展示 -->
+  <view class="result-section" wx:if="{{showResult}}">
+    <view class="section-title">处理结果</view>
+    <view class="result-preview">
+      <image src="{{processedSrc}}" mode="aspectFit" bindtap="previewImage" data-url="{{processedSrc}}"></image>
+    </view>
+    <view class="result-actions">
+      <button class="result-btn" bindtap="saveImage">保存图片</button>
+    </view>
+  </view>
+</view>

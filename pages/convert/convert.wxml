@@ -1,0 +1,95 @@
+<!--pages/convert/convert.wxml-->
+<view class="container">
+  <!-- 上传区域 -->
+  <view class="upload-section" wx:if="{{!showResult}}">
+    <view class="upload-box" bindtap="chooseImage">
+      <text class="upload-icon">🔄</text>
+      <text class="upload-text">点击选择图片</text>
+      <text class="upload-hint">支持JPG、PNG、WebP、GIF、BMP等格式</text>
+    </view>
+
+    <image
+      wx:if="{{imageSrc}}"
+      class="preview-image"
+      src="{{imageSrc}}"
+      mode="aspectFit"
+      bindtap="previewImage"
+      data-url="{{imageSrc}}"
+    />
+
+    <view class="format-info" wx:if="{{imageSrc}}">
+      <text class="format-label">当前格式：</text>
+      <text class="format-value">{{originalFormatUpper}}</text>
+    </view>
+  </view>
+
+  <!-- 格式选择 -->
+  <view class="format-section" wx:if="{{imageSrc && !showResult}}">
+    <view class="section-title">选择目标格式</view>
+    <view class="format-list">
+      <view
+        class="format-item {{selectedFormat === item ? 'active' : ''}}"
+        wx:for="{{formats}}"
+        wx:key="*this"
+        wx:for-index="idx"
+        data-format="{{item}}"
+        bindtap="selectFormat"
+      >
+        <view class="format-name">{{formatsUpper[idx]}}</view>
+        <view class="format-desc">{{formatsDesc[idx]}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 转换按钮 -->
+  <button
+    wx:if="{{imageSrc && !showResult}}"
+    class="btn-primary"
+    bindtap="startConvert"
+    loading="{{converting}}"
+    disabled="{{converting}}"
+  >
+    {{converting ? '转换中...' : '开始转换'}}
+  </button>
+
+  <!-- 结果展示 -->
+  <view class="result-section" wx:if="{{showResult}}">
+    <view class="result-title">转换完成！</view>
+
+    <view class="image-display">
+      <image
+        class="result-image"
+        src="{{convertedSrc}}"
+        mode="aspectFit"
+        bindtap="previewImage"
+        data-url="{{convertedSrc}}"
+      />
+    </view>
+
+    <view class="result-info">
+      <view class="result-card">
+        <text class="result-label">原格式</text>
+        <text class="result-format">{{originalFormatUpper}}</text>
+      </view>
+      <view class="result-arrow">→</view>
+      <view class="result-card highlight">
+        <text class="result-label">转换为</text>
+        <text class="result-format">{{actualFormatUpper}}</text>
+      </view>
+    </view>
+
+    <!-- 格式说明 -->
+    <view class="format-note" wx:if="{{actualFormat !== selectedFormat}}">
+      <text class="note-icon">⚠️</text>
+      <text class="note-text">由于系统限制，{{selectedFormatUpper}}格式已转换为{{actualFormatUpper}}格式</text>
+    </view>
+
+    <view class="format-note">
+      <text class="note-icon">💡</text>
+      <text class="note-text">保存后文件将以{{actualFormatUpper}}格式存储在相册中</text>
+    </view>
+
+    <button class="btn-primary" bindtap="saveImage">保存到相册</button>
+    <button class="btn-secondary" bindtap="chooseImage">继续转换</button>
+  </view>
+</view>

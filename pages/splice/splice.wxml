@@ -1,0 +1,256 @@
+<!--pages/splice/splice.wxml-->
+<view class="container">
+  <!-- 图片选择区域 -->
+  <view class="section">
+    <view class="section-header">
+      <view class="section-title">选择图片 ({{images.length}}/9)</view>
+      <view class="clear-btn" bindtap="clearAll" wx:if="{{images.length > 0}}">清空</view>
+    </view>
+
+    <!-- 图片网格 -->
+    <view class="images-grid">
+      <view
+        class="image-item"
+        wx:for="{{images}}"
+        wx:key="id"
+        data-index="{{index}}"
+        bindtap="previewOriginalImages"
+      >
+        <image src="{{item.path}}" mode="aspectFill"></image>
+        <view class="delete-btn" data-index="{{index}}" catchtap="deleteImage">
+          <text>×</text>
+        </view>
+        <view class="image-index">{{index + 1}}</view>
+      </view>
+
+      <!-- 添加图片按钮 -->
+      <view
+        class="image-item add-btn"
+        bindtap="chooseImage"
+        wx:if="{{images.length < 9}}"
+      >
+        <text class="add-icon">+</text>
+        <text class="add-text">添加图片</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 拼接模式选择 -->
+  <view class="section" wx:if="{{images.length >= 2}}">
+    <view class="section-title">拼接模式</view>
+    <view class="mode-selector">
+      <view
+        class="mode-option {{spliceMode === 'horizontal' ? 'active' : ''}}"
+        data-mode="horizontal"
+        bindtap="switchSpliceMode"
+      >
+        <view class="mode-icon">➡️</view>
+        <view class="mode-name">横向拼接</view>
+      </view>
+      <view
+        class="mode-option {{spliceMode === 'vertical' ? 'active' : ''}}"
+        data-mode="vertical"
+        bindtap="switchSpliceMode"
+      >
+        <view class="mode-icon">⬇️</view>
+        <view class="mode-name">纵向拼接</view>
+      </view>
+      <view
+        class="mode-option {{spliceMode === 'grid' ? 'active' : ''}}"
+        data-mode="grid"
+        bindtap="switchSpliceMode"
+      >
+        <view class="mode-icon">▦</view>
+        <view class="mode-name">网格拼接</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- AI智能布局 -->
+  <view class="section" wx:if="{{images.length >= 2}}">
+    <view class="section-header">
+      <view class="section-title">
+        <text class="ai-icon">🤖</text>
+        AI智能布局
+      </view>
+      <switch checked="{{useAI}}" bindchange="toggleAI" color="#4A90E2" />
+    </view>
+
+    <!-- AI分析中 -->
+    <view wx:if="{{aiAnalyzing}}" class="ai-analyzing">
+      <text>AI正在分析图片，寻找最佳布局...</text>
+    </view>
+
+    <!-- AI建议 -->
+    <view wx:elif="{{aiLayoutSuggestion}}" class="ai-suggestion-card">
+      <view class="suggestion-header">
+        <text class="suggestion-icon">💡</text>
+        <text class="suggestion-title">AI建议</text>
+      </view>
+      <view class="suggestion-content">{{aiLayoutSuggestion.reason}}</view>
+      <view class="suggestion-actions">
+        <button class="apply-suggestion-btn" bindtap="applyAISuggestion">应用建议</button>
+        <button class="reanalyze-btn" bindtap="analyzeWithAI">重新分析</button>
+      </view>
+    </view>
+
+    <!-- 未分析 -->
+    <view wx:elif="{{useAI}}" class="ai-empty">
+      <text>点击"重新分析"让AI为你推荐最佳布局</text>
+    </view>
+  </view>
+
+  <!-- 拼接参数设置 -->
+  <view class="section" wx:if="{{images.length >= 2}}">
+    <view class="section-title">拼接设置</view>
+
+    <!-- 网格设置 -->
+    <view class="form-item" wx:if="{{spliceMode === 'grid'}}">
+      <view class="grid-setting">
+        <view class="grid-input-group">
+          <text class="grid-label">行数</text>
+          <input
+            class="grid-input"
+            type="number"
+            value="{{gridRows}}"
+            bindinput="onRowsChange"
+            min="1"
+            max="5"
+          />
+        </view>
+        <text class="grid-separator">×</text>
+        <view class="grid-input-group">
+          <text class="grid-label">列数</text>
+          <input
+            class="grid-input"
+            type="number"
+            value="{{gridCols}}"
+            bindinput="onColsChange"
+            min="1"
+            max="5"
+          />
+        </view>
+      </view>
+    </view>
+
+    <!-- 间距 -->
+    <view class="form-item">
+      <view class="form-label">
+        <text>间距</text>
+        <text class="form-value">{{spacing}}px</text>
+      </view>
+      <slider
+        class="form-slider"
+        min="0"
+        max="50"
+        value="{{spacing}}"
+        bindchange="onSpacingChange"
+        activeColor="#4A90E2"
+      />
+    </view>
+
+    <!-- 圆角 -->
+    <view class="form-item">
+      <view class="form-label">
+        <text>圆角</text>
+        <text class="form-value">{{cornerRadius}}px</text>
+      </view>
+      <slider
+        class="form-slider"
+        min="0"
+        max="30"
+        value="{{cornerRadius}}"
+        bindchange="onCornerRadiusChange"
+        activeColor="#4A90E2"
+      />
+    </view>
+
+    <!-- 背景颜色 -->
+    <view class="form-item">
+      <text class="form-label">背景颜色</text>
+      <view class="color-picker">
+        <view
+          class="color-option {{backgroundColor === '#ffffff' ? 'active' : ''}}"
+          style="background-color: #ffffff;"
+          data-color="#ffffff"
+          bindtap="onBackgroundColorChange"
+        ></view>
+        <view
+          class="color-option {{backgroundColor === '#000000' ? 'active' : ''}}"
+          style="background-color: #000000;"
+          data-color="#000000"
+          bindtap="onBackgroundColorChange"
+        ></view>
+        <view
+          class="color-option {{backgroundColor === '#f5f5f5' ? 'active' : ''}}"
+          style="background-color: #f5f5f5;"
+          data-color="#f5f5f5"
+          bindtap="onBackgroundColorChange"
+        ></view>
+        <view
+          class="color-option {{backgroundColor === '#4A90E2' ? 'active' : ''}}"
+          style="background-color: #4A90E2;"
+          data-color="#4A90E2"
+          bindtap="onBackgroundColorChange"
+        ></view>
+        <view
+          class="color-option {{backgroundColor === '#FF6B6B' ? 'active' : ''}}"
+          style="background-color: #FF6B6B;"
+          data-color="#FF6B6B"
+          bindtap="onBackgroundColorChange"
+        ></view>
+      </view>
+    </view>
+
+    <!-- 背景图片 -->
+    <view class="form-item">
+      <text class="form-label">背景图片</text>
+      <view class="background-image-section">
+        <view wx:if="{{!backgroundImage}}" class="upload-bg-btn" bindtap="chooseBackgroundImage">
+          <text>选择背景图</text>
+        </view>
+        <view wx:else class="bg-image-preview">
+          <image src="{{backgroundImage}}" mode="aspectFill"></image>
+          <view class="clear-bg-btn" bindtap="clearBackgroundImage">清除</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="action-buttons" wx:if="{{images.length >= 2}}">
+    <button class="action-btn primary" bindtap="startSplice" disabled="{{processing}}">
+      {{processing ? '拼接中...' : '开始拼接'}}
+    </button>
+  </view>
+
+  <!-- 结果展示 -->
+  <view class="result-section" wx:if="{{showResult}}">
+    <view class="section-title">拼接结果</view>
+    <view class="result-preview">
+      <image src="{{processedSrc}}" mode="widthFix" bindtap="previewImage" data-url="{{processedSrc}}"></image>
+    </view>
+    <view class="result-info">
+      <text>长按图片可保存或分享</text>
+    </view>
+    <view class="result-actions">
+      <button class="result-btn" bindtap="saveImage">保存到相册</button>
+    </view>
+  </view>
+
+  <!-- 使用提示 -->
+  <view class="tips-section" wx:if="{{images.length === 0}}">
+    <view class="tip-item">
+      <text class="tip-icon">💡</text>
+      <text class="tip-text">支持选择2-9张图片进行拼接</text>
+    </view>
+    <view class="tip-item">
+      <text class="tip-icon">🎨</text>
+      <text class="tip-text">可自定义间距、圆角、背景色</text>
+    </view>
+    <view class="tip-item">
+      <text class="tip-icon">🤖</text>
+      <text class="tip-text">开启AI智能布局，自动推荐最佳方案</text>
+    </view>
+  </view>
+</view>

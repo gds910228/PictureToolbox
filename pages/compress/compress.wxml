@@ -1,0 +1,141 @@
+<!--pages/compress/compress.wxml-->
+<view class="container">
+  <!-- 上传区域 -->
+  <view class="upload-section" wx:if="{{!showResult}}">
+    <view class="upload-box" bindtap="chooseImage">
+      <text class="upload-icon">📷</text>
+      <text class="upload-text">点击选择图片</text>
+      <text class="upload-hint">支持JPG、PNG、WebP、GIF、BMP等格式</text>
+    </view>
+
+    <!-- 预览图 -->
+    <image
+      wx:if="{{imageSrc}}"
+      class="preview-image"
+      src="{{imageSrc}}"
+      mode="aspectFit"
+      bindtap="previewImage"
+      data-url="{{imageSrc}}"
+    />
+  </view>
+
+  <!-- 压缩设置 -->
+  <view class="settings-section" wx:if="{{imageSrc && !showResult}}">
+    <!-- AI分析结果 -->
+    <view class="ai-card" wx:if="{{showAIRecommendation && aiAnalysis}}">
+      <view class="ai-header">
+        <text class="ai-icon">🤖</text>
+        <text class="ai-title">AI智能分析</text>
+        <text class="ai-badge">{{aiAnalysis.imageType}}</text>
+      </view>
+      <view class="ai-content">
+        <text class="ai-reason">{{aiAnalysis.recommendation.reason}}</text>
+        <view class="ai-suggestion">
+          <text class="ai-label">推荐质量：</text>
+          <text class="ai-value">{{aiAnalysis.recommendation.suggestedQuality}}%</text>
+        </view>
+        <text class="ai-tips">{{aiAnalysis.recommendation.tips}}</text>
+      </view>
+    </view>
+
+    <!-- 智能压缩开关 -->
+    <view class="setting-item">
+      <view class="setting-header">
+        <text class="setting-label">智能压缩</text>
+        <switch
+          class="switch"
+          checked="{{useSmartCompress}}"
+          bindchange="toggleSmartCompress"
+          color="#4A90E2"
+        />
+      </view>
+      <text class="setting-hint">自动寻找最佳压缩质量，保持画质的同时最小化文件大小</text>
+    </view>
+
+    <!-- 普通压缩模式 -->
+    <view class="setting-item" wx:if="{{!useSmartCompress}}">
+      <text class="setting-label">压缩质量</text>
+      <view class="slider-wrapper">
+        <slider
+          class="slider"
+          min="10"
+          max="100"
+          value="{{quality}}"
+          bindchange="onSliderChange"
+          activeColor="#4A90E2"
+          backgroundColor="#e0e0e0"
+          block-size="20"
+        />
+        <text class="slider-value">{{quality}}%</text>
+      </view>
+    </view>
+
+    <!-- 智能压缩模式 -->
+    <view class="setting-item" wx:if="{{useSmartCompress}}">
+      <text class="setting-label">目标文件大小（可选）</text>
+      <view class="input-wrapper">
+        <input
+          class="size-input"
+          type="number"
+          placeholder="留空则自动优化"
+          value="{{targetSizeKB}}"
+          bindinput="onTargetSizeInput"
+        />
+        <text class="input-unit">KB</text>
+      </view>
+      <text class="setting-hint">设置期望的文件大小，系统会自动调整质量达到目标</text>
+    </view>
+
+    <view class="info-card">
+      <view class="info-row">
+        <text class="info-label">原图大小：</text>
+        <text class="info-value">{{originalSizeText}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 压缩按钮 -->
+  <button
+    wx:if="{{imageSrc && !showResult}}"
+    class="btn-primary"
+    bindtap="startCompress"
+    loading="{{compressing}}"
+    disabled="{{compressing}}"
+  >
+    {{compressing ? '压缩中...' : '开始压缩'}}
+  </button>
+
+  <!-- 结果展示 -->
+  <view class="result-section" wx:if="{{showResult}}">
+    <view class="result-title">压缩完成！</view>
+
+    <view class="image-comparison">
+      <view class="image-item">
+        <image class="result-image" src="{{imageSrc}}" mode="aspectFit" />
+        <text class="image-label">原图</text>
+      </view>
+      <view class="image-item">
+        <image class="result-image" src="{{compressedSrc}}" mode="aspectFit" />
+        <text class="image-label">压缩后</text>
+      </view>
+    </view>
+
+    <view class="result-info">
+      <view class="result-card">
+        <text class="result-label">原图大小</text>
+        <text class="result-size">{{originalSizeText}}</text>
+      </view>
+      <view class="result-card highlight">
+        <text class="result-label">压缩后大小</text>
+        <text class="result-size">{{compressedSizeText}}</text>
+      </view>
+      <view class="result-card">
+        <text class="result-label">压缩率</text>
+        <text class="result-size">{{compressionRate}}</text>
+      </view>
+    </view>
+
+    <button class="btn-primary" bindtap="saveImage">保存到相册</button>
+    <button class="btn-secondary" bindtap="chooseImage">继续压缩</button>
+  </view>
+</view>

@@ -1,0 +1,14 @@
+{
+  "env": "cloud1-xxxxxxxxxxxx",
+  "tencentCloud": {
+    "secretId": "你的SecretId",
+    "secretKey": "你的SecretKey",
+    "region": "ap-guangzhou",
+    "endpoint": "hunyuan.tencentcloudapi.com"
+  },
+  "notes": [
+    "复制此文件为 cloud.json 并填入真实配置",
+    "cloud.json 已在 .gitignore 中，不会被提交到git",
+    "请妥善保管密钥信息，不要分享或提交到公开仓库"
+  ]
+}
