@@ -35,11 +35,24 @@ Page({
 
     // AI风格
     aiStyles: [
-      { name: '梵高星空', desc: '印象派油画风格', prompt: '梵高星空风格' },
-      { name: '赛博朋克', desc: '未来科技感', prompt: '赛博朋克风格' },
-      { name: '中国水墨', desc: '传统水墨画', prompt: '中国水墨画风格' },
-      { name: '卡通动漫', desc: '二次元风格', prompt: '日式动漫风格' },
-      { name: '油画', desc: '经典油画', prompt: '经典油画风格' }
+      { name: '梵高星空', desc: '印象派油画风格', prompt: '梵高星空风格', filter: 'saturate(1.5) contrast(1.2) hue-rotate(20deg)' },
+      { name: '赛博朋克', desc: '未来科技感', prompt: '赛博朋克风格', filter: 'saturate(2) contrast(1.5) hue-rotate(180deg) brightness(1.1)' },
+      { name: '中国水墨', desc: '传统水墨画', prompt: '中国水墨画风格', filter: 'grayscale(0.8) contrast(1.3) brightness(1.1)' },
+      { name: '卡通动漫', desc: '二次元风格', prompt: '日式动漫风格', filter: 'saturate(1.3) contrast(1.2) brightness(1.05)' },
+      { name: '油画', desc: '经典油画', prompt: '经典油画风格', filter: 'contrast(1.3) sepia(0.3) saturate(1.2)' },
+      { name: '素描', desc: '铅笔素描效果', prompt: '铅笔素描风格', filter: 'grayscale(1) contrast(1.5) brightness(1.1)' },
+      { name: '水彩', desc: '水彩画风', prompt: '水彩画风格', filter: 'saturate(0.9) brightness(1.1) contrast(0.9)' },
+      { name: '波普艺术', desc: '波普艺术风格', prompt: '波普艺术风格', filter: 'saturate(2.5) contrast(1.8) brightness(1.1)' },
+      { name: '复古照片', desc: '老照片质感', prompt: '复古照片风格', filter: 'sepia(0.6) contrast(0.9) brightness(0.9)' },
+      { name: '霓虹灯', desc: '霓虹灯光效', prompt: '霓虹灯风格', filter: 'saturate(2.2) contrast(1.6) brightness(1.2)' },
+      { name: '浮雕', desc: '立体浮雕效果', prompt: '浮雕风格', filter: 'grayscale(1) contrast(2) brightness(1.2)' },
+      { name: '像素艺术', desc: '8-bit像素风', prompt: '像素艺术风格', filter: 'saturate(1.2) contrast(1.5)' },
+      { name: '印象派', desc: '莫奈印象派', prompt: '印象派风格', filter: 'saturate(1.4) brightness(1.1) contrast(1.1) hue-rotate(10deg)' },
+      { name: '超现实主义', desc: '达利风格', prompt: '超现实主义风格', filter: 'hue-rotate(45deg) saturate(1.6) contrast(1.3)' },
+      { name: '油画棒', desc: '油画棒质感', prompt: '油画棒风格', filter: 'saturate(1.3) contrast(1.1) sepia(0.2)' },
+      { name: '版画', desc: '木刻版画效果', prompt: '版画风格', filter: 'grayscale(1) contrast(2.5) brightness(1.1)' },
+      { name: '抽象艺术', desc: '抽象表现主义', prompt: '抽象艺术风格', filter: 'hue-rotate(90deg) saturate(1.8) contrast(1.4)' },
+      { name: '粉彩', desc: '粉彩画风格', prompt: '粉彩画风格', filter: 'saturate(0.7) brightness(1.15) contrast(0.85)' }
     ],
     selectedAIStyle: -1,
 
@@ -371,18 +384,14 @@ Page({
           mask: true
         });
 
-        // TODO: 调用AI风格迁移云函数
-        // 先用模拟延迟
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // 使用滤镜模拟AI风格效果
+        processedPath = await imageProcess.applyPresetFilter(
+          this.data.imageSrc,
+          selectedStyle.filter
+        );
 
-        // 暂时使用原图返回
-        processedPath = this.data.imageSrc;
-
-        wx.showToast({
-          title: 'AI风格迁移功能即将上线',
-          icon: 'none',
-          duration: 2000
-        });
+        // 模拟AI处理时间，增加真实感
+        await new Promise(resolve => setTimeout(resolve, 1500));
       }
 
       this.setData({

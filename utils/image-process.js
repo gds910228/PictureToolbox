@@ -1289,83 +1289,106 @@ async function spliceImages(filePaths, options = {}) {
       const ctx = canvas.getContext('2d');
 
       // 绘制背景
-      ctx.fillStyle = backgroundColor;
-      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+      if (backgroundImage) {
+        // 如果有背景图片，先加载背景图片
+        const bgImage = canvas.createImage();
+        bgImage.onload = () => {
+          // 绘制背景图片，平铺覆盖整个画布
+          ctx.drawImage(bgImage, 0, 0, canvasWidth, canvasHeight);
 
-      // 加载所有图片
-      const images = imagesInfo.map(() => canvas.createImage());
-      let loadedCount = 0;
-
-      images.forEach((image, index) => {
-        image.onload = () => {
-          loadedCount++;
-
-          if (loadedCount === count) {
-            // 所有图片加载完成，开始拼接
-            let currentX = 0;
-            let currentY = 0;
-
-            images.forEach((img, idx) => {
-              let x, y, w, h;
-
-              if (mode === 'horizontal') {
-                // 横向拼接
-                const ratio = imagesInfo[idx].width / imagesInfo[idx].height;
-                h = itemHeight;
-                w = itemHeight * ratio;
-                x = currentX;
-                y = 0;
-                currentX += w + spacing;
-              } else if (mode === 'vertical') {
-                // 纵向拼接
-                const ratio = imagesInfo[idx].height / imagesInfo[idx].width;
-                w = itemWidth;
-                h = itemWidth * ratio;
-                x = 0;
-                y = currentY;
-                currentY += h + spacing;
-              } else {
-                // 网格拼接
-                const col = idx % gridCols;
-                const row = Math.floor(idx / gridCols);
-
-                w = itemWidth;
-                h = itemHeight;
-                x = col * (itemWidth + spacing);
-                y = row * (itemHeight + spacing);
-              }
-
-              // 绘制圆角（如果有）
-              if (cornerRadius > 0) {
-                ctx.save();
-                roundRect(ctx, x, y, w, h, cornerRadius);
-                ctx.clip();
-                ctx.drawImage(img, x, y, w, h);
-                ctx.restore();
-              } else {
-                ctx.drawImage(img, x, y, w, h);
-              }
-            });
-
-            // 导出图片
-            wx.canvasToTempFilePath({
-              canvas: canvas,
-              success: (res) => {
-                resolve(res.tempFilePath);
-              },
-              fail: (err) => {
-                reject(err);
-              }
-            });
-          }
+          // 然后加载其他图片
+          loadAndSpliceImages();
         };
-
-        image.onerror = (err) => {
-          reject(err);
+        bgImage.onerror = () => {
+          // 如果背景图片加载失败，使用背景色
+          ctx.fillStyle = backgroundColor;
+          ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+          loadAndSpliceImages();
         };
+        bgImage.src = backgroundImage;
+      } else {
+        // 没有背景图片，直接使用背景色
+        ctx.fillStyle = backgroundColor;
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+        loadAndSpliceImages();
+      }
 
-        image.src = imagesInfo[index].path;
-      });
+      // 加载所有图片并拼接
+      function loadAndSpliceImages() {
+        const images = imagesInfo.map(() => canvas.createImage());
+        let loadedCount = 0;
+
+        images.forEach((image, index) => {
+          image.onload = () => {
+            loadedCount++;
+
+            if (loadedCount === count) {
+              // 所有图片加载完成，开始拼接
+              let currentX = 0;
+              let currentY = 0;
+
+              images.forEach((img, idx) => {
+                let x, y, w, h;
+
+                if (mode === 'horizontal') {
+                  // 横向拼接
+                  const ratio = imagesInfo[idx].width / imagesInfo[idx].height;
+                  h = itemHeight;
+                  w = itemHeight * ratio;
+                  x = currentX;
+                  y = 0;
+                  currentX += w + spacing;
+                } else if (mode === 'vertical') {
+                  // 纵向拼接
+                  const ratio = imagesInfo[idx].height / imagesInfo[idx].width;
+                  w = itemWidth;
+                  h = itemWidth * ratio;
+                  x = 0;
+                  y = currentY;
+                  currentY += h + spacing;
+                } else {
+                  // 网格拼接
+                  const col = idx % gridCols;
+                  const row = Math.floor(idx / gridCols);
+
+                  w = itemWidth;
+                  h = itemHeight;
+                  x = col * (itemWidth + spacing);
+                  y = row * (itemHeight + spacing);
+                }
+
+                // 绘制圆角（如果有）
+                if (cornerRadius > 0) {
+                  ctx.save();
+                  roundRect(ctx, x, y, w, h, cornerRadius);
+                  ctx.clip();
+                  ctx.drawImage(img, x, y, w, h);
+                  ctx.restore();
+                } else {
+                  ctx.drawImage(img, x, y, w, h);
+                }
+              });
+
+              // 导出图片
+              wx.canvasToTempFilePath({
+                canvas: canvas,
+                success: (res) => {
+                  resolve(res.tempFilePath);
+                },
+                fail: (err) => {
+                  reject(err);
+                }
+              });
+            }
+          };
+
+          image.onerror = (err) => {
+            reject(err);
+          };
+
+          image.src = imagesInfo[index].path;
+        });
+      }
     }).catch((err) => {
       reject(err);
     });

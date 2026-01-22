@@ -113,38 +113,118 @@
     <!-- 颜色选择 -->
     <view class="form-item">
       <text class="form-label">文字颜色</text>
-      <view class="color-picker">
-        <view
-          class="color-option {{fontColor === '#FFFFFF' ? 'active' : ''}}"
-          style="background-color: #FFFFFF;"
-          data-color="#FFFFFF"
-          bindtap="onColorChange"
-        ></view>
-        <view
-          class="color-option {{fontColor === '#000000' ? 'active' : ''}}"
-          style="background-color: #000000;"
-          data-color="#000000"
-          bindtap="onColorChange"
-        ></view>
-        <view
-          class="color-option {{fontColor === '#FF0000' ? 'active' : ''}}"
-          style="background-color: #FF0000;"
-          data-color="#FF0000"
-          bindtap="onColorChange"
-        ></view>
-        <view
-          class="color-option {{fontColor === '#00FF00' ? 'active' : ''}}"
-          style="background-color: #00FF00;"
-          data-color="#00FF00"
-          bindtap="onColorChange"
-        ></view>
-        <view
-          class="color-option {{fontColor === '#0000FF' ? 'active' : ''}}"
-          style="background-color: #0000FF;"
-          data-color="#0000FF"
-          bindtap="onColorChange"
-        ></view>
-      </view>
+      <scroll-view scroll-x class="color-picker-scroll">
+        <view class="color-picker">
+          <view
+            class="color-option {{fontColor === '#FFFFFF' ? 'active' : ''}}"
+            style="background-color: #FFFFFF;"
+            data-color="#FFFFFF"
+            bindtap="onColorChange"
+          ></view>
+          <view
+            class="color-option {{fontColor === '#000000' ? 'active' : ''}}"
+            style="background-color: #000000;"
+            data-color="#000000"
+            bindtap="onColorChange"
+          ></view>
+          <view
+            class="color-option {{fontColor === '#FF0000' ? 'active' : ''}}"
+            style="background-color: #FF0000;"
+            data-color="#FF0000"
+            bindtap="onColorChange"
+          ></view>
+          <view
+            class="color-option {{fontColor === '#00FF00' ? 'active' : ''}}"
+            style="background-color: #00FF00;"
+            data-color="#00FF00"
+            bindtap="onColorChange"
+          ></view>
+          <view
+            class="color-option {{fontColor === '#0000FF' ? 'active' : ''}}"
+            style="background-color: #0000FF;"
+            data-color="#0000FF"
+            bindtap="onColorChange"
+          ></view>
+          <view
+            class="color-option {{fontColor === '#FFFF00' ? 'active' : ''}}"
+            style="background-color: #FFFF00;"
+            data-color="#FFFF00"
+            bindtap="onColorChange"
+          ></view>
+          <view
+            class="color-option {{fontColor === '#FF00FF' ? 'active' : ''}}"
+            style="background-color: #FF00FF;"
+            data-color="#FF00FF"
+            bindtap="onColorChange"
+          ></view>
+          <view
+            class="color-option {{fontColor === '#00FFFF' ? 'active' : ''}}"
+            style="background-color: #00FFFF;"
+            data-color="#00FFFF"
+            bindtap="onColorChange"
+          ></view>
+          <view
+            class="color-option {{fontColor === '#FFA500' ? 'active' : ''}}"
+            style="background-color: #FFA500;"
+            data-color="#FFA500"
+            bindtap="onColorChange"
+          ></view>
+          <view
+            class="color-option {{fontColor === '#800080' ? 'active' : ''}}"
+            style="background-color: #800080;"
+            data-color="#800080"
+            bindtap="onColorChange"
+          ></view>
+          <view
+            class="color-option {{fontColor === '#FFC0CB' ? 'active' : ''}}"
+            style="background-color: #FFC0CB;"
+            data-color="#FFC0CB"
+            bindtap="onColorChange"
+          ></view>
+          <view
+            class="color-option {{fontColor === '#A52A2A' ? 'active' : ''}}"
+            style="background-color: #A52A2A;"
+            data-color="#A52A2A"
+            bindtap="onColorChange"
+          ></view>
+          <view
+            class="color-option {{fontColor === '#808080' ? 'active' : ''}}"
+            style="background-color: #808080;"
+            data-color="#808080"
+            bindtap="onColorChange"
+          ></view>
+          <view
+            class="color-option {{fontColor === '#FFD700' ? 'active' : ''}}"
+            style="background-color: #FFD700;"
+            data-color="#FFD700"
+            bindtap="onColorChange"
+          ></view>
+          <view
+            class="color-option {{fontColor === '#4B0082' ? 'active' : ''}}"
+            style="background-color: #4B0082;"
+            data-color="#4B0082"
+            bindtap="onColorChange"
+          ></view>
+          <view
+            class="color-option {{fontColor === '#2E8B57' ? 'active' : ''}}"
+            style="background-color: #2E8B57;"
+            data-color="#2E8B57"
+            bindtap="onColorChange"
+          ></view>
+          <view
+            class="color-option {{fontColor === '#DC143C' ? 'active' : ''}}"
+            style="background-color: #DC143C;"
+            data-color="#DC143C"
+            bindtap="onColorChange"
+          ></view>
+          <view
+            class="color-option {{fontColor === '#008080' ? 'active' : ''}}"
+            style="background-color: #008080;"
+            data-color="#008080"
+            bindtap="onColorChange"
+          ></view>
+        </view>
+      </scroll-view>
     </view>
 
     <!-- 透明度 -->
