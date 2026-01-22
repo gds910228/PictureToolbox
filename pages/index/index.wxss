@@ -1,108 +1,435 @@
-/* pages/index/index.wxss */
+/* ===================================
+   CYBERPUNK HOMEPAGE
+   =================================== */
 
 .container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 40rpx 30rpx;
-  box-sizing: border-box;
+  background: transparent;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
 }
 
-/* 头部 */
+/* 装饰性背景元素 */
+.container::before {
+  content: '';
+  position: absolute;
+  top: -200rpx;
+  right: -200rpx;
+  width: 600rpx;
+  height: 600rpx;
+  background: radial-gradient(circle, rgba(0, 240, 255, 0.15) 0%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(60rpx);
+  z-index: 0;
+}
+
+.container::after {
+  content: '';
+  position: absolute;
+  bottom: -300rpx;
+  left: -200rpx;
+  width: 700rpx;
+  height: 700rpx;
+  background: radial-gradient(circle, rgba(255, 0, 128, 0.1) 0%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(80rpx);
+  z-index: 0;
+}
+
+/* ===================================
+   HEADER SECTION
+   =================================== */
+
 .header {
   text-align: center;
-  padding: 60rpx 0 80rpx;
-  color: #fff;
+  padding: 80rpx 40rpx 60rpx;
+  position: relative;
+  z-index: 1;
 }
 
 .title {
-  font-size: 56rpx;
-  font-weight: 700;
-  margin-bottom: 20rpx;
-  letter-spacing: 2rpx;
+  font-size: 72rpx;
+  font-weight: 900;
+  margin-bottom: 16rpx;
+  letter-spacing: 8rpx;
+  background: var(--gradient-neon);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  position: relative;
+  animation: titleGlow 3s ease-in-out infinite;
+}
+
+@keyframes titleGlow {
+  0%, 100% { filter: drop-shadow(0 0 20rpx rgba(0, 240, 255, 0.5)); }
+  50% { filter: drop-shadow(0 0 30rpx rgba(255, 0, 128, 0.7)); }
 }
 
 .subtitle {
-  font-size: 28rpx;
-  opacity: 0.9;
+  font-size: 26rpx;
+  color: var(--color-gray-500);
+  letter-spacing: 4rpx;
+  text-transform: uppercase;
+  position: relative;
+  display: inline-block;
 }
 
-/* 工具网格 */
+.subtitle::before,
+.subtitle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 40rpx;
+  height: 1rpx;
+  background: var(--gradient-neon);
+}
+
+.subtitle::before { left: -60rpx; }
+.subtitle::after { right: -60rpx; }
+
+/* ===================================
+   TOOLS GRID - STAGGERED LAYOUT
+   =================================== */
+
 .tools-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 20rpx;
-  margin-bottom: 60rpx;
+  padding: 0 24rpx 60rpx;
+  position: relative;
+  z-index: 1;
 }
 
 .tool-card {
-  background: #fff;
-  border-radius: 20rpx;
-  padding: 40rpx 20rpx;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  border-radius: var(--radius-lg);
+  padding: 48rpx 24rpx 32rpx;
   text-align: center;
-  box-shadow: 0 8rpx 20rpx rgba(0, 0, 0, 0.1);
-  transition: all 0.3s;
+  border: 1rpx solid rgba(0, 240, 255, 0.15);
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.2);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 280rpx;
+  min-height: 320rpx;
+  overflow: hidden;
+}
+
+/* 悬停发光效果 */
+.tool-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.1) 0%, rgba(255, 0, 128, 0.05) 100%);
+  opacity: 0;
+  transition: opacity 0.4s;
+  z-index: 0;
 }
 
 .tool-card:active {
-  transform: scale(0.98);
+  transform: scale(0.96) translateY(4rpx);
+  border-color: var(--color-neon-cyan);
+  box-shadow: var(--shadow-neon);
+}
+
+.tool-card:active::before {
+  opacity: 1;
 }
 
 .tool-card.disabled {
-  opacity: 0.6;
+  opacity: 0.4;
+  filter: grayscale(0.8);
 }
+
+/* ===================================
+   CUSTOM CSS ICONS
+   =================================== */
 
 .tool-icon {
-  font-size: 64rpx;
-  margin-bottom: 20rpx;
+  width: 96rpx;
+  height: 96rpx;
+  margin-bottom: 24rpx;
+  position: relative;
+  z-index: 1;
 }
 
+/* Compress Icon - Interlocking Arrows */
+.icon-compress {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+}
+
+.icon-compress::before {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-left: 24rpx solid transparent;
+  border-right: 24rpx solid transparent;
+  border-bottom: 32rpx solid var(--color-neon-cyan);
+  top: 8rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 0 8rpx var(--color-neon-cyan));
+}
+
+.icon-compress::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-left: 24rpx solid transparent;
+  border-right: 24rpx solid transparent;
+  border-top: 32rpx solid var(--color-hot-magenta);
+  bottom: 8rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 0 8rpx var(--color-hot-magenta));
+}
+
+/* Crop Icon - Frame with Corner Marks */
+.icon-crop {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+  border: 3rpx solid var(--color-neon-cyan);
+  box-shadow: 0 0 12rpx var(--color-neon-cyan);
+}
+
+.icon-crop::before {
+  content: '';
+  position: absolute;
+  width: 20rpx;
+  height: 20rpx;
+  border-top: 3rpx solid var(--color-hot-magenta);
+  border-left: 3rpx solid var(--color-hot-magenta);
+  top: -10rpx;
+  left: -10rpx;
+  filter: drop-shadow(0 0 6rpx var(--color-hot-magenta));
+}
+
+.icon-crop::after {
+  content: '';
+  position: absolute;
+  width: 20rpx;
+  height: 20rpx;
+  border-bottom: 3rpx solid var(--color-hot-magenta);
+  border-right: 3rpx solid var(--color-hot-magenta);
+  bottom: -10rpx;
+  right: -10rpx;
+  filter: drop-shadow(0 0 6rpx var(--color-hot-magenta));
+}
+
+/* Convert Icon - Circular Arrows */
+.icon-convert {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+  border-radius: 50%;
+  border: 3rpx solid transparent;
+  border-top-color: var(--color-neon-cyan);
+  border-right-color: var(--color-neon-cyan);
+  box-shadow: 0 0 12rpx var(--color-neon-cyan);
+  animation: rotate 2s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.icon-convert::before {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-top: 16rpx solid transparent;
+  border-bottom: 16rpx solid transparent;
+  border-left: 20rpx solid var(--color-hot-magenta);
+  top: 50%;
+  left: 50%;
+  transform: translate(-25%, -50%);
+  filter: drop-shadow(0 0 6rpx var(--color-hot-magenta));
+}
+
+/* Watermark Icon - Drop with Waves */
+.icon-watermark {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-watermark::before {
+  content: '';
+  width: 0;
+  height: 0;
+  border-left: 32rpx solid transparent;
+  border-right: 32rpx solid transparent;
+  border-bottom: 56rpx solid var(--color-neon-cyan);
+  filter: drop-shadow(0 0 12rpx var(--color-neon-cyan));
+  animation: dropPulse 2s ease-in-out infinite;
+}
+
+@keyframes dropPulse {
+  0%, 100% { filter: drop-shadow(0 0 12rpx var(--color-neon-cyan)); }
+  50% { filter: drop-shadow(0 0 24rpx var(--color-neon-cyan)); }
+}
+
+.icon-watermark::after {
+  content: '';
+  position: absolute;
+  bottom: 12rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60rpx;
+  height: 8rpx;
+  border-radius: 50%;
+  border: 2rpx solid var(--color-hot-magenta);
+  box-shadow: 0 0 8rpx var(--color-hot-magenta);
+}
+
+/* Filter Icon - Diamond Grid */
+.icon-filter {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+  background: linear-gradient(45deg,
+    var(--color-neon-cyan) 25%,
+    transparent 25%,
+    transparent 75%,
+    var(--color-neon-cyan) 75%
+  ),
+  linear-gradient(-45deg,
+    var(--color-hot-magenta) 25%,
+    transparent 25%,
+    transparent 75%,
+    var(--color-hot-magenta) 75%
+  );
+  background-size: 32rpx 32rpx;
+  background-position: 0 0, 16rpx 16rpx;
+  box-shadow: 0 0 20rpx rgba(0, 240, 255, 0.3);
+  animation: filterShift 3s ease-in-out infinite;
+}
+
+@keyframes filterShift {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Splice Icon - Linked Squares */
+.icon-splice {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+}
+
+.icon-splice::before {
+  content: '';
+  position: absolute;
+  width: 36rpx;
+  height: 36rpx;
+  background: var(--color-neon-cyan);
+  left: 8rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  box-shadow: 0 0 12rpx var(--color-neon-cyan);
+}
+
+.icon-splice::after {
+  content: '';
+  position: absolute;
+  width: 36rpx;
+  height: 36rpx;
+  background: var(--color-hot-magenta);
+  right: 8rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  box-shadow: 0 0 12rpx var(--color-hot-magenta);
+}
+
+/* ===================================
+   TOOL CARD CONTENT
+   =================================== */
+
 .tool-name {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 10rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--color-white);
+  margin-bottom: 12rpx;
+  letter-spacing: 1rpx;
+  position: relative;
+  z-index: 1;
+  text-transform: uppercase;
 }
 
 .tool-desc {
   font-size: 22rpx;
-  color: #999;
+  color: var(--color-gray-500);
   line-height: 1.4;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
   text-overflow: ellipsis;
+  position: relative;
+  z-index: 1;
 }
 
 .tool-status {
   position: absolute;
-  top: 20rpx;
-  right: 20rpx;
-  background: #f0f0f0;
-  color: #999;
+  top: 16rpx;
+  right: 16rpx;
+  background: rgba(0, 240, 255, 0.1);
+  color: var(--color-neon-cyan);
   font-size: 20rpx;
   padding: 6rpx 16rpx;
   border-radius: 20rpx;
+  border: 1rpx solid var(--color-neon-cyan);
+  backdrop-filter: blur(10rpx);
+  z-index: 2;
 }
 
-/* 特性说明 */
+/* ===================================
+   FEATURES SECTION - CARDS
+   =================================== */
+
 .features {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  border-radius: 20rpx;
-  padding: 30rpx;
-  margin-bottom: 40rpx;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  border-radius: var(--radius-lg);
+  padding: 40rpx;
+  margin: 0 24rpx 40rpx;
+  border: 1rpx solid rgba(255, 0, 128, 0.15);
+  position: relative;
+  z-index: 1;
+}
+
+.features::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2rpx;
+  background: var(--gradient-neon);
+  opacity: 0.5;
 }
 
 .feature-item {
   display: flex;
   align-items: center;
-  margin-bottom: 20rpx;
+  margin-bottom: 24rpx;
 }
 
 .feature-item:last-child {
@@ -110,22 +437,50 @@
 }
 
 .feature-icon {
-  font-size: 40rpx;
+  width: 48rpx;
+  height: 48rpx;
   margin-right: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gradient-neon);
+  border-radius: 50%;
+  font-size: 24rpx;
+  box-shadow: var(--shadow-neon);
 }
 
 .feature-text {
-  font-size: 28rpx;
-  color: #fff;
+  font-size: 26rpx;
+  color: var(--color-gray-200);
+  letter-spacing: 1rpx;
 }
 
-/* 底部 */
+/* ===================================
+   FOOTER
+   =================================== */
+
 .footer {
   text-align: center;
-  padding: 40rpx 0;
+  padding: 40rpx 0 80rpx;
+  position: relative;
+  z-index: 1;
 }
 
 .footer-text {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 22rpx;
+  color: var(--color-gray-500);
+  letter-spacing: 2rpx;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120rpx;
+  height: 2rpx;
+  background: var(--gradient-neon);
 }

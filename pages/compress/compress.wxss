@@ -1,85 +1,147 @@
-/* pages/compress/compress.wxss */
+/* ===================================
+   CYBERPUNK COMPRESS PAGE
+   =================================== */
 
 .container {
   min-height: 100vh;
-  padding: 30rpx;
-  background: #f5f5f5;
+  padding: var(--space-lg);
+  background: transparent;
 }
 
-/* 上传区域 */
+/* ===================================
+   UPLOAD SECTION - HOLOGRAPHIC EFFECT
+   =================================== */
+
 .upload-section {
-  margin-bottom: 40rpx;
+  margin-bottom: var(--space-lg);
 }
 
 .upload-box {
-  background: #fff;
-  border-radius: 20rpx;
+  background: rgba(0, 240, 255, 0.03);
+  backdrop-filter: blur(20px);
+  border-radius: var(--radius-lg);
   padding: 80rpx 40rpx;
   text-align: center;
-  border: 2rpx dashed #ddd;
+  border: 2rpx dashed rgba(0, 240, 255, 0.3);
   box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+
+.upload-box::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(0, 240, 255, 0.05) 50%,
+    transparent 70%
+  );
+  animation: scan 3s linear infinite;
+}
+
+@keyframes scan {
+  0% { transform: translateY(-50%) rotate(0deg); }
+  100% { transform: translateY(-50%) rotate(360deg); }
+}
+
+.upload-box:active {
+  border-color: var(--color-neon-cyan);
+  background: rgba(0, 240, 255, 0.08);
+  box-shadow: var(--shadow-neon);
 }
 
 .upload-icon {
   display: block;
-  font-size: 80rpx;
-  margin-bottom: 20rpx;
+  font-size: 88rpx;
+  margin-bottom: var(--space-md);
+  filter: drop-shadow(0 0 20rpx rgba(0, 240, 255, 0.6));
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10rpx); }
 }
 
 .upload-text {
   display: block;
   font-size: 32rpx;
-  color: #333;
-  margin-bottom: 10rpx;
+  color: var(--color-white);
+  margin-bottom: var(--space-sm);
+  font-weight: 600;
+  letter-spacing: 2rpx;
 }
 
 .upload-hint {
   display: block;
   font-size: 24rpx;
-  color: #999;
+  color: var(--color-gray-500);
 }
 
 .preview-image {
   width: 100%;
   height: 400rpx;
-  margin-top: 30rpx;
-  border-radius: 20rpx;
-  background: #f0f0f0;
+  margin-top: var(--space-md);
+  border-radius: var(--radius-lg);
+  background: rgba(0, 0, 0, 0.3);
+  border: 2rpx solid rgba(0, 240, 255, 0.2);
+  box-shadow: var(--shadow-neon);
 }
 
-/* 设置区域 */
+/* ===================================
+   SETTINGS SECTION - GLASSMORPHISM
+   =================================== */
+
 .settings-section {
-  background: #fff;
-  border-radius: 20rpx;
-  padding: 30rpx;
-  margin-bottom: 30rpx;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
+  border: 1rpx solid rgba(0, 240, 255, 0.1);
 }
 
 .setting-item {
-  margin-bottom: 30rpx;
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-lg);
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.05);
+}
+
+.setting-item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .setting-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15rpx;
+  margin-bottom: var(--space-sm);
 }
 
 .setting-label {
   display: block;
   font-size: 28rpx;
-  color: #333;
-  margin-bottom: 20rpx;
-  font-weight: 500;
+  color: var(--color-white);
+  margin-bottom: var(--space-sm);
+  font-weight: 600;
+  letter-spacing: 1rpx;
+  text-transform: uppercase;
 }
 
 .setting-hint {
   display: block;
-  font-size: 24rpx;
-  color: #999;
+  font-size: 22rpx;
+  color: var(--color-gray-500);
   line-height: 1.5;
-  margin-top: 10rpx;
+  margin-top: var(--space-sm);
 }
 
 .switch {
@@ -89,48 +151,57 @@
 .slider-wrapper {
   display: flex;
   align-items: center;
+  gap: var(--space-md);
 }
 
 .slider {
   flex: 1;
-  margin-right: 20rpx;
 }
 
 .slider-value {
-  font-size: 28rpx;
-  color: #4A90E2;
-  font-weight: 600;
-  min-width: 80rpx;
+  font-size: 32rpx;
+  color: var(--color-neon-cyan);
+  font-weight: 700;
+  min-width: 100rpx;
   text-align: right;
+  text-shadow: 0 0 10rpx rgba(0, 240, 255, 0.5);
 }
 
 .input-wrapper {
   display: flex;
   align-items: center;
-  gap: 15rpx;
+  gap: var(--space-sm);
 }
 
 .size-input {
   flex: 1;
-  height: 80rpx;
-  padding: 0 20rpx;
-  background: #f5f5f5;
-  border: 2rpx solid #e0e0e0;
-  border-radius: 12rpx;
+  height: 88rpx;
+  padding: 0 var(--space-md);
+  background: rgba(0, 0, 0, 0.3);
+  border: 2rpx solid rgba(0, 240, 255, 0.2);
+  border-radius: var(--radius-md);
   font-size: 28rpx;
-  color: #333;
+  color: var(--color-white);
+  transition: all 0.3s;
+}
+
+.size-input:focus {
+  border-color: var(--color-neon-cyan);
+  box-shadow: var(--shadow-neon);
 }
 
 .input-unit {
   width: 60rpx;
-  font-size: 28rpx;
-  color: #999;
+  font-size: 26rpx;
+  color: var(--color-gray-500);
+  font-weight: 600;
 }
 
 .info-card {
-  background: #f8f9fa;
-  border-radius: 12rpx;
-  padding: 20rpx;
+  background: rgba(0, 240, 255, 0.05);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  border: 1rpx solid rgba(0, 240, 255, 0.15);
 }
 
 .info-row {
@@ -141,204 +212,260 @@
 
 .info-label {
   font-size: 26rpx;
-  color: #666;
+  color: var(--color-gray-500);
 }
 
 .info-value {
   font-size: 28rpx;
-  color: #333;
+  color: var(--color-neon-cyan);
   font-weight: 600;
+  text-shadow: 0 0 10rpx rgba(0, 240, 255, 0.5);
 }
 
-/* 按钮 */
+/* ===================================
+   BUTTONS - NEON GLOW
+   =================================== */
+
 .btn-primary,
 .btn-secondary {
   width: 100%;
-  height: 88rpx;
-  line-height: 88rpx;
-  border-radius: 44rpx;
+  height: 96rpx;
+  line-height: 96rpx;
+  border-radius: var(--radius-lg);
   font-size: 32rpx;
-  font-weight: 500;
+  font-weight: 600;
   border: none;
-  margin-bottom: 20rpx;
+  margin-bottom: var(--space-md);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: 2rpx;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #4A90E2, #357ABD);
-  color: #fff;
+  background: var(--gradient-neon);
+  color: var(--color-deep-space);
+  box-shadow: var(--shadow-neon);
 }
 
 .btn-primary:active {
-  opacity: 0.8;
+  transform: scale(0.98);
+  box-shadow: 0 0 40rpx rgba(0, 240, 255, 0.8);
 }
 
 .btn-secondary {
-  background: #fff;
-  color: #4A90E2;
-  border: 2rpx solid #4A90E2;
+  background: transparent;
+  color: var(--color-neon-cyan);
+  border: 2rpx solid var(--color-neon-cyan);
 }
 
 .btn-secondary:active {
-  background: #f0f0f0;
+  background: rgba(0, 240, 255, 0.1);
+  box-shadow: var(--shadow-neon);
 }
 
-/* 结果区域 */
+/* ===================================
+   RESULT SECTION - DATA VISUALIZATION
+   =================================== */
+
 .result-section {
-  margin-top: 40rpx;
+  margin-top: var(--space-lg);
 }
 
 .result-title {
   text-align: center;
-  font-size: 36rpx;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 30rpx;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: var(--color-white);
+  margin-bottom: var(--space-lg);
+  letter-spacing: 4rpx;
+  text-transform: uppercase;
+  text-shadow: 0 0 20rpx rgba(0, 240, 255, 0.5);
 }
 
 .image-comparison {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 30rpx;
+  margin-bottom: var(--space-lg);
+  gap: var(--space-md);
 }
 
 .image-item {
-  width: 48%;
+  flex: 1;
   text-align: center;
 }
 
 .result-image {
   width: 100%;
   height: 300rpx;
-  border-radius: 16rpx;
-  background: #f0f0f0;
-  margin-bottom: 10rpx;
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.3);
+  margin-bottom: var(--space-sm);
+  border: 2rpx solid rgba(0, 240, 255, 0.2);
 }
 
 .image-label {
   font-size: 24rpx;
-  color: #666;
+  color: var(--color-gray-500);
+  letter-spacing: 1rpx;
 }
 
 .result-info {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 30rpx;
+  margin-bottom: var(--space-lg);
+  gap: var(--space-sm);
 }
 
 .result-card {
   flex: 1;
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 20rpx;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
   text-align: center;
-  margin: 0 5rpx;
+  border: 1rpx solid rgba(0, 240, 255, 0.15);
+  transition: all 0.3s;
 }
 
 .result-card.highlight {
-  background: linear-gradient(135deg, #4A90E2, #357ABD);
-  color: #fff;
+  background: var(--gradient-neon);
+  border-color: var(--color-neon-cyan);
+  box-shadow: var(--shadow-neon);
+  transform: scale(1.05);
 }
 
 .result-card.highlight .result-label {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(10, 14, 39, 0.8);
 }
 
 .result-card.highlight .result-size {
-  color: #fff;
+  color: var(--color-deep-space);
 }
 
 .result-label {
   display: block;
-  font-size: 24rpx;
-  margin-bottom: 10rpx;
+  font-size: 22rpx;
+  margin-bottom: var(--space-sm);
+  color: var(--color-gray-500);
+  letter-spacing: 1rpx;
+  text-transform: uppercase;
 }
 
 .result-size {
   display: block;
   font-size: 32rpx;
-  font-weight: 600;
-  color: #4A90E2;
+  font-weight: 700;
+  color: var(--color-neon-cyan);
+  text-shadow: 0 0 10rpx rgba(0, 240, 255, 0.5);
 }
 
-/* AI分析卡片 */
+/* ===================================
+   AI CARD - FUTURISTIC DASHBOARD
+   =================================== */
+
 .ai-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 20rpx;
-  padding: 30rpx;
-  margin-bottom: 30rpx;
-  box-shadow: 0 8rpx 20rpx rgba(102, 126, 234, 0.2);
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.15) 0%, rgba(255, 0, 128, 0.15) 100%);
+  backdrop-filter: blur(20px);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
+  border: 1rpx solid rgba(0, 240, 255, 0.3);
+  box-shadow: 0 8rpx 32rpx rgba(0, 240, 255, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2rpx;
+  background: var(--gradient-neon);
+  animation: glowPulse 2s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }
 
 .ai-header {
   display: flex;
   align-items: center;
-  margin-bottom: 20rpx;
+  margin-bottom: var(--space-md);
 }
 
 .ai-icon {
   font-size: 40rpx;
-  margin-right: 15rpx;
+  margin-right: var(--space-sm);
+  filter: drop-shadow(0 0 10rpx rgba(0, 240, 255, 0.6));
 }
 
 .ai-title {
   flex: 1;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #fff;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--color-white);
+  letter-spacing: 2rpx;
+  text-transform: uppercase;
 }
 
 .ai-badge {
-  background: rgba(255, 255, 255, 0.25);
-  color: #fff;
+  background: var(--gradient-neon);
+  color: var(--color-deep-space);
   padding: 8rpx 20rpx;
   border-radius: 20rpx;
-  font-size: 22rpx;
-  font-weight: 500;
+  font-size: 20rpx;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1rpx;
+  letter-spacing: 2rpx;
+  box-shadow: 0 0 15rpx rgba(0, 240, 255, 0.5);
 }
 
 .ai-content {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 16rpx;
-  padding: 20rpx;
-  backdrop-filter: blur(10rpx);
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  border: 1rpx solid rgba(0, 240, 255, 0.1);
 }
 
 .ai-reason {
   display: block;
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.95);
+  font-size: 24rpx;
+  color: var(--color-gray-200);
   line-height: 1.6;
-  margin-bottom: 15rpx;
+  margin-bottom: var(--space-sm);
 }
 
 .ai-suggestion {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin: 15rpx 0;
-  padding: 15rpx;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 12rpx;
+  margin: var(--space-sm) 0;
+  padding: var(--space-sm);
+  background: rgba(0, 240, 255, 0.1);
+  border-radius: var(--radius-sm);
+  border: 1rpx solid rgba(0, 240, 255, 0.2);
 }
 
 .ai-label {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: 22rpx;
+  color: var(--color-gray-300);
 }
 
 .ai-value {
   font-size: 32rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--color-neon-cyan);
+  text-shadow: 0 0 10rpx rgba(0, 240, 255, 0.5);
 }
 
 .ai-tips {
   display: block;
-  font-size: 22rpx;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 20rpx;
+  color: var(--color-gray-500);
   line-height: 1.5;
-  margin-top: 10rpx;
+  margin-top: var(--space-sm);
   font-style: italic;
 }

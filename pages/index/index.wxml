@@ -3,7 +3,7 @@
   <!-- 头部区域 -->
   <view class="header">
     <view class="title">图片工具箱</view>
-    <view class="subtitle">简单高效的图片处理工具</view>
+    <view class="subtitle">智能高效 · 安全隐私</view>
   </view>
 
   <!-- 工具列表 -->
@@ -18,10 +18,10 @@
       data-available="{{item.available}}"
       bindtap="onToolTap"
     >
-      <view class="tool-icon">{{item.icon}}</view>
+      <!-- 使用纯CSS绘制的图标，替代emoji -->
+      <view class="tool-icon icon-{{item.id}}"></view>
       <view class="tool-name">{{item.name}}</view>
       <view class="tool-desc">{{item.desc}}</view>
-      <!-- 修复：明确判断布尔值 -->
       <view class="tool-status" wx:if="{{item.available === false}}">敬请期待</view>
     </view>
   </view>
@@ -29,21 +29,21 @@
   <!-- 特性说明 -->
   <view class="features">
     <view class="feature-item">
-      <text class="feature-icon">💰</text>
+      <view class="feature-icon">∞</view>
       <text class="feature-text">完全免费使用</text>
     </view>
     <view class="feature-item">
-      <text class="feature-icon">🔒</text>
+      <view class="feature-icon">🔒</view>
       <text class="feature-text">本地处理保护隐私</text>
     </view>
     <view class="feature-item">
-      <text class="feature-icon">⚡</text>
+      <view class="feature-icon">⚡</view>
       <text class="feature-text">处理速度快</text>
     </view>
   </view>
 
   <!-- 底部信息 -->
   <view class="footer">
-    <text class="footer-text">让图片处理更简单 ✨</text>
+    <text class="footer-text">让图片处理更简单 · 未来已来</text>
   </view>
 </view>

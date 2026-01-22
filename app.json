@@ -10,10 +10,10 @@
   ],
   "window": {
     "backgroundTextStyle": "light",
-    "navigationBarBackgroundColor": "#4A90E2",
-    "navigationBarTitleText": "图片工具箱",
+    "navigationBarBackgroundColor": "#0A0E27",
+    "navigationBarTitleText": "IMAGE LAB",
     "navigationBarTextStyle": "white",
-    "backgroundColor": "#f5f5f5"
+    "backgroundColor": "#0A0E27"
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json",
