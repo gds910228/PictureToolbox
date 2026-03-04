@@ -1,0 +1,42 @@
+<view class="container">
+  <view class="page-header">
+    <text class="page-title">AI智能配文</text>
+    <text class="page-subtitle">一键生成社交媒体文案</text>
+  </view>
+
+  <view class="image-section">
+    <image class="preview-image {{imageSrc ? '' : 'placeholder'}}" src="{{imageSrc}}" mode="aspectFit" bindtap="chooseImage" />
+  </view>
+
+  <view class="platform-section">
+    <view class="section-title">选择平台</view>
+    <view class="platform-list">
+      <view class="platform-item {{selectedPlatform === item.value ? 'active' : ''}}"
+            wx:for="{{platforms}}" wx:key="value" data-platform="{{item.value}}" bindtap="selectPlatform">
+        <text class="platform-icon">{{item.icon}}</text>
+        <text class="platform-label">{{item.label}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="topic-section">
+    <view class="section-title">指定主题（可选）</view>
+    <input class="topic-input" placeholder="例如：美食、旅行、穿搭..." value="{{topic}}" bindinput="onTopicInput" />
+  </view>
+
+  <view class="generate-section">
+    <button class="generate-btn" bindtap="generateCaption" disabled="{{loading || !fileID}}">
+      {{loading ? '生成中...' : '生成配文'}}
+    </button>
+  </view>
+
+  <view class="results-section" wx:if="{{captions.length > 0}}">
+    <view class="section-title">生成的文案</view>
+    <view class="caption-item" wx:for="{{captions}}" wx:key="index">
+      <text class="caption-text">{{item}}</text>
+      <view class="caption-actions">
+        <button class="copy-btn" data-caption="{{item}}" bindtap="copyCaption">复制</button>
+      </view>
+    </view>
+  </view>
+</view>

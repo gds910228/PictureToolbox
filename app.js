@@ -3,8 +3,22 @@ App({
   onLaunch() {
     console.log('图片工具箱启动');
 
+    // 初始化云开发
+    this.initCloud();
+
     // 检查更新
     this.checkUpdate();
+  },
+
+  /**
+   * 初始化云开发环境
+   */
+  initCloud() {
+    wx.cloud.init({
+      env: 'cloud1-1gk79pjqd5e1ed35', // 请替换为你的云开发环境ID
+      traceUser: true
+    });
+    console.log('云开发初始化完成');
   },
 
   onShow() {

@@ -9,7 +9,7 @@
   <!-- 工具列表 -->
   <view class="tools-grid">
     <view
-      class="tool-card {{item.available ? '' : 'disabled'}}"
+      class="tool-card {{item.available ? '' : 'disabled'}} {{item.isNew ? 'new-feature' : ''}}"
       wx:for="{{tools}}"
       wx:key="id"
       data-id="{{item.id}}"
@@ -18,6 +18,9 @@
       data-available="{{item.available}}"
       bindtap="onToolTap"
     >
+      <!-- NEW标识 -->
+      <view class="new-badge" wx:if="{{item.isNew}}">NEW</view>
+
       <!-- 使用纯CSS绘制的图标，替代emoji -->
       <view class="tool-icon icon-{{item.id}}"></view>
       <view class="tool-name">{{item.name}}</view>

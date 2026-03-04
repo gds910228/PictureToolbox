@@ -1,0 +1,41 @@
+<view class="container">
+  <view class="page-header">
+    <text class="page-title">AI图片增强</text>
+    <text class="page-subtitle">智能提升图片质量</text>
+  </view>
+
+  <view class="image-section">
+    <view class="image-row">
+      <view class="image-box">
+        <text class="box-label">原图</text>
+        <image class="box-image {{imageSrc ? '' : 'placeholder'}}" src="{{imageSrc}}" mode="aspectFit" bindtap="chooseImage" />
+      </view>
+      <view class="image-box">
+        <text class="box-label">增强后</text>
+        <image class="box-image {{enhancedSrc ? '' : 'placeholder'}}" src="{{enhancedSrc}}" mode="aspectFit" />
+      </view>
+    </view>
+  </view>
+
+  <view class="type-section">
+    <view class="section-title">选择增强类型</view>
+    <view class="type-list">
+      <view class="type-item {{selectedType === item.value ? 'active' : ''}}"
+            wx:for="{{types}}" wx:key="value" data-type="{{item.value}}" bindtap="selectType">
+        <text class="type-icon">{{item.icon}}</text>
+        <text class="type-label">{{item.label}}</text>
+        <text class="type-desc">{{item.desc}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="generate-section">
+    <button class="generate-btn" bindtap="enhanceImage" disabled="{{loading || !originalFileID}}">
+      {{loading ? '增强中...' : '开始增强'}}
+    </button>
+  </view>
+
+  <view class="action-section" wx:if="{{enhancedSrc}}">
+    <button class="action-btn" bindtap="saveEnhanced">保存增强图片</button>
+  </view>
+</view>

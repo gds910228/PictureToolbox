@@ -6,7 +6,11 @@
     "pages/convert/convert",
     "pages/watermark/watermark",
     "pages/filter/filter",
-    "pages/splice/splice"
+    "pages/splice/splice",
+    "pages/aiDescribe/aiDescribe",
+    "pages/aiCaption/aiCaption",
+    "pages/aiMatting/aiMatting",
+    "pages/aiStyle/aiStyle"
   ],
   "window": {
     "backgroundTextStyle": "light",

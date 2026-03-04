@@ -1,0 +1,14 @@
+<view class="container">
+  <view class="page-header"><text class="page-title">AI风格迁移</text><text class="page-subtitle">一键转换艺术风格</text></view>
+  <view class="image-section">
+    <image class="preview-image {{imageSrc ? '' : 'placeholder'}}" src="{{imageSrc}}" mode="aspectFit" bindtap="chooseImage" />
+  </view>
+  <view class="style-section"><view class="section-title">选择风格</view>
+    <view class="style-list">
+      <view class="style-item {{selectedStyle === item.value ? 'active' : ''}}" wx:for="{{styles}}" wx:key="value" data-style="{{item.value}}" bindtap="selectStyle">
+        <text class="style-icon">{{item.icon}}</text><text class="style-label">{{item.label}}</text>
+      </view>
+    </view>
+  </view>
+  <button class="generate-btn" bindtap="transferStyle" disabled="{{loading || !fileID}}">{{loading ? '转换中...' : '开始转换'}}</button>
+</view>

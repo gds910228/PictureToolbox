@@ -3,12 +3,49 @@ Page({
   data: {
     tools: [
       {
+        id: 'aiDescribe',
+        name: 'AI图片描述',
+        icon: '🤖',
+        desc: '智能识别图片内容并生成描述',
+        url: '/pages/aiDescribe/aiDescribe',
+        available: true,
+        isNew: true
+      },
+      {
+        id: 'aiCaption',
+        name: 'AI智能配文',
+        icon: '✍️',
+        desc: '一键生成社交媒体文案',
+        url: '/pages/aiCaption/aiCaption',
+        available: true,
+        isNew: true
+      },
+      {
+        id: 'aiMatting',
+        name: 'AI智能抠图',
+        icon: '✂️',
+        desc: '自动识别主体，一键去除背景',
+        url: '/pages/aiMatting/aiMatting',
+        available: true,
+        isNew: true
+      },
+      {
+        id: 'aiStyle',
+        name: 'AI风格迁移',
+        icon: '🎨',
+        desc: '将照片转换为艺术风格',
+        url: '/pages/aiStyle/aiStyle',
+        available: true,
+        isNew: true
+      },
+      {
         id: 'compress',
         name: '图片压缩',
         icon: '🗜️',
         desc: '智能压缩图片，保持画质的同时减小文件大小',
         url: '/pages/compress/compress',
-        available: true
+        available: true,
+        isNew: false
       },
       {
         id: 'crop',
@@ -16,7 +53,8 @@ Page({
         icon: '✂️',
         desc: '支持多种常用比例裁剪，也可自定义任意比例',
         url: '/pages/crop/crop',
-        available: true
+        available: true,
+        isNew: false
       },
       {
         id: 'convert',
@@ -24,7 +62,8 @@ Page({
         icon: '🔄',
         desc: '支持JPG、PNG、WebP等主流格式互转',
         url: '/pages/convert/convert',
-        available: true
+        available: true,
+        isNew: false
       },
       {
         id: 'watermark',
@@ -32,15 +71,8 @@ Page({
         icon: '💧',
         desc: '添加文字水印，AI智能生成文案',
         url: '/pages/watermark/watermark',
-        available: true
-      },
-      {
-        id: 'filter',
-        name: '图片滤镜',
-        icon: '🎨',
-        desc: '多种滤镜效果，AI风格迁移',
-        url: '/pages/filter/filter',
-        available: true
+        available: true,
+        isNew: false
       },
       {
         id: 'splice',
@@ -48,7 +80,17 @@ Page({
         icon: '🔗',
         desc: '智能拼接，AI推荐布局',
         url: '/pages/splice/splice',
-        available: true
+        available: true,
+        isNew: false
+      },
+      {
+        id: 'filter',
+        name: '图片滤镜',
+        icon: '🌈',
+        desc: '多种滤镜效果，实时预览',
+        url: '/pages/filter/filter',
+        available: true,
+        isNew: false
       }
     ]
   },

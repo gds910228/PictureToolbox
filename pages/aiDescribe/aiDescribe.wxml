@@ -1,0 +1,66 @@
+<!--pages/aiDescribe/aiDescribe.wxml-->
+<view class="container">
+  <!-- 标题 -->
+  <view class="page-header">
+    <text class="page-title">AI图片描述</text>
+    <text class="page-subtitle">智能识别图片内容并生成描述</text>
+  </view>
+
+  <!-- 图片区域 -->
+  <view class="image-section">
+    <image
+      class="preview-image {{imageSrc ? '' : 'placeholder'}}"
+      src="{{imageSrc}}"
+      mode="aspectFit"
+      bindtap="chooseImage"
+    />
+
+    <view class="image-actions" wx:if="{{imageSrc}}">
+      <button class="action-btn" bindtap="chooseImage">换一张</button>
+      <button class="action-btn" bindtap="saveImage">保存图片</button>
+    </view>
+
+    <view class="upload-tip" wx:else>
+      <text class="tip-text">点击上传图片</text>
+    </view>
+  </view>
+
+  <!-- 描述风格选择 -->
+  <view class="style-section">
+    <view class="section-title">选择描述风格</view>
+    <view class="style-list">
+      <view
+        class="style-item {{selectedStyle === item.value ? 'active' : ''}}"
+        wx:for="{{styles}}"
+        wx:key="value"
+        data-style="{{item.value}}"
+        bindtap="selectStyle"
+      >
+        <text class="style-icon">{{item.icon}}</text>
+        <text class="style-label">{{item.label}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 生成按钮 -->
+  <view class="generate-section">
+    <button
+      class="generate-btn"
+      bindtap="generateDescription"
+      disabled="{{loading || !fileID}}"
+    >
+      {{loading ? '生成中...' : '生成AI描述'}}
+    </button>
+  </view>
+
+  <!-- 描述结果 -->
+  <view class="result-section" wx:if="{{description}}">
+    <view class="result-header">
+      <text class="result-title">AI生成的描述</text>
+      <button class="copy-btn" bindtap="copyDescription">复制</button>
+    </view>
+    <view class="result-content">
+      <text class="description-text">{{description}}</text>
+    </view>
+  </view>
+</view>
