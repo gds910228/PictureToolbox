@@ -11,7 +11,11 @@ Page({
       { value: 'professional', label: '专业描述', icon: '📝' },
       { value: 'artistic', label: '诗意描述', icon: '🎨' },
       { value: 'detailed', label: '详细描述', icon: '🔍' },
-      { value: 'social', label: '社交媒体', icon: '📱' }
+      { value: 'social', label: '社交媒体', icon: '📱' },
+      { value: 'concise', label: '简洁概括', icon: '⚡' },
+      { value: 'ecommerce', label: '电商推广', icon: '🛒' },
+      { value: 'photography', label: '摄影点评', icon: '📷' },
+      { value: 'emotional', label: '情感故事', icon: '💫' }
     ],
     loading: false
   },
@@ -158,35 +162,6 @@ Page({
           title: '已复制',
           icon: 'success'
         });
-      }
-    });
-  },
-
-  /**
-   * 保存图片
-   */
-  saveImage() {
-    if (!this.data.imageSrc) {
-      return;
-    }
-
-    wx.saveImageToPhotosAlbum({
-      filePath: this.data.imageSrc,
-      success() {
-        wx.showToast({
-          title: '已保存',
-          icon: 'success'
-        });
-      },
-      fail(err) {
-        console.error('保存失败', err);
-        if (err.errMsg.includes('auth')) {
-          wx.showModal({
-            title: '提示',
-            content: '需要您授权保存图片到相册',
-            showCancel: false
-          });
-        }
       }
     });
   }

@@ -66,10 +66,18 @@ exports.main = async (event, context) => {
  * 调用混元大模型API生成图片描述
  */
 async function callHunyuanAPI(imageURL, style) {
-  // 从环境变量获取API密钥
-  const secretId = process.env.TENCENTCLOUD_SECRET_ID;
-  const secretKey = process.env.TENCENTCLOUD_SECRET_KEY;
-  const region = process.env.TENCENTCLOUD_REGION || 'ap-guangzhou';
+  // 从环境变量获取API密钥（支持多种命名）
+  const secretId = process.env.TENCENTCLOUD_SECRET_ID || process.env.SECRET_ID;
+  const secretKey = process.env.TENCENTCLOUD_SECRET_KEY || process.env.SECRET_KEY;
+  const region = process.env.TENCENTCLOUD_REGION || process.env.API_REGION || 'ap-guangzhou';
+
+  // 输出调试信息
+  console.log('环境变量检查:', {
+    hasSecretId: !!secretId,
+    hasSecretKey: !!secretKey,
+    secretIdPrefix: secretId ? secretId.substring(0, 8) : 'null',
+    region: region
+  });
 
   // 检查是否配置了API密钥
   if (!secretId || !secretKey) {
@@ -122,7 +130,34 @@ async function callHunyuanAPI(imageURL, style) {
 2. 可以使用emoji表情
 3. 适合发朋友圈、小红书等平台
 4. 引发共鸣或互动
-5. 50-80字`
+5. 50-80字`,
+
+      concise: `请用一句话简洁概括这张图片的内容。要求：
+1. 抓住最核心的元素和主题
+2. 10-20字之间
+3. 简洁明了，一语中的
+4. 突出重点信息`,
+
+      ecommerce: `请为这张图片写一段电商产品描述。要求：
+1. 突出产品的核心卖点和特色
+2. 强调产品的使用场景和优势
+3. 使用吸引消费者的语言
+4. 可以适当使用emoji
+5. 60-100字，具有购买吸引力`,
+
+      photography: `请从摄影专业角度分析这张图片。要求：
+1. 分析构图技巧（三分法、黄金分割等）
+2. 评价光线运用（自然光、人造光、方向）
+3. 评估色彩搭配和色调处理
+4. 点评景深、对焦、曝光等技术
+5. 给出专业建议，80-120字`,
+
+      emotional: `请用情感化的语言描述这张图片的故事。要求：
+1. 想象图片背后的故事和情感
+2. 用温暖、感人的语言描述
+3. 关注人物表情、动作传递的情感
+4. 营造共鸣和代入感
+5. 80-120字，像讲一个故事`
     };
 
     const prompt = stylePrompts[style] || stylePrompts.professional;
@@ -135,8 +170,10 @@ async function callHunyuanAPI(imageURL, style) {
           Role: "user",
           Contents: [
             {
-              Type: "image",
-              Url: imageURL
+              Type: "image_url",
+              ImageUrl: {
+                Url: imageURL
+              }
             },
             {
               Type: "text",
@@ -153,9 +190,11 @@ async function callHunyuanAPI(imageURL, style) {
 
     console.log('混元API返回:', JSON.stringify(response));
 
-    // 解析返回结果
-    if (response.Response && response.Response.Choices && response.Response.Choices.length > 0) {
-      const content = response.Response.Choices[0].Message.Content;
+    // 解析返回结果（腾讯云SDK返回结构可能是 response.Response 或直接 response）
+    const result = response.Response || response;
+    if (result.Choices && result.Choices.length > 0 && result.Choices[0].Message) {
+      const content = result.Choices[0].Message.Content;
+      console.log('成功解析AI描述:', content);
       return content.trim();
     }
 
@@ -181,7 +220,15 @@ function mockDescription(style) {
 
     detailed: `这是一张构图精美的图片。从整体来看，画面层次分明，布局合理。前景部分细节清晰，主体突出；中景部分过渡自然，元素协调；背景部分简洁大方，不喧宾夺主。色彩运用恰到好处，明暗对比适度，充分展现了创作者的用心和技巧。`,
 
-    social: `捕捉到的美好瞬间～ 📷 这样的画面真的太治愈了！每一个细节都充满惊喜，让人忍不住想多看几眼。生活需要这样的小确幸，你说是吗？ 😊✨ #生活美学 #视觉盛宴`
+    social: `捕捉到的美好瞬间～ 📷 这样的画面真的太治愈了！每一个细节都充满惊喜，让人忍不住想多看几眼。生活需要这样的小确幸，你说是吗？ 😊✨ #生活美学 #视觉盛宴`,
+
+    concise: `精美的画面构图，光线柔和，色彩和谐。`,
+
+    ecommerce: `【品质优选】精心设计的产品，展现独特魅力。细节精致，质感出众，是您生活的不二之选！🛒✨ 限时特惠，不容错过！`,
+
+    photography: `这张照片运用了优秀的构图技巧，采用了经典的三分法则。光线处理得当，自然光与阴影形成良好的对比。色彩搭配和谐，白平衡准确，景深控制合理。是一张技术过硬的作品。建议可以尝试更多角度拍摄。`,
+
+    emotional: `这不仅仅是一张图片，更是一段温暖的记忆。画面中流露的情感如此真实，仿佛能感受到那一刻的温柔。时间在这里静止，留下的是永恒的感动和美好。愿这份温暖也能触动你的心。💫`
   };
 
   return descriptions[style] || descriptions.professional;

@@ -14,15 +14,6 @@
       mode="aspectFit"
       bindtap="chooseImage"
     />
-
-    <view class="image-actions" wx:if="{{imageSrc}}">
-      <button class="action-btn" bindtap="chooseImage">换一张</button>
-      <button class="action-btn" bindtap="saveImage">保存图片</button>
-    </view>
-
-    <view class="upload-tip" wx:else>
-      <text class="tip-text">点击上传图片</text>
-    </view>
   </view>
 
   <!-- 描述风格选择 -->

@@ -66,10 +66,18 @@ exports.main = async (event, context) => {
  * 调用混元大模型API生成智能配文
  */
 async function callHunyuanAPI(imageURL, platform, topic) {
-  // 从环境变量获取API密钥
-  const secretId = process.env.TENCENTCLOUD_SECRET_ID;
-  const secretKey = process.env.TENCENTCLOUD_SECRET_KEY;
-  const region = process.env.TENCENTCLOUD_REGION || 'ap-guangzhou';
+  // 从环境变量获取API密钥（支持多种命名）
+  const secretId = process.env.TENCENTCLOUD_SECRET_ID || process.env.SECRET_ID;
+  const secretKey = process.env.TENCENTCLOUD_SECRET_KEY || process.env.SECRET_KEY;
+  const region = process.env.TENCENTCLOUD_REGION || process.env.API_REGION || 'ap-guangzhou';
+
+  // 输出调试信息
+  console.log('环境变量检查:', {
+    hasSecretId: !!secretId,
+    hasSecretKey: !!secretKey,
+    secretIdPrefix: secretId ? secretId.substring(0, 8) : 'null',
+    region: region
+  });
 
   // 检查是否配置了API密钥
   if (!secretId || !secretKey) {
@@ -141,9 +149,11 @@ async function callHunyuanAPI(imageURL, platform, topic) {
 
     let prompt = platformPrompts[platform] || platformPrompts.moments;
 
-    // 如果指定了话题，添加到提示词中
+    // 如果指定了话题，在提示词开头明确强调主题要求
     if (topic && topic.trim()) {
-      prompt = prompt.replace('请为这张图片', `请围绕"${topic}"这个主题，为这张图片`);
+      const topicInstruction = `【重要主题要求】本次文案必须围绕"${topic}"这个主题展开，所有文案都要紧扣这个主题，体现${topic}的特点。\n\n`;
+      prompt = topicInstruction + prompt;
+      console.log('已添加主题要求:', topic);
     }
 
     // 构建请求参数
@@ -154,8 +164,10 @@ async function callHunyuanAPI(imageURL, platform, topic) {
           Role: "user",
           Contents: [
             {
-              Type: "image",
-              Url: imageURL
+              Type: "image_url",
+              ImageUrl: {
+                Url: imageURL
+              }
             },
             {
               Type: "text",
@@ -172,15 +184,17 @@ async function callHunyuanAPI(imageURL, platform, topic) {
 
     console.log('混元API返回:', JSON.stringify(response));
 
-    // 解析返回结果
-    if (response.Response && response.Response.Choices && response.Response.Choices.length > 0) {
-      const content = response.Response.Choices[0].Message.Content;
+    // 解析返回结果（腾讯云SDK返回结构可能是 response.Response 或直接 response）
+    const result = response.Response || response;
+    if (result.Choices && result.Choices.length > 0 && result.Choices[0].Message) {
+      const content = result.Choices[0].Message.Content;
 
       // 尝试从返回内容中提取JSON数组
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         const captions = JSON.parse(jsonMatch[0]);
         if (Array.isArray(captions) && captions.length >= 3) {
+          console.log('成功解析AI配文:', captions);
           return captions;
         }
       }

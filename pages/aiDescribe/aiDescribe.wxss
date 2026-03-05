@@ -53,35 +53,6 @@
   font-size: 28rpx;
 }
 
-.image-actions {
-  display: flex;
-  justify-content: space-around;
-  margin-top: 20rpx;
-}
-
-.action-btn {
-  width: 45%;
-  height: 70rpx;
-  line-height: 70rpx;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #ffffff;
-  border-radius: 35rpx;
-  font-size: 28rpx;
-  border: none;
-}
-
-.upload-tip {
-  height: 400rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.tip-text {
-  font-size: 28rpx;
-  color: #8b9dc3;
-}
-
 .style-section {
   margin-bottom: 30rpx;
 }
@@ -94,36 +65,37 @@
 }
 
 .style-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 15rpx;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12rpx;
 }
 
 .style-item {
-  flex: 1;
-  min-width: 45%;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 12rpx;
-  padding: 20rpx;
+  padding: 15rpx 10rpx;
   display: flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   border: 2rpx solid transparent;
   transition: all 0.3s;
+  text-align: center;
+}
+
+.style-icon {
+  font-size: 32rpx;
+  margin-bottom: 6rpx;
+}
+
+.style-label {
+  font-size: 24rpx;
+  color: #ffffff;
 }
 
 .style-item.active {
   background: rgba(102, 126, 234, 0.2);
   border-color: #667eea;
-}
-
-.style-icon {
-  font-size: 36rpx;
-  margin-right: 10rpx;
-}
-
-.style-label {
-  font-size: 28rpx;
-  color: #ffffff;
 }
 
 .generate-section {
@@ -139,6 +111,10 @@
   font-size: 32rpx;
   font-weight: bold;
   border: none;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .generate-btn[disabled] {
@@ -174,6 +150,10 @@
   border-radius: 30rpx;
   font-size: 24rpx;
   border: none;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .result-content {
