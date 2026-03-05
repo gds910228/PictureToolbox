@@ -1,14 +1,76 @@
 <view class="container">
-  <view class="page-header"><text class="page-title">AI风格迁移</text><text class="page-subtitle">一键转换艺术风格</text></view>
-  <view class="image-section">
-    <image class="preview-image {{imageSrc ? '' : 'placeholder'}}" src="{{imageSrc}}" mode="aspectFit" bindtap="chooseImage" />
+  <view class="page-header">
+    <text class="page-title">AI风格迁移</text>
+    <text class="page-subtitle">一键转换艺术风格</text>
   </view>
-  <view class="style-section"><view class="section-title">选择风格</view>
+
+  <!-- 图片对比区域 -->
+  <view class="compare-section">
+    <!-- 原图 -->
+    <view class="compare-item">
+      <view class="compare-title">原图</view>
+      <view class="compare-box" wx:if="{{!imageSrc}}" bindtap="chooseImage">
+        <text class="compare-tip">点击上传图片</text>
+      </view>
+      <view class="compare-box" wx:else bindtap="previewOriginalImage">
+        <image
+          class="compare-image"
+          src="{{imageSrc}}"
+          mode="aspectFit"
+        />
+        <view class="preview-tip">点击查看大图</view>
+      </view>
+    </view>
+
+    <!-- 结果图 -->
+    <view class="compare-item">
+      <view class="compare-title">转换结果</view>
+      <view class="compare-box" wx:if="{{!resultSrc}}">
+        <text class="compare-tip">转换后显示</text>
+      </view>
+      <view class="compare-box" wx:else bindtap="previewResultImage">
+        <image
+          class="compare-image"
+          src="{{resultSrc}}"
+          mode="aspectFit"
+          bindload="onImageLoad"
+          binderror="onImageError"
+          lazy-load="true"
+        />
+        <view class="preview-tip">点击查看大图</view>
+      </view>
+      <button class="save-btn-small" bindtap="saveResult">保存图片</button>
+    </view>
+  </view>
+
+  <!-- 转换控制栏 -->
+  <view class="control-bar">
+    <text class="selected-style-text">
+      当前选择：{{selectedStyleLabel}}
+    </text>
+    <button
+      class="generate-btn-small"
+      bindtap="transferStyle"
+      disabled="{{loading || !fileID}}"
+    >
+      {{loading ? '转换中...' : '开始转换'}}
+    </button>
+  </view>
+
+  <!-- 风格选择区域 -->
+  <view class="style-section">
+    <view class="section-title">选择风格</view>
     <view class="style-list">
-      <view class="style-item {{selectedStyle === item.value ? 'active' : ''}}" wx:for="{{styles}}" wx:key="value" data-style="{{item.value}}" bindtap="selectStyle">
-        <text class="style-icon">{{item.icon}}</text><text class="style-label">{{item.label}}</text>
+      <view
+        class="style-item {{selectedStyle === item.value ? 'active' : ''}}"
+        wx:for="{{styles}}"
+        wx:key="value"
+        data-style="{{item.value}}"
+        bindtap="selectStyle"
+      >
+        <text class="style-icon">{{item.icon}}</text>
+        <text class="style-label">{{item.label}}</text>
       </view>
     </view>
   </view>
-  <button class="generate-btn" bindtap="transferStyle" disabled="{{loading || !fileID}}">{{loading ? '转换中...' : '开始转换'}}</button>
 </view>

@@ -70,13 +70,13 @@ exports.main = async (event, context) => {
  */
 async function callMattingAPI(imageBuffer, originalFileID, type) {
   // 从环境变量获取API密钥
-  const secretId = process.env.TENCENTCLOUD_SECRET_ID;
-  const secretKey = process.env.TENCENTCLOUD_SECRET_KEY;
-  const region = process.env.TENCENTCLOUD_REGION || 'ap-guangzhou';
+  const secretId = process.env.SECRET_ID;
+  const secretKey = process.env.SECRET_KEY;
+  const region = process.env.API_REGION || 'ap-guangzhou';
 
   // 检查是否配置了密钥
   if (!secretId || !secretKey) {
-    throw new Error('未配置腾讯云API密钥，请在云函数环境变量中配置 TENCENTCLOUD_SECRET_ID 和 TENCENTCLOUD_SECRET_KEY');
+    throw new Error('未配置腾讯云API密钥，请在云函数环境变量中配置 SECRET_ID 和 SECRET_KEY');
   }
 
   console.log('开始调用腾讯云抠图API...');
