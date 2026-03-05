@@ -391,6 +391,216 @@
 }
 
 /* ===================================
+   AI TOOL ICONS - NEW DYNAMIC DESIGNS
+   =================================== */
+
+/* AI Describe Icon - Brain with Pulse */
+.icon-aiDescribe {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+}
+
+.icon-aiDescribe::before {
+  content: '';
+  position: absolute;
+  width: 60rpx;
+  height: 60rpx;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50% 40% 45% 55%;
+  background: linear-gradient(135deg, var(--color-neon-cyan) 0%, var(--color-hot-magenta) 100%);
+  box-shadow: 0 0 30rpx rgba(0, 240, 255, 0.5);
+  animation: brainPulse 2s ease-in-out infinite;
+}
+
+@keyframes brainPulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow: 0 0 30rpx rgba(0, 240, 255, 0.5);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.1);
+    box-shadow: 0 0 50rpx rgba(255, 0, 128, 0.7);
+  }
+}
+
+.icon-aiDescribe::after {
+  content: '';
+  position: absolute;
+  width: 24rpx;
+  height: 24rpx;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: 3rpx solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 10rpx rgba(255, 255, 255, 0.8);
+}
+
+/* AI Caption Icon - Writing Waves */
+.icon-aiCaption {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-aiCaption::before {
+  content: '';
+  position: absolute;
+  width: 70rpx;
+  height: 4rpx;
+  background: linear-gradient(90deg, var(--color-neon-cyan), var(--color-hot-magenta));
+  border-radius: 2rpx;
+  box-shadow: 0 0 15rpx rgba(0, 240, 255, 0.6);
+  animation: typingLine 1.5s ease-in-out infinite;
+}
+
+@keyframes typingLine {
+  0%, 100% {
+    width: 70rpx;
+    opacity: 1;
+  }
+  50% {
+    width: 50rpx;
+    opacity: 0.6;
+  }
+}
+
+.icon-aiCaption::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-left: 12rpx solid var(--color-hot-magenta);
+  border-top: 8rpx solid transparent;
+  border-bottom: 8rpx solid transparent;
+  right: 8rpx;
+  animation: cursorBlink 1s step-end infinite;
+  filter: drop-shadow(0 0 6rpx var(--color-hot-magenta));
+}
+
+@keyframes cursorBlink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* AI Matting Icon - Scanning Frame */
+.icon-aiMatting {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+}
+
+.icon-aiMatting::before {
+  content: '';
+  position: absolute;
+  width: 72rpx;
+  height: 72rpx;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: 3rpx solid var(--color-neon-cyan);
+  border-radius: 12rpx;
+  box-shadow: 0 0 20rpx rgba(0, 240, 255, 0.4);
+  animation: scanGlow 2s ease-in-out infinite;
+}
+
+@keyframes scanGlow {
+  0%, 100% {
+    border-color: var(--color-neon-cyan);
+    box-shadow: 0 0 20rpx rgba(0, 240, 255, 0.4);
+  }
+  50% {
+    border-color: var(--color-hot-magenta);
+    box-shadow: 0 0 30rpx rgba(255, 0, 128, 0.6);
+  }
+}
+
+.icon-aiMatting::after {
+  content: '';
+  position: absolute;
+  width: 60rpx;
+  height: 4rpx;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(90deg, transparent, var(--color-hot-magenta), transparent);
+  animation: scanMove 2s linear infinite;
+}
+
+@keyframes scanMove {
+  0% {
+    transform: translate(-50%, -30rpx);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, 30rpx);
+    opacity: 0;
+  }
+}
+
+/* AI Style Icon - Color Palette */
+.icon-aiStyle {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+}
+
+.icon-aiStyle::before {
+  content: '';
+  position: absolute;
+  width: 72rpx;
+  height: 72rpx;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: conic-gradient(
+    from 0deg,
+    var(--color-neon-cyan) 0deg,
+    var(--color-hot-magenta) 60deg,
+    #ffff00 120deg,
+    #00ff00 180deg,
+    var(--color-neon-cyan) 240deg,
+    var(--color-hot-magenta) 300deg,
+    var(--color-neon-cyan) 360deg
+  );
+  border-radius: 50%;
+  box-shadow: 0 0 30rpx rgba(255, 0, 128, 0.5);
+  animation: colorRotate 3s linear infinite;
+}
+
+@keyframes colorRotate {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+.icon-aiStyle::after {
+  content: '';
+  position: absolute;
+  width: 30rpx;
+  height: 30rpx;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 50%;
+  backdrop-filter: blur(10rpx);
+  border: 2rpx solid rgba(255, 255, 255, 0.3);
+}
+
+/* ===================================
    TOOL CARD CONTENT
    =================================== */
 
