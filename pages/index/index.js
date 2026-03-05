@@ -97,7 +97,7 @@ Page({
 
   onLoad() {
     wx.setNavigationBarTitle({
-      title: '图片工具箱'
+      title: '图个简单'
     });
 
     // 调试：打印工具列表

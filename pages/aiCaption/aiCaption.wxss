@@ -39,27 +39,6 @@
   box-sizing: border-box;
 }
 
-.topic-tip {
-  display: flex;
-  align-items: center;
-  margin-top: 12rpx;
-  padding: 10rpx 15rpx;
-  background: rgba(102, 126, 234, 0.2);
-  border-radius: 8rpx;
-  border-left: 3rpx solid #667eea;
-}
-
-.tip-icon {
-  font-size: 24rpx;
-  color: #667eea;
-  margin-right: 8rpx;
-  font-weight: bold;
-}
-
-.tip-text {
-  font-size: 24rpx;
-  color: #667eea;
-}
 .generate-btn {
   width: 100%;
   height: 90rpx;

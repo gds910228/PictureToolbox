@@ -5,6 +5,7 @@ Page({
     fileID: '',
     captions: [],
     selectedPlatform: 'moments',
+    selectedPlatformLabel: '朋友圈',
     platforms: [
       { value: 'moments', label: '朋友圈', icon: '👥' },
       { value: 'xiaohongshu', label: '小红书', icon: '📕' },
@@ -54,8 +55,11 @@ Page({
   },
 
   selectPlatform(e) {
+    const platform = e.currentTarget.dataset.platform;
+    const platformLabel = this.data.platforms.find(p => p.value === platform).label;
     this.setData({
-      selectedPlatform: e.currentTarget.dataset.platform,
+      selectedPlatform: platform,
+      selectedPlatformLabel: platformLabel,
       captions: []
     });
   },

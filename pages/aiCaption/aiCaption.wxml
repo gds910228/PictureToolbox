@@ -22,22 +22,18 @@
   <view class="topic-section">
     <view class="section-title">指定主题（可选）</view>
     <input class="topic-input" placeholder="例如：美食、旅行、穿搭..." value="{{topic}}" bindinput="onTopicInput" />
-    <view class="topic-tip" wx:if="{{topic}}">
-      <text class="tip-icon">✓</text>
-      <text class="tip-text">已应用主题：{{topic}}</text>
-    </view>
   </view>
 
   <view class="generate-section">
     <button class="generate-btn" bindtap="generateCaption" disabled="{{loading || !fileID}}">
-      {{loading ? '生成中...' : (topic ? `生成「${topic}」主题配文` : '生成配文')}}
+      {{loading ? '生成中...' : (topic ? '生成「' + topic + '」主题配文' : '生成配文')}}
     </button>
   </view>
 
   <view class="results-section" wx:if="{{captions.length > 0}}">
     <view class="section-title">生成的文案</view>
     <view class="result-info" wx:if="{{topic}}">
-      <text class="info-text">平台：{{platforms.find(p => p.value === selectedPlatform).label}} | 主题：{{topic}}</text>
+      <text class="info-text">平台：{{selectedPlatformLabel}} | 主题：{{topic}}</text>
     </view>
     <view class="caption-item" wx:for="{{captions}}" wx:key="index">
       <text class="caption-text">{{item}}</text>
