@@ -8,6 +8,8 @@ Page({
     resultSrc: '',
     resultFileID: '',
     selectedType: 'auto',
+    selectedTypeLabel: '智能识别',
+    selectedBgColorLabel: '透明',
     types: [
       { value: 'auto', label: '智能识别', icon: '🤖', desc: '自动识别主体类型' },
       { value: 'portrait', label: '人像抠图', icon: '👤', desc: '优化人物边缘' },
@@ -70,8 +72,11 @@ Page({
   },
 
   selectType(e) {
+    const type = e.currentTarget.dataset.type;
+    const selectedType = this.data.types.find(t => t.value === type);
     this.setData({
-      selectedType: e.currentTarget.dataset.type,
+      selectedType: type,
+      selectedTypeLabel: selectedType.label,
       resultSrc: '',
       resultFileID: '',
       isRealMatting: false
@@ -79,8 +84,11 @@ Page({
   },
 
   selectBgColor(e) {
+    const color = e.currentTarget.dataset.color;
+    const selectedColor = this.data.backgroundColors.find(c => c.value === color);
     this.setData({
-      selectedBgColor: e.currentTarget.dataset.color
+      selectedBgColor: color,
+      selectedBgColorLabel: selectedColor.name
     });
   },
 
@@ -269,6 +277,22 @@ ${debugInfo}
           });
         }
       }
+    });
+  },
+
+  previewOriginalImage() {
+    if (!this.data.imageSrc) return;
+    wx.previewImage({
+      current: this.data.imageSrc,
+      urls: [this.data.imageSrc]
+    });
+  },
+
+  previewResultImage() {
+    if (!this.data.resultSrc) return;
+    wx.previewImage({
+      current: this.data.resultSrc,
+      urls: [this.data.resultSrc]
     });
   }
 });

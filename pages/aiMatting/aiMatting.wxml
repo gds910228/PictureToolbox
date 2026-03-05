@@ -1,46 +1,63 @@
-<!--pages/aiMatting/aiMatting.wxml-->
 <view class="container">
-  <!-- 页面标题 -->
   <view class="page-header">
     <text class="page-title">AI智能抠图</text>
     <text class="page-subtitle">自动识别主体，一键去除背景</text>
   </view>
 
   <!-- 图片对比区域 -->
-  <view class="image-section">
-    <view class="image-row">
-      <view class="image-box">
-        <text class="box-label">原图</text>
+  <view class="compare-section">
+    <!-- 原图 -->
+    <view class="compare-item">
+      <view class="compare-title">原图</view>
+      <view class="compare-box" wx:if="{{!imageSrc}}" bindtap="chooseImage">
+        <text class="compare-tip">点击上传图片</text>
+      </view>
+      <view class="compare-box" wx:else bindtap="previewOriginalImage">
         <image
-          class="box-image {{imageSrc ? '' : 'placeholder'}}"
+          class="compare-image"
           src="{{imageSrc}}"
           mode="aspectFit"
-          bindtap="chooseImage"
         />
-        <text class="tap-hint" wx:if="{{!imageSrc}}">点击上传</text>
-      </view>
-
-      <view class="image-box">
-        <text class="box-label">
-          抠图后 {{isRealMatting ? '✅' : '📝'}}
-        </text>
-        <view class="box-result-container" style="background-color: {{selectedBgColor === 'transparent' ? '#f0f0f0' : selectedBgColor}}">
-          <image
-            wx:if="{{resultSrc}}"
-            class="result-image {{isRealMatting ? 'transparent-bg' : ''}}"
-            src="{{resultSrc}}"
-            mode="aspectFit"
-          />
-          <text wx:else class="placeholder-text">等待抠图</text>
-        </view>
+        <view class="preview-tip">点击查看大图</view>
       </view>
     </view>
+
+    <!-- 结果图 -->
+    <view class="compare-item">
+      <view class="compare-title">抠图结果</view>
+      <view class="compare-box" wx:if="{{!resultSrc}}">
+        <text class="compare-tip">抠图后显示</text>
+      </view>
+      <view class="compare-box result-container" wx:else bindtap="previewResultImage" style="background-color: {{selectedBgColor === 'transparent' ? '#f0f0f0' : selectedBgColor}}">
+        <image
+          class="compare-image {{isRealMatting ? 'transparent-bg' : ''}}"
+          src="{{resultSrc}}"
+          mode="aspectFit"
+        />
+        <view class="preview-tip">点击查看大图</view>
+      </view>
+      <button class="save-btn-small" bindtap="saveResult">保存图片</button>
+    </view>
+  </view>
+
+  <!-- 控制栏 -->
+  <view class="control-bar">
+    <text class="selected-info-text">
+      当前：{{selectedTypeLabel}} | {{selectedBgColorLabel}}
+    </text>
+    <button
+      class="generate-btn-small"
+      bindtap="startMatting"
+      disabled="{{loading || !fileID}}"
+    >
+      {{loading ? '处理中...' : '开始抠图'}}
+    </button>
   </view>
 
   <!-- 抠图类型选择 -->
   <view class="type-section">
     <view class="section-title">选择抠图类型</view>
-    <view class="type-list">
+    <view class="type-grid">
       <view
         class="type-item {{selectedType === item.value ? 'active' : ''}}"
         wx:for="{{types}}"
@@ -50,7 +67,6 @@
       >
         <text class="type-icon">{{item.icon}}</text>
         <text class="type-label">{{item.label}}</text>
-        <text class="type-desc">{{item.desc}}</text>
       </view>
     </view>
   </view>
@@ -58,7 +74,7 @@
   <!-- 背景颜色选择 -->
   <view class="color-section">
     <view class="section-title">选择背景颜色</view>
-    <view class="color-list">
+    <view class="color-grid">
       <view
         class="color-item {{selectedBgColor === item.value ? 'active' : ''}}"
         wx:for="{{backgroundColors}}"
@@ -70,20 +86,5 @@
         <text class="color-name">{{item.name}}</text>
       </view>
     </view>
-  </view>
-
-  <!-- 操作按钮 -->
-  <view class="action-section">
-    <button class="matting-btn" bindtap="startMatting" disabled="{{loading || !fileID}}">
-      {{loading ? '处理中...' : '开始抠图'}}
-    </button>
-    <button class="save-btn" bindtap="saveResult" disabled="{{!resultSrc}}" wx:if="{{resultSrc}}">
-      保存到相册
-    </button>
-  </view>
-
-  <!-- 调试信息（开发时显示） -->
-  <view class="debug-section" wx:if="{{debugInfo}}">
-    <text class="debug-text">调试信息：{{debugInfo}}</text>
   </view>
 </view>
