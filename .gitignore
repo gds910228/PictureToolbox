@@ -72,3 +72,6 @@ cloudfunctions/*/config.json
 cloudfunctions/*/*.json
 !cloudfunctions/*/package.json
 !cloudfunctions/*/*.example.json
+
+### cc
+/docs

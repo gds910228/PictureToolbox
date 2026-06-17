@@ -39,6 +39,15 @@ Page({
         isNew: true
       },
       {
+        id: 'aiOCR',
+        name: 'AI文字识别',
+        icon: '🔤',
+        desc: '高精度OCR识别图片中的文字',
+        url: '/pages/aiOCR/aiOCR',
+        available: true,
+        isNew: true
+      },
+      {
         id: 'compress',
         name: '图片压缩',
         icon: '🗜️',

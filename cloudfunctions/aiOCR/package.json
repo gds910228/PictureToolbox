@@ -1,0 +1,10 @@
+{
+  "name": "aiOCR",
+  "version": "1.0.0",
+  "description": "AI文字识别云函数 - 腾讯云通用印刷体OCR",
+  "main": "index.js",
+  "dependencies": {
+    "tencentcloud-sdk-nodejs": "^4.1.251",
+    "wx-server-sdk": "~2.6.3"
+  }
+}

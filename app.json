@@ -10,7 +10,8 @@
     "pages/aiDescribe/aiDescribe",
     "pages/aiCaption/aiCaption",
     "pages/aiMatting/aiMatting",
-    "pages/aiStyle/aiStyle"
+    "pages/aiStyle/aiStyle",
+    "pages/aiOCR/aiOCR"
   ],
   "window": {
     "backgroundTextStyle": "light",

@@ -600,6 +600,48 @@
   border: 2rpx solid rgba(255, 255, 255, 0.3);
 }
 
+/* AI OCR Icon - Document with text lines & magnifying glass */
+.icon-aiOCR {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+}
+
+.icon-aiOCR::before {
+  content: '';
+  position: absolute;
+  width: 60rpx;
+  height: 72rpx;
+  top: 50%;
+  left: 50%;
+  transform: translate(-55%, -50%);
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.2) 0%, rgba(255, 0, 128, 0.2) 100%);
+  border: 2rpx solid var(--color-neon-cyan);
+  border-radius: 6rpx;
+  box-shadow: 0 0 15rpx rgba(0, 240, 255, 0.3);
+}
+
+/* Text lines inside document */
+.icon-aiOCR::after {
+  content: '';
+  position: absolute;
+  width: 40rpx;
+  height: 36rpx;
+  top: 50%;
+  left: 50%;
+  transform: translate(-55%, -45%);
+  background:
+    linear-gradient(to right, var(--color-neon-cyan) 100%, transparent 0) 0 0 / 100% 4rpx no-repeat,
+    linear-gradient(to right, var(--color-hot-magenta) 70%, transparent 0) 0 14rpx / 100% 4rpx no-repeat,
+    linear-gradient(to right, var(--color-neon-cyan) 85%, transparent 0) 0 28rpx / 100% 4rpx no-repeat;
+  animation: textScan 2s ease-in-out infinite;
+}
+
+@keyframes textScan {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
 /* ===================================
    TOOL CARD CONTENT
    =================================== */

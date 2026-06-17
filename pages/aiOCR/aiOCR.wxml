@@ -1,0 +1,181 @@
+<!--pages/aiOCR/aiOCR.wxml-->
+<view class="container">
+  <!-- 页面头部 -->
+  <view class="page-header">
+    <text class="page-title">AI文字识别</text>
+    <text class="page-subtitle">高精度OCR · 支持多语言识别</text>
+  </view>
+
+  <!-- 未配置密钥提示 -->
+  <view class="init-banner" wx:if="{{isMock && textDetections.length > 0}}">
+    <text class="init-icon">⚙️</text>
+    <text class="init-text">功能初始化中，当前为示例数据</text>
+  </view>
+
+  <!-- 图片选择区域（未选择图片时显示） -->
+  <view class="upload-section" wx:if="{{!imageSrc}}" bindtap="chooseImage">
+    <view class="upload-icon">📷</view>
+    <text class="upload-title">点击选择图片</text>
+    <text class="upload-desc">支持相册 / 拍照 / 从聊天选择</text>
+    <view class="upload-features">
+      <view class="feature-tag">🔤 中英文识别</view>
+      <view class="feature-tag">📐 坐标定位</view>
+      <view class="feature-tag">📋 一键复制</view>
+    </view>
+  </view>
+
+  <!-- 图片预览与识别结果区域 -->
+  <block wx:if="{{imageSrc}}">
+    <!-- 视图模式切换 -->
+    <view class="view-toggle">
+      <view class="toggle-item {{viewMode === 'image' ? 'active' : ''}}" data-mode="image" bindtap="switchViewMode">
+        <text>原图</text>
+      </view>
+      <view class="toggle-item {{viewMode === 'split' ? 'active' : ''}}" data-mode="split" bindtap="switchViewMode">
+        <text>识别框</text>
+      </view>
+      <view class="toggle-item {{viewMode === 'result' ? 'active' : ''}}" data-mode="result" bindtap="switchViewMode">
+        <text>文字</text>
+      </view>
+    </view>
+
+    <!-- 图片 + Canvas 叠加层 -->
+    <view class="image-canvas-wrapper" wx:if="{{viewMode !== 'result'}}">
+      <image
+        class="preview-image"
+        src="{{imageSrc}}"
+        mode="widthFix"
+        style="width: {{displayWidth}}px;"
+        show-menu-by-longpress="true"
+      />
+      <!-- Canvas 覆盖层 -->
+      <canvas
+        wx:if="{{textDetections.length > 0 && viewMode !== 'image'}}"
+        type="2d"
+        id="ocr-canvas"
+        class="ocr-canvas"
+        style="width: {{displayWidth}}px; height: {{displayHeight}}px;"
+        bindtap="onCanvasTap"
+      ></canvas>
+
+      <!-- 识别中遮罩 -->
+      <view class="recognizing-mask" wx:if="{{recognizing}}">
+        <view class="scan-line"></view>
+        <text class="recognizing-text">AI识别中...</text>
+      </view>
+    </view>
+
+    <!-- 重新选择按钮 -->
+    <view class="reselect-row">
+      <view class="reselect-btn" bindtap="reselectImage">
+        <text>🔄 重新选择图片</text>
+      </view>
+    </view>
+
+    <!-- 识别结果区域 -->
+    <view class="result-section" wx:if="{{textDetections.length > 0}}">
+      <view class="result-header">
+        <text class="result-title">识别结果</text>
+        <text class="result-count">{{textDetections.length}} 行</text>
+      </view>
+
+      <!-- 文字行列表 -->
+      <scroll-view class="text-list" scroll-y="true" wx:if="{{viewMode !== 'result'}}">
+        <view
+          class="text-item {{selectedIndex === index ? 'highlighted' : ''}}"
+          wx:for="{{textDetections}}"
+          wx:key="index"
+          id="text-item-{{index}}"
+          data-index="{{index}}"
+          data-text="{{item.text}}"
+          bindtap="onTextItemTap"
+        >
+          <view class="text-line-num">{{index + 1}}</view>
+          <view class="text-content">
+            <text class="text-main">{{item.text}}</text>
+            <view class="text-meta">
+              <text class="confidence">置信度 {{item.confidence}}%</text>
+            </view>
+          </view>
+          <view class="text-copy-btn" catchtap="copySingleText" data-text="{{item.text}}">
+            <text>复制</text>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 纯文字视图（大段显示） -->
+      <view class="full-text-view" wx:if="{{viewMode === 'result'}}">
+        <text class="full-text">{{fullText}}</text>
+      </view>
+
+      <!-- 操作按钮区 -->
+      <view class="action-buttons">
+        <button class="action-btn primary" bindtap="copyAllText">
+          <text class="btn-icon">📋</text>
+          <text>复制全部</text>
+        </button>
+        <button class="action-btn" bindtap="showExportOptions">
+          <text class="btn-icon">📤</text>
+          <text>导出</text>
+        </button>
+        <button class="action-btn" open-type="share">
+          <text class="btn-icon">🔗</text>
+          <text>分享</text>
+        </button>
+      </view>
+    </view>
+  </block>
+
+  <!-- 图片来源选择 底部弹层 -->
+  <view class="sheet-mask" wx:if="{{showSourceSheet}}" bindtap="onSourceSheetClose">
+    <view class="sheet-content" catchtap="">
+      <view class="sheet-title">选择图片来源</view>
+      <view class="sheet-option" bindtap="chooseFromAlbum">
+        <text class="option-icon">🖼️</text>
+        <text class="option-text">从相册选择</text>
+      </view>
+      <view class="sheet-option" bindtap="takePhoto">
+        <text class="option-icon">📸</text>
+        <text class="option-text">拍照</text>
+      </view>
+      <view class="sheet-option" bindtap="chooseFromChat">
+        <text class="option-icon">💬</text>
+        <text class="option-text">从聊天记录选择</text>
+      </view>
+      <view class="sheet-cancel" bindtap="onSourceSheetClose">
+        <text>取消</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 导出选项 底部弹层 -->
+  <view class="sheet-mask" wx:if="{{showExportSheet}}" bindtap="onExportSheetClose">
+    <view class="sheet-content" catchtap="">
+      <view class="sheet-title">导出方式</view>
+      <view class="sheet-option" bindtap="exportText">
+        <text class="option-icon">📝</text>
+        <view class="option-info">
+          <text class="option-text">纯文本</text>
+          <text class="option-desc">复制所有识别文字到剪贴板</text>
+        </view>
+      </view>
+      <view class="sheet-option" bindtap="exportJSON">
+        <text class="option-icon">{ }</text>
+        <view class="option-info">
+          <text class="option-text">JSON（带坐标）</text>
+          <text class="option-desc">包含每段文字坐标和置信度</text>
+        </view>
+      </view>
+      <view class="sheet-option" bindtap="exportImage">
+        <text class="option-icon">🖼️</text>
+        <view class="option-info">
+          <text class="option-text">带框图片</text>
+          <text class="option-desc">保存带识别框的图片到相册</text>
+        </view>
+      </view>
+      <view class="sheet-cancel" bindtap="onExportSheetClose">
+        <text>取消</text>
+      </view>
+    </view>
+  </view>
+</view>
