@@ -4,6 +4,7 @@
 const cloud = require('wx-server-sdk');
 const tencentcloud = require('tencentcloud-sdk-nodejs');
 const secret = require('./cloud-secret');
+const contentCheck = require('./content-check');
 
 // 导入混元产品模块
 const HunyuanClient = tencentcloud.hunyuan.v20230901.Client;
@@ -27,6 +28,10 @@ exports.main = async (event, context) => {
     // 如果传入的是fileID，需要先获取临时URL
     let imageURL = '';
     if (fileID) {
+      // 服务端内容安全兜底：下载原图过检，违规即拒（不暴露原因）
+      const _secDl = await cloud.downloadFile({ fileID });
+      await contentCheck.assertImageSafe(_secDl.fileContent, cloud);
+
       const result = await cloud.getTempFileURL({
         fileList: [fileID]
       });

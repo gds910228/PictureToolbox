@@ -4,6 +4,7 @@
 const cloud = require('wx-server-sdk');
 const tencentcloud = require('tencentcloud-sdk-nodejs');
 const secret = require('./cloud-secret');
+const contentCheck = require('./content-check');
 
 // 导入OCR产品模块
 const OcrClient = tencentcloud.ocr.v20181119.Client;
@@ -35,6 +36,9 @@ exports.main = async (event, context) => {
         fileID: fileID
       });
       console.log('图片下载成功，大小:', fileRes.fileContent.length, 'bytes');
+
+      // 服务端内容安全兜底（违规则抛错，外层 catch 返回失败）
+      await contentCheck.assertImageSafe(fileRes.fileContent, cloud);
 
       // 转base64
       imageBase64 = fileRes.fileContent.toString('base64');

@@ -550,8 +550,18 @@ function chooseImage(count = 1, sizeType = ['original', 'compressed'], sourceTyp
       count: count,
       sizeType: sizeType,
       sourceType: sourceType,
-      success: (res) => {
-        resolve(res.tempFilePaths);
+      success: async (res) => {
+        // 内容安全：逐张过检，剔除违规图（违规内部已弹标准化提示，不暴露原因）
+        // 懒 require 规避与 content-check 的循环依赖
+        const { guardImage } = require('./content-check');
+        const paths = res.tempFilePaths || [];
+        const safePaths = [];
+        for (let i = 0; i < paths.length; i++) {
+          if (await guardImage(paths[i])) {
+            safePaths.push(paths[i]);
+          }
+        }
+        resolve(safePaths);
       },
       fail: (err) => {
         reject(err);
@@ -1476,6 +1486,65 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+/**
+ * 生成内容安全检测用的小图（最长边缩到 maxEdge，JPEG quality）
+ * imgSecCheck 限制 ≤1MB / ≤750×1334px，故送检前必须缩图。
+ * @param {string} filePath - 原图临时路径
+ * @param {number} maxEdge - 最长边像素上限（默认 600）
+ * @param {number} quality - JPEG 质量 0-1（默认 0.6）
+ * @returns {Promise<string>} 缩略图临时路径（失败回退到 compressImage 或原路径）
+ */
+function makeCheckThumb(filePath, maxEdge = 600, quality = 0.6) {
+  return new Promise((resolve) => {
+    getImageInfo(filePath).then((info) => {
+      const { width, height, path } = info;
+      const longest = Math.max(width, height);
+      const scale = longest > maxEdge ? maxEdge / longest : 1;
+      const targetWidth = Math.max(1, Math.round(width * scale));
+      const targetHeight = Math.max(1, Math.round(height * scale));
+
+      const canvas = wx.createOffscreenCanvas({ type: '2d', width: targetWidth, height: targetHeight });
+      const ctx = canvas.getContext('2d');
+      const image = canvas.createImage();
+
+      image.onload = () => {
+        ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+        wx.canvasToTempFilePath({
+          canvas: canvas,
+          fileType: 'jpg',
+          quality: quality,
+          success: (res) => resolve(res.tempFilePath),
+          fail: (err) => {
+            console.warn('[makeCheckThumb] canvasToTempFilePath 失败，回退 compressImage', err);
+            _fallbackCompress(filePath, quality).then(resolve).catch(() => resolve(filePath));
+          }
+        });
+      };
+
+      image.onerror = () => {
+        console.warn('[makeCheckThumb] canvas 加载图片失败，回退 compressImage');
+        _fallbackCompress(filePath, quality).then(resolve).catch(() => resolve(filePath));
+      };
+
+      image.src = path;
+    }).catch(() => {
+      _fallbackCompress(filePath, quality).then(resolve).catch(() => resolve(filePath));
+    });
+  });
+}
+
+// 回退：仅质量压缩（不缩尺寸），尽力保证 ≤1MB
+function _fallbackCompress(filePath, quality) {
+  return new Promise((resolve, reject) => {
+    wx.compressImage({
+      src: filePath,
+      quality: Math.round((quality || 0.6) * 100),
+      success: (res) => resolve(res.tempFilePath),
+      fail: reject
+    });
+  });
+}
+
 module.exports = {
   compressImage,
   smartCompressImage,
@@ -1494,5 +1563,6 @@ module.exports = {
   addTiledImageWatermark,
   applyAdjustments,
   applyPresetFilter,
-  spliceImages
+  spliceImages,
+  makeCheckThumb
 };

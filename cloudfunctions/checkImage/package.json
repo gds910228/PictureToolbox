@@ -1,0 +1,9 @@
+{
+  "name": "checkImage",
+  "version": "1.0.0",
+  "description": "内容安全检测：图片 imgSecCheck / 文字 msgSecCheck（同步），只返回 safe 布尔",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

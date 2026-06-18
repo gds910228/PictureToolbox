@@ -47,8 +47,14 @@ Page({
   /**
    * 上传图片到云存储
    */
-  uploadImage(filePath) {
+  async uploadImage(filePath) {
     const that = this;
+    // 内容安全：违规则拦截（已弹标准化提示，不暴露原因），并清掉已展示的图
+    const { guardImage } = require('../../utils/content-check');
+    if (!(await guardImage(filePath))) {
+      this.setData({ imageSrc: '', fileID: '' });
+      return;
+    }
     wx.showLoading({
       title: '上传中...',
       mask: true

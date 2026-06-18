@@ -290,6 +290,14 @@ Page({
       return;
     }
 
+    // 内容安全：文字水印过检（违规则拦截，已弹标准化提示，不暴露原因）
+    if (this.data.watermarkType === 'text') {
+      const { guardText } = require('../../utils/content-check');
+      if (!(await guardText(this.data.watermarkText))) {
+        return;
+      }
+    }
+
     // 图片水印验证
     if (this.data.watermarkType === 'image' && !this.data.watermarkImage) {
       wx.showToast({

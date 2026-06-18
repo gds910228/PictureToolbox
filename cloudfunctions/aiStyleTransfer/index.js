@@ -4,6 +4,7 @@
 const cloud = require('wx-server-sdk');
 const tencentcloud = require('tencentcloud-sdk-nodejs');
 const secret = require('./cloud-secret');
+const contentCheck = require('./content-check');
 
 // 初始化云开发环境
 cloud.init({
@@ -42,6 +43,9 @@ exports.main = async (event, context) => {
     const imageBuffer = downloadResult.fileContent;
     const base64Image = imageBuffer.toString('base64');
     console.log('下载图片成功，大小:', imageBuffer.length);
+
+    // 服务端内容安全兜底（违规则抛错，外层 catch 返回失败）
+    await contentCheck.assertImageSafe(imageBuffer, cloud);
 
     // 调用混元文生图API进行风格迁移
     const styleResult = await callHunyuanStyleTransfer(base64Image, style, secretId, secretKey, region, fileID);
