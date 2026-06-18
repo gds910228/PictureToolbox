@@ -1,1 +1,6 @@
-{"navigationBarTitleText": "AI风格迁移", "usingComponents": {}}
+{
+  "navigationBarTitleText": "AI风格迁移",
+  "usingComponents": {
+    "image-uploader": "/components/image-uploader/image-uploader"
+  }
+}

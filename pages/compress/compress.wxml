@@ -2,21 +2,20 @@
 <view class="container">
   <!-- 上传区域 -->
   <view class="upload-section" wx:if="{{!showResult}}">
-    <view class="upload-box" bindtap="chooseImage">
-      <text class="upload-icon">📷</text>
-      <text class="upload-text">点击选择图片</text>
-      <text class="upload-hint">支持JPG、PNG、WebP、GIF、BMP等格式</text>
-    </view>
-
-    <!-- 预览图 -->
-    <image
-      wx:if="{{imageSrc}}"
-      class="preview-image"
-      src="{{imageSrc}}"
-      mode="aspectFit"
-      bindtap="previewImage"
-      data-url="{{imageSrc}}"
+    <image-uploader
+      id="mainUploader"
+      maxCount="1"
+      sizeType="{{['original']}}"
+      sourceType="{{['album', 'camera']}}"
+      showCompressTip="{{true}}"
+      tipText="点击选择图片"
+      tipSubtext="支持 JPG、PNG、WebP、GIF、BMP 等格式"
+      theme="cyan"
+      bind:change="onImageChange"
+      bind:error="onImageError"
     />
+
+    <!-- 预览图（由组件接管，这里保留图片信息展示） -->
   </view>
 
   <!-- 压缩设置 -->

@@ -7,32 +7,17 @@
       <view class="clear-btn" bindtap="clearAll" wx:if="{{images.length > 0}}">清空</view>
     </view>
 
-    <!-- 图片网格 -->
-    <view class="images-grid">
-      <view
-        class="image-item"
-        wx:for="{{images}}"
-        wx:key="id"
-        data-index="{{index}}"
-        bindtap="previewOriginalImages"
-      >
-        <image src="{{item.path}}" mode="aspectFill"></image>
-        <view class="delete-btn" data-index="{{index}}" catchtap="deleteImage">
-          <text>×</text>
-        </view>
-        <view class="image-index">{{index + 1}}</view>
-      </view>
-
-      <!-- 添加图片按钮 -->
-      <view
-        class="image-item add-btn"
-        bindtap="chooseImage"
-        wx:if="{{images.length < 9}}"
-      >
-        <text class="add-icon">+</text>
-        <text class="add-text">添加图片</text>
-      </view>
-    </view>
+    <!-- 图片上传组件 -->
+    <image-uploader
+      id="mainUploader"
+      maxCount="9"
+      sizeType="{{['original']}}"
+      sourceType="{{['album', 'camera']}}"
+      showCompressTip="{{false}}"
+      theme="green"
+      draggable="{{true}}"
+      bind:change="onImagesChange"
+    />
   </view>
 
   <!-- 拼接模式选择 -->

@@ -21,7 +21,8 @@ Page({
     aiAnalysis: null,      // AI分析结果
     analyzing: false,      // 是否正在分析
     showAIRecommendation: false, // 是否显示AI建议
-    cloudEnabled: false    // 云开发是否已启用
+    cloudEnabled: false,    // 云开发是否已启用
+    uploadReady: false     // 图片已上传到云存储，fileID可用
   },
 
   onLoad() {
@@ -68,50 +69,88 @@ Page({
   },
 
   /**
-   * 选择图片
+   * 图片上传组件回调 - 图片列表变化
+   * 由 image-uploader 组件触发
    */
-  async chooseImage() {
-    try {
-      const files = await imageProcess.chooseImage(1, ['original'], ['album', 'camera']);
+  onImageChange(e) {
+    const { paths, count } = e.detail;
 
-      if (files && files.length > 0) {
-        const filePath = files[0];
-
-        // 获取图片信息
-        const info = await imageProcess.getImageInfo(filePath);
-
-        // 获取实际文件大小
-        const originalSize = await imageProcess.getFileSize(filePath);
-        const originalSizeText = this.formatFileSize(originalSize);
-
-        this.setData({
-          imageSrc: filePath,
-          compressedSrc: '',
-          originalSize: originalSize,
-          originalSizeText: originalSizeText,
-          compressedSize: 0,
-          compressedSizeText: '',
-          compressionRate: '',
-          showResult: false,
-          aiAnalysis: null,
-          showAIRecommendation: false
-        });
-
-        // 仅在云开发已配置时进行AI分析
-        if (this.data.cloudEnabled) {
-          // 延迟执行，避免阻塞UI
-          setTimeout(() => {
-            this.analyzeImageWithAI(filePath);
-          }, 100);
-        }
-      }
-    } catch (err) {
-      console.error('选择图片失败', err);
-      wx.showToast({
-        title: '选择图片失败',
-        icon: 'none'
+    if (count === 0) {
+      // 图片被清空，重置状态
+      this.setData({
+        imageSrc: '',
+        uploadReady: false,
+        originalSize: 0,
+        originalSizeText: '',
+        showResult: false,
+        compressedSrc: '',
+        aiAnalysis: null,
+        showAIRecommendation: false
       });
+      return;
     }
+
+    // 取第一张图的路径（单图模式）
+    const filePath = paths[0];
+
+    // 获取图片信息
+    imageProcess.getImageInfo(filePath).then((info) => {
+      // 获取实际文件大小
+      return imageProcess.getFileSize(filePath).then(size => ({ info, size }));
+    }).then(({ info, size }) => {
+      const originalSizeText = this.formatFileSize(size);
+
+      this.setData({
+        imageSrc: filePath,
+        uploadReady: false, // 本地路径已就绪，但云存储fileID需另行上传
+        originalSize: size,
+        originalSizeText: originalSizeText,
+        compressedSrc: '',
+        showResult: false,
+        aiAnalysis: null,
+        showAIRecommendation: false
+      });
+
+      // 仅在云开发已配置时进行AI分析
+      if (this.data.cloudEnabled) {
+        setTimeout(() => {
+          this.analyzeImageWithAI(filePath);
+        }, 100);
+      }
+    }).catch((err) => {
+      console.error('获取图片信息失败', err);
+      wx.showToast({ title: '获取图片信息失败', icon: 'none' });
+    });
+  },
+
+  /**
+   * 图片上传组件错误回调
+   */
+  onImageError(e) {
+    const { err, type } = e.detail;
+    console.error('[compress] 图片上传组件错误', type, err);
+    wx.showToast({ title: '选择图片失败', icon: 'none' });
+  },
+
+  /**
+   * 继续选择（重新选择图片）
+   * 清空组件后，用户点击上传区重新选择
+   */
+  chooseImage() {
+    const uploader = this.selectComponent('#mainUploader');
+    if (uploader && uploader.clear) {
+      uploader.clear();
+    }
+    // 页面状态重置（组件 clear 后会触发 onImageChange 设置空状态）
+    this.setData({
+      imageSrc: '',
+      compressedSrc: '',
+      originalSize: 0,
+      originalSizeText: '',
+      showResult: false,
+      aiAnalysis: null,
+      showAIRecommendation: false
+    });
   },
 
   /**

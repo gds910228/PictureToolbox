@@ -1,0 +1,119 @@
+<!-- components/image-uploader/image-uploader.wxml -->
+<view class="uploader-wrapper">
+
+  <!-- ========================
+       多图模式：网格展示
+       ======================== -->
+  <view
+    wx:if="{{maxCount > 1}}"
+    class="image-grid"
+  >
+    <!-- 已选图片 -->
+    <view
+      wx:for="{{_images}}"
+      wx:key="id"
+      class="image-cell {{_dragging && _dragIndex === index ? 'dragging' : ''}} {{_dragging && _dropIndex === index && _dragIndex !== index ? 'drop-target' : ''}}"
+      data-index="{{index}}"
+      bindtap="onTapArea"
+      bindlongpress="onLongPress"
+      bindtouchmove="onDragOver"
+      bindtouchend="onDragEnd"
+    >
+      <image
+        class="cell-img"
+        src="{{item.path}}"
+        mode="aspectFill"
+        lazy-load
+      ></image>
+
+      <!-- 序号角标 -->
+      <view class="cell-index">{{index + 1}}</view>
+
+      <!-- 删除按钮 -->
+      <view
+        class="cell-delete"
+        data-index="{{index}}"
+        catchtap="onDeleteImage"
+      >
+        <text class="delete-icon">×</text>
+      </view>
+
+      <!-- 拖拽提示 -->
+      <view class="drag-hint" wx:if="{{_dragging && _dragIndex === index}}">
+        <text class="drag-hint-icon">⇅</text>
+      </view>
+    </view>
+
+    <!-- 添加按钮 -->
+    <view
+      wx:if="{{!_images || _images.length < maxCount}}"
+      class="image-cell add-cell"
+      bindtap="onTapArea"
+    >
+      <text class="add-icon">+</text>
+      <text class="add-text" wx:if="{{tipText}}">{{tipText}}</text>
+    </view>
+  </view>
+
+  <!-- ========================
+       单图模式：单图预览
+       ======================== -->
+  <view
+    wx:if="{{maxCount <= 1}}"
+    class="single-upload"
+  >
+    <!-- 空状态：上传区域 -->
+    <view
+      wx:if="{{!_images || _images.length === 0}}"
+      class="upload-empty"
+      bindtap="onTapArea"
+    >
+      <text class="empty-icon">📷</text>
+      <text class="empty-main">{{tipText || '点击选择图片'}}</text>
+      <text class="empty-sub" wx:if="{{tipSubtext}}">{{tipSubtext}}</text>
+      <text class="empty-sub" wx:elif="{{maxCount <= 1}}">支持 JPG、PNG、WebP 等格式</text>
+    </view>
+
+    <!-- 有图状态：预览图 -->
+    <view
+      wx:if="{{_images && _images.length > 0}}"
+      class="preview-wrap"
+      data-index="0"
+      bindtap="onTapArea"
+    >
+      <image
+        class="preview-img"
+        src="{{_images[0] ? _images[0].path : ''}}"
+        mode="aspectFit"
+        lazy-load
+      ></image>
+
+      <!-- 删除按钮 -->
+      <view
+        class="preview-delete"
+        data-index="0"
+        catchtap="onDeleteImage"
+      >
+        <text class="delete-icon">×</text>
+      </view>
+
+      <!-- 重新上传遮罩 -->
+      <view class="preview-reupload">
+        <text class="reupload-text">点击更换图片</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ========================
+       底部提示
+       ======================== -->
+  <view class="uploader-tip" wx:if="{{_showTip && _tipMessage}}">
+    <text>{{_tipMessage}}</text>
+  </view>
+
+  <!-- 数量提示（多图模式） -->
+  <view class="count-hint" wx:if="{{_images && _images.length > 0 && maxCount > 1}}">
+    <text>{{_images.length}} / {{maxCount}}</text>
+  </view>
+
+</view>

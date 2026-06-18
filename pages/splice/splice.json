@@ -1,4 +1,7 @@
 {
   "navigationBarTitleText": "图片拼接",
-  "enablePullDownRefresh": false
+  "enablePullDownRefresh": false,
+  "usingComponents": {
+    "image-uploader": "/components/image-uploader/image-uploader"
+  }
 }

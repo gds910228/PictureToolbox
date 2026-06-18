@@ -6,7 +6,7 @@ Page({
     imageSrc: '',
     fileID: '',
     resultSrc: '',
-    resultFileID: '',  // 添加resultFileID
+    resultFileID: '',
     selectedStyle: 'anime',
     selectedStyleLabel: '日系动漫',
     styles: [
@@ -35,36 +35,38 @@ Page({
     loading: false
   },
 
-  chooseImage() {
-    const that = this;
-    wx.chooseMedia({
-      count: 1,
-      mediaType: ['image'],
-      success(res) {
-        that.setData({
-          imageSrc: res.tempFiles[0].tempFilePath,
-          fileID: '',
-          resultSrc: '',
-          resultFileID: ''
-        });
-        that.uploadImage(res.tempFiles[0].tempFilePath);
-      }
+  /**
+   * 图片上传组件回调 - 图片列表变化
+   * 替换原有的 chooseImage，图片选择后自动上传到云存储
+   */
+  async onImageChange(e) {
+    const { paths, count } = e.detail;
+
+    if (count === 0) {
+      this.setData({ imageSrc: '', fileID: '', resultSrc: '', resultFileID: '' });
+      return;
+    }
+
+    const filePath = paths[0];
+    this.setData({
+      imageSrc: filePath,
+      fileID: '',
+      resultSrc: '',
+      resultFileID: ''
     });
+
+    // 内容安全检测 + 上传到云存储
+    await this.uploadImage(filePath);
   },
 
   previewOriginalImage() {
     if (!this.data.imageSrc) {
-      // 如果没有图片，触发上传
-      this.chooseImage();
       return;
     }
-
-    // 预览原图（如果有结果图，可以一起预览）
     const urls = [this.data.imageSrc];
     if (this.data.resultSrc) {
       urls.push(this.data.resultSrc);
     }
-
     wx.previewImage({
       current: this.data.imageSrc,
       urls: urls
@@ -76,13 +78,10 @@ Page({
       wx.showToast({ title: '暂无结果图片', icon: 'none' });
       return;
     }
-
-    // 预览结果图（包含原图，可以左右滑动对比）
     const urls = [this.data.resultSrc];
     if (this.data.imageSrc) {
-      urls.unshift(this.data.imageSrc); // 原图放前面
+      urls.unshift(this.data.imageSrc);
     }
-
     wx.previewImage({
       current: this.data.resultSrc,
       urls: urls
@@ -91,10 +90,13 @@ Page({
 
   async uploadImage(filePath) {
     const that = this;
-    // 内容安全：违规则拦截（已弹标准化提示，不暴露原因），并清掉已展示的图
     const { guardImage } = require('../../utils/content-check');
     if (!(await guardImage(filePath))) {
+      // 内容安全拦截，清空已展示的图
       this.setData({ imageSrc: '', fileID: '', resultSrc: '', resultFileID: '' });
+      // 通知组件清空
+      const uploader = this.selectComponent('#mainUploader');
+      if (uploader && uploader.clear) uploader.clear();
       return;
     }
     wx.showLoading({ title: '上传中...' });
@@ -105,7 +107,10 @@ Page({
         that.setData({ fileID: res.fileID });
         wx.hideLoading();
       },
-      fail: () => { wx.hideLoading(); wx.showToast({ title: '上传失败', icon: 'none' }); }
+      fail: () => {
+        wx.hideLoading();
+        wx.showToast({ title: '上传失败', icon: 'none' });
+      }
     });
   },
 

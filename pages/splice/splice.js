@@ -3,7 +3,7 @@ const imageProcess = require('../../utils/image-process');
 
 Page({
   data: {
-    images: [],              // 选中的图片列表
+    images: [],              // 选中的图片列表（与组件保持同步）
     maxImages: 9,            // 最多图片数量
     processedSrc: '',
     showResult: false,
@@ -37,73 +37,44 @@ Page({
   },
 
   /**
-   * 选择图片
+   * 图片上传组件回调 - 图片列表变化
+   * 由 image-uploader 组件触发，替换原有的 chooseImage + deleteImage + swapImage
    */
-  async chooseImage() {
-    const remainCount = this.data.maxImages - this.data.images.length;
-
-    if (remainCount <= 0) {
-      wx.showToast({
-        title: '最多选择9张图片',
-        icon: 'none'
-      });
-      return;
-    }
-
-    try {
-      const files = await imageProcess.chooseImage(remainCount, ['original'], ['album', 'camera']);
-
-      if (files && files.length > 0) {
-        const newImages = files.map(filePath => ({
-          path: filePath,
-          id: Date.now() + Math.random()
-        }));
-
-        this.setData({
-          images: [...this.data.images, ...newImages],
-          processedSrc: '',
-          showResult: false
-        });
-
-        // 如果开启AI且图片数量>=2，自动分析
-        if (this.data.useAI && this.data.images.length >= 2) {
-          this.analyzeWithAI();
-        }
-      }
-    } catch (err) {
-      console.error('选择图片失败', err);
-      wx.showToast({
-        title: '选择图片失败',
-        icon: 'none'
-      });
-    }
-  },
-
-  /**
-   * 删除图片
-   */
-  deleteImage(e) {
-    const { index } = e.currentTarget.dataset;
-    const images = this.data.images.filter((_, i) => i !== index);
-
+  onImagesChange(e) {
+    const { images } = e.detail;
     this.setData({
       images: images,
       processedSrc: '',
       showResult: false
     });
+
+    // 如果开启AI且图片数量>=2，自动分析
+    if (this.data.useAI && images.length >= 2) {
+      this.analyzeWithAI();
+    }
   },
 
   /**
-   * 交换图片位置
+   * 清空所有图片（通过按钮触发，由组件的 clear() 配合实现）
    */
-  swapImage(fromIndex, toIndex) {
-    const images = [...this.data.images];
-    const temp = images[fromIndex];
-    images[fromIndex] = images[toIndex];
-    images[toIndex] = temp;
-
-    this.setData({
-      images: images
+  clearAll() {
+    wx.showModal({
+      title: '确认清空',
+      content: '确定要清空所有图片吗？',
+      success: (res) => {
+        if (res.confirm) {
+          const uploader = this.selectComponent('#mainUploader');
+          if (uploader && uploader.clear) {
+            uploader.clear();
+          }
+          this.setData({
+            images: [],
+            processedSrc: '',
+            showResult: false,
+            aiLayoutSuggestion: null
+          });
+        }
+      }
     });
   },
 

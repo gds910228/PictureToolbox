@@ -1,0 +1,438 @@
+/* ===================================
+   CYBERPUNK IMAGE UPLOADER COMPONENT
+   =================================== */
+
+/* 设计令牌（继承全局样式） */
+.uploader-wrapper {
+  width: 100%;
+}
+
+/* ===================================
+   多图网格模式
+   =================================== */
+
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16rpx;
+}
+
+.image-cell {
+  position: relative;
+  aspect-ratio: 1;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 16rpx;
+  overflow: hidden;
+  border: 2rpx solid rgba(0, 240, 255, 0.2);
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  box-sizing: border-box;
+}
+
+/* 拖拽中的图片 */
+.image-cell.dragging {
+  opacity: 0.5;
+  transform: scale(0.92);
+  border-color: rgba(0, 240, 255, 0.5);
+  box-shadow: 0 0 20rpx rgba(0, 240, 255, 0.3);
+}
+
+/* 放置目标 */
+.image-cell.drop-target {
+  border-color: #00F0FF;
+  border-style: dashed;
+  box-shadow: 0 0 24rpx rgba(0, 240, 255, 0.6);
+  transform: scale(1.05);
+}
+
+.cell-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 序号角标 */
+.cell-index {
+  position: absolute;
+  top: 8rpx;
+  left: 8rpx;
+  width: 36rpx;
+  height: 36rpx;
+  background: rgba(0, 240, 255, 0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0A0E27;
+  font-size: 20rpx;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 0 10rpx rgba(0, 240, 255, 0.5);
+}
+
+/* 删除按钮 */
+.cell-delete {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  width: 40rpx;
+  height: 40rpx;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid rgba(255, 0, 128, 0.5);
+  box-sizing: border-box;
+  transition: background 0.2s;
+}
+
+.cell-delete:active {
+  background: rgba(255, 0, 128, 0.7);
+}
+
+.delete-icon {
+  color: #FF0080;
+  font-size: 32rpx;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* 拖拽提示图标 */
+.drag-hint {
+  position: absolute;
+  bottom: 8rpx;
+  right: 8rpx;
+  width: 36rpx;
+  height: 36rpx;
+  background: rgba(0, 240, 255, 0.85);
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drag-hint-icon {
+  color: #0A0E27;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+/* 添加按钮 */
+.add-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx dashed rgba(0, 240, 255, 0.3);
+  background: rgba(0, 240, 255, 0.03);
+  transition: all 0.2s;
+}
+
+.add-cell:active {
+  border-color: #00F0FF;
+  background: rgba(0, 240, 255, 0.08);
+  box-shadow: 0 0 20rpx rgba(0, 240, 255, 0.3);
+}
+
+.add-icon {
+  font-size: 60rpx;
+  color: rgba(0, 240, 255, 0.5);
+  line-height: 1;
+  margin-bottom: 6rpx;
+  transition: color 0.2s;
+}
+
+.add-cell:active .add-icon {
+  color: #00F0FF;
+}
+
+.add-text {
+  font-size: 22rpx;
+  color: rgba(0, 240, 255, 0.5);
+  transition: color 0.2s;
+}
+
+.add-cell:active .add-text {
+  color: #00F0FF;
+}
+
+/* ===================================
+   单图上传模式
+   =================================== */
+
+/* 空状态 */
+.upload-empty {
+  width: 100%;
+  background: rgba(0, 240, 255, 0.03);
+  backdrop-filter: blur(20px);
+  border-radius: 24rpx;
+  padding: 80rpx 40rpx;
+  text-align: center;
+  border: 2rpx dashed rgba(0, 240, 255, 0.3);
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+
+.upload-empty::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(0, 240, 255, 0.05) 50%,
+    transparent 70%
+  );
+  animation: uploader-scan 3s linear infinite;
+}
+
+@keyframes uploader-scan {
+  0%   { transform: translateY(-50%) rotate(0deg); }
+  100% { transform: translateY(-50%) rotate(360deg); }
+}
+
+.upload-empty:active {
+  border-color: #00F0FF;
+  background: rgba(0, 240, 255, 0.08);
+  box-shadow: 0 0 20rpx rgba(0, 240, 255, 0.4);
+}
+
+.empty-icon {
+  display: block;
+  font-size: 88rpx;
+  margin-bottom: 24rpx;
+  filter: drop-shadow(0 0 20rpx rgba(0, 240, 255, 0.6));
+  animation: uploader-float 3s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes uploader-float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-10rpx); }
+}
+
+.empty-main {
+  display: block;
+  font-size: 32rpx;
+  color: #FFFFFF;
+  margin-bottom: 12rpx;
+  font-weight: 600;
+  letter-spacing: 2rpx;
+  position: relative;
+  z-index: 1;
+}
+
+.empty-sub {
+  display: block;
+  font-size: 24rpx;
+  color: #ADB5BD;
+  position: relative;
+  z-index: 1;
+}
+
+/* 预览图 */
+.preview-wrap {
+  width: 100%;
+  height: 400rpx;
+  border-radius: 24rpx;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2rpx solid rgba(0, 240, 255, 0.2);
+  box-shadow: 0 0 20rpx rgba(0, 240, 255, 0.2);
+  overflow: hidden;
+  position: relative;
+  transition: all 0.3s;
+}
+
+.preview-wrap:active {
+  border-color: #00F0FF;
+  box-shadow: 0 0 30rpx rgba(0, 240, 255, 0.4);
+}
+
+.preview-img {
+  width: 100%;
+  height: 100%;
+}
+
+/* 删除按钮 */
+.preview-delete {
+  position: absolute;
+  top: 16rpx;
+  right: 16rpx;
+  width: 48rpx;
+  height: 48rpx;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid rgba(255, 0, 128, 0.5);
+  transition: background 0.2s;
+  z-index: 10;
+}
+
+.preview-delete:active {
+  background: rgba(255, 0, 128, 0.7);
+}
+
+.preview-delete .delete-icon {
+  font-size: 36rpx;
+}
+
+/* 重新上传遮罩 */
+.preview-reupload {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 12rpx 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.preview-wrap:active .preview-reupload {
+  opacity: 1;
+}
+
+.reupload-text {
+  font-size: 22rpx;
+  color: rgba(0, 240, 255, 0.8);
+  letter-spacing: 1rpx;
+}
+
+/* ===================================
+   提示与状态
+   =================================== */
+
+/* 压缩/添加提示 */
+.uploader-tip {
+  margin-top: 16rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: #00F0FF;
+  animation: tip-fade 2s ease-out forwards;
+}
+
+@keyframes tip-fade {
+  0%   { opacity: 0; transform: translateY(8rpx); }
+  15%  { opacity: 1; transform: translateY(0); }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* 数量提示 */
+.count-hint {
+  margin-top: 12rpx;
+  text-align: right;
+  font-size: 24rpx;
+  color: #ADB5BD;
+}
+
+/* ===================================
+   主题变体（通过外部传入 theme 属性切换）
+   =================================== */
+
+/* 绿色主题（与 splice 页面一致） */
+.theme-green .image-cell {
+  border-color: rgba(0, 255, 136, 0.2);
+}
+
+.theme-green .image-cell.dragging {
+  border-color: rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 20rpx rgba(0, 255, 136, 0.3);
+}
+
+.theme-green .image-cell.drop-target {
+  border-color: #00FF88;
+  box-shadow: 0 0 24rpx rgba(0, 255, 136, 0.6);
+}
+
+.theme-green .cell-index {
+  background: rgba(0, 255, 136, 0.9);
+  color: #0A0E27;
+  box-shadow: 0 0 10rpx rgba(0, 255, 136, 0.5);
+}
+
+.theme-green .cell-delete {
+  border-color: rgba(255, 0, 128, 0.5);
+}
+
+.theme-green .drag-hint {
+  background: rgba(0, 255, 136, 0.85);
+}
+
+.theme-green .drag-hint-icon {
+  color: #0A0E27;
+}
+
+.theme-green .add-cell {
+  border-color: rgba(0, 255, 136, 0.3);
+  background: rgba(0, 255, 136, 0.03);
+}
+
+.theme-green .add-cell:active {
+  border-color: #00FF88;
+  background: rgba(0, 255, 136, 0.08);
+  box-shadow: 0 0 20rpx rgba(0, 255, 136, 0.3);
+}
+
+.theme-green .add-icon,
+.theme-green .add-text {
+  color: rgba(0, 255, 136, 0.5);
+}
+
+.theme-green .add-cell:active .add-icon,
+.theme-green .add-cell:active .add-text {
+  color: #00FF88;
+}
+
+/* 紫色主题（与 aiStyle 页面一致） */
+.theme-purple .image-cell {
+  border-color: rgba(102, 126, 234, 0.2);
+}
+
+.theme-purple .image-cell.dragging {
+  border-color: rgba(102, 126, 234, 0.5);
+  box-shadow: 0 0 20rpx rgba(102, 126, 234, 0.3);
+}
+
+.theme-purple .image-cell.drop-target {
+  border-color: #667EEA;
+  box-shadow: 0 0 24rpx rgba(102, 126, 234, 0.6);
+}
+
+.theme-purple .cell-index {
+  background: rgba(102, 126, 234, 0.9);
+  color: #FFFFFF;
+  box-shadow: 0 0 10rpx rgba(102, 126, 234, 0.5);
+}
+
+.theme-purple .add-cell {
+  border-color: rgba(102, 126, 234, 0.3);
+  background: rgba(102, 126, 234, 0.03);
+}
+
+.theme-purple .add-cell:active {
+  border-color: #667EEA;
+  background: rgba(102, 126, 234, 0.08);
+  box-shadow: 0 0 20rpx rgba(102, 126, 234, 0.3);
+}
+
+.theme-purple .add-icon,
+.theme-purple .add-text {
+  color: rgba(102, 126, 234, 0.5);
+}
+
+.theme-purple .add-cell:active .add-icon,
+.theme-purple .add-cell:active .add-text {
+  color: #667EEA;
+}

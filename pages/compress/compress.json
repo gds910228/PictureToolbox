@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "图片压缩",
-  "usingComponents": {}
+  "usingComponents": {
+    "image-uploader": "/components/image-uploader/image-uploader"
+  }
 }

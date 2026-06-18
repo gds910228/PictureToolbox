@@ -4,20 +4,25 @@
     <text class="page-subtitle">一键转换艺术风格</text>
   </view>
 
-  <!-- 图片对比区域 -->
-  <view class="compare-section">
+  <!-- 图片上传组件 -->
+  <image-uploader
+    id="mainUploader"
+    maxCount="1"
+    sizeType="{{['original']}}"
+    sourceType="{{['album', 'camera']}}"
+    showCompressTip="{{false}}"
+    tipText="点击上传图片"
+    theme="purple"
+    bind:change="onImageChange"
+  />
+
+  <!-- 图片对比区域（仅在有结果图时显示） -->
+  <view class="compare-section" wx:if="{{resultSrc}}">
     <!-- 原图 -->
-    <view class="compare-item">
+    <view class="compare-item" wx:if="{{imageSrc}}">
       <view class="compare-title">原图</view>
-      <view class="compare-box" wx:if="{{!imageSrc}}" bindtap="chooseImage">
-        <text class="compare-tip">点击上传图片</text>
-      </view>
-      <view class="compare-box" wx:else bindtap="previewOriginalImage">
-        <image
-          class="compare-image"
-          src="{{imageSrc}}"
-          mode="aspectFit"
-        />
+      <view class="compare-box" bindtap="previewOriginalImage">
+        <image class="compare-image" src="{{imageSrc}}" mode="aspectFit" />
         <view class="preview-tip">点击查看大图</view>
       </view>
     </view>
@@ -25,10 +30,7 @@
     <!-- 结果图 -->
     <view class="compare-item">
       <view class="compare-title">转换结果</view>
-      <view class="compare-box" wx:if="{{!resultSrc}}">
-        <text class="compare-tip">转换后显示</text>
-      </view>
-      <view class="compare-box" wx:else bindtap="previewResultImage">
+      <view class="compare-box" bindtap="previewResultImage">
         <image
           class="compare-image"
           src="{{resultSrc}}"
@@ -39,16 +41,18 @@
         />
         <view class="preview-tip">点击查看大图</view>
       </view>
+    </view>
+
+    <!-- 结果操作按钮 -->
+    <view class="result-actions">
       <button class="save-btn-small" bindtap="saveResult">保存图片</button>
-      <button wx:if="{{resultSrc}}" class="save-btn-small compare-btn-small" bindtap="onCompare">对比查看</button>
+      <button class="save-btn-small compare-btn-small" bindtap="onCompare">对比查看</button>
     </view>
   </view>
 
   <!-- 转换控制栏 -->
-  <view class="control-bar">
-    <text class="selected-style-text">
-      当前选择：{{selectedStyleLabel}}
-    </text>
+  <view class="control-bar" wx:if="{{imageSrc && !resultSrc}}">
+    <text class="selected-style-text">当前选择：{{selectedStyleLabel}}</text>
     <button
       class="generate-btn-small"
       bindtap="transferStyle"

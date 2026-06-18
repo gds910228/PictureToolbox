@@ -218,3 +218,14 @@
   box-shadow: 0 0 12rpx rgba(0, 240, 255, 0.3);
   text-shadow: 0 0 8rpx rgba(0, 240, 255, 0.5);
 }
+
+/* 结果操作按钮组 */
+.result-actions {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 20rpx;
+}
+
+.result-actions .save-btn-small {
+  flex: 1;
+}
