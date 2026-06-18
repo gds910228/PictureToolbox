@@ -4,8 +4,11 @@
     <text class="page-subtitle">一键转换艺术风格</text>
   </view>
 
-  <!-- 图片上传组件 -->
+  <!-- ================================
+       上传阶段：图片选择（无结果时显示）
+       ================================ -->
   <image-uploader
+    wx:if="{{!resultSrc}}"
     id="mainUploader"
     maxCount="1"
     sizeType="{{['original']}}"
@@ -16,10 +19,13 @@
     bind:change="onImageChange"
   />
 
-  <!-- 图片对比区域（仅在有结果图时显示） -->
-  <view class="compare-section" wx:if="{{resultSrc}}">
+  <!-- ================================
+       结果阶段：左右对比（仅在有结果时显示）
+       替换上传区位置，不与上传区并存
+       ================================ -->
+  <view class="compare-section" wx:if="{{resultSrc && imageSrc}}">
     <!-- 原图 -->
-    <view class="compare-item" wx:if="{{imageSrc}}">
+    <view class="compare-item">
       <view class="compare-title">原图</view>
       <view class="compare-box" bindtap="previewOriginalImage">
         <image class="compare-image" src="{{imageSrc}}" mode="aspectFit" />
@@ -42,17 +48,38 @@
         <view class="preview-tip">点击查看大图</view>
       </view>
     </view>
+  </view>
 
-    <!-- 结果操作按钮 -->
-    <view class="result-actions">
-      <button class="save-btn-small" bindtap="saveResult">保存图片</button>
-      <button class="save-btn-small compare-btn-small" bindtap="onCompare">对比查看</button>
+  <!-- 单结果图展示（无原图时，结果图占满宽度） -->
+  <view class="single-result" wx:elif="{{resultSrc}}">
+    <view class="single-result-title">转换结果</view>
+    <view class="single-result-box" bindtap="previewResultImage">
+      <image
+        class="single-result-image"
+        src="{{resultSrc}}"
+        mode="aspectFit"
+        bindload="onImageLoad"
+        binderror="onImageError"
+        lazy-load="true"
+      />
+      <view class="preview-tip">点击查看大图</view>
     </view>
   </view>
 
-  <!-- 转换控制栏 -->
+  <!-- ================================
+       结果操作按钮（替换上传区位置）
+       ================================ -->
+  <view class="result-actions" wx:if="{{resultSrc}}">
+    <button class="action-btn primary" bindtap="saveResult">保存图片</button>
+    <button class="action-btn secondary" bindtap="onCompare">对比查看</button>
+    <button class="action-btn secondary" bindtap="resetAndReselect">重新选择</button>
+  </view>
+
+  <!-- ================================
+       转换控制栏（有图无结果时显示）
+       ================================ -->
   <view class="control-bar" wx:if="{{imageSrc && !resultSrc}}">
-    <text class="selected-style-text">当前选择：{{selectedStyleLabel}}</text>
+    <text class="selected-style-text">{{selectedStyleLabel}}</text>
     <button
       class="generate-btn-small"
       bindtap="transferStyle"
@@ -62,7 +89,9 @@
     </button>
   </view>
 
-  <!-- 风格选择区域 -->
+  <!-- ================================
+       风格选择区域（始终显示）
+       ================================ -->
   <view class="style-section">
     <view class="section-title">选择风格</view>
     <view class="style-list">

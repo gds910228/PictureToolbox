@@ -303,5 +303,13 @@ Page({
       icon: 'none',
       duration: 2000
     });
+  },
+
+  /**
+   * 重置并重新选择图片
+   * 点击"重新选择"按钮后，清空结果图，重新显示上传区
+   */
+  resetAndReselect() {
+    this.setData({ resultSrc: '', resultFileID: '' });
   }
 });
