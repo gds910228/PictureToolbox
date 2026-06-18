@@ -136,6 +136,7 @@
     </view>
 
     <button class="btn-primary" bindtap="saveImage">保存到相册</button>
+    <button class="btn-secondary" bindtap="onCompare">对比查看</button>
     <button class="btn-secondary" bindtap="chooseImage">继续压缩</button>
   </view>
 </view>

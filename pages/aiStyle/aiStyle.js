@@ -1,4 +1,6 @@
 // pages/aiStyle/aiStyle.js
+const compareHelper = require('../../utils/compare-helper');
+
 Page({
   data: {
     imageSrc: '',
@@ -263,6 +265,19 @@ Page({
           });
         }
       }
+    });
+  },
+
+  /**
+   * 对比查看（原图 vs 风格转换结果）
+   */
+  onCompare() {
+    if (!this.data.imageSrc || !this.data.resultSrc) {
+      wx.showToast({ title: '请先完成风格转换', icon: 'none' });
+      return;
+    }
+    compareHelper.navigateToCompare(this.data.imageSrc, this.data.resultSrc, {
+      title: '风格对比'
     });
   },
 

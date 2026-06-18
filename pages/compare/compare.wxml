@@ -1,0 +1,91 @@
+<!--pages/compare/compare.wxml-->
+<view class="cmp-page">
+  <!-- 顶部标题 + 模式切换 -->
+  <view class="cmp-header">
+    <text class="cmp-title">{{title}}</text>
+    <view class="mode-switch">
+      <view
+        class="mode-item {{mode === 'slide' ? 'active' : ''}}"
+        data-mode="slide"
+        bindtap="switchMode"
+      >
+        <text class="mode-icon">⇆</text>
+        <text>滑动对比</text>
+      </view>
+      <view
+        class="mode-item {{mode === 'toggle' ? 'active' : ''}}"
+        data-mode="toggle"
+        bindtap="switchMode"
+      >
+        <text class="mode-icon">◑</text>
+        <text>切换对比</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 信息栏（可选） -->
+  <view class="cmp-info" wx:if="{{showInfo}}">
+    <text>{{originalLabel}} {{originalSizeText}}</text>
+    <text>{{processedLabel}} {{processedSizeText}}</text>
+  </view>
+
+  <!-- 对比区 -->
+  <view class="cmp-stage">
+    <!-- 加载中 -->
+    <view class="cmp-loading" wx:if="{{loading}}">
+      <view class="cmp-spinner"></view>
+      <text class="cmp-loading-text">加载图片中...</text>
+    </view>
+
+    <!-- 加载失败 -->
+    <view class="cmp-error" wx:elif="{{loadError}}">
+      <text class="cmp-error-icon">⚠️</text>
+      <text class="cmp-error-text">{{loadError}}</text>
+    </view>
+
+    <!-- 滑动模式：Canvas -->
+    <canvas
+      wx:if="{{mode === 'slide'}}"
+      type="2d"
+      id="cmpCanvas"
+      class="cmp-canvas"
+      bindtouchstart="onCanvasTouchStart"
+      bindtouchmove="onCanvasTouchMove"
+      bindtouchend="onCanvasTouchEnd"
+      bindtouchcancel="onCanvasTouchEnd"
+    ></canvas>
+
+    <!-- 切换模式：DOM 交叉淡入 -->
+    <view
+      wx:if="{{mode === 'toggle'}}"
+      class="cmp-toggle"
+      bindtap="onToggleTap"
+      bindlongpress="onToggleTap"
+    >
+      <image
+        class="cmp-toggle-img {{showOriginal ? 'is-hidden' : 'is-visible'}}"
+        src="{{processedLocalPath}}"
+        mode="aspectFit"
+      />
+      <image
+        class="cmp-toggle-img {{showOriginal ? 'is-visible' : 'is-hidden'}}"
+        src="{{originalLocalPath}}"
+        mode="aspectFit"
+      />
+      <view class="cmp-toggle-hint">
+        {{showOriginal ? originalLabel : processedLabel}} · 点击/长按切换
+      </view>
+    </view>
+
+    <!-- 滑动模式底部标注 -->
+    <view class="cmp-labels" wx:if="{{mode === 'slide'}}">
+      <text class="cmp-label left">{{originalLabel}}</text>
+      <text class="cmp-label right">{{processedLabel}}</text>
+    </view>
+
+    <!-- 缩放复位提示（滑动模式放大时） -->
+    <view class="cmp-reset" wx:if="{{mode === 'slide' && zoomed}}" bindtap="resetZoom">
+      点击复位
+    </view>
+  </view>
+</view>

@@ -209,3 +209,12 @@
   line-height: 60rpx;
   padding: 0;
 }
+
+/* 对比按钮（霓虹蓝描边） */
+.save-btn-small.compare-btn-small {
+  background: transparent;
+  color: var(--color-neon-cyan);
+  border: 2rpx solid var(--color-neon-cyan);
+  box-shadow: 0 0 12rpx rgba(0, 240, 255, 0.3);
+  text-shadow: 0 0 8rpx rgba(0, 240, 255, 0.5);
+}

@@ -1,5 +1,6 @@
 // pages/watermark/watermark.js
 const imageProcess = require('../../utils/image-process');
+const compareHelper = require('../../utils/compare-helper');
 
 Page({
   data: {
@@ -458,6 +459,19 @@ Page({
     } catch (err) {
       console.error('保存失败', err);
     }
+  },
+
+  /**
+   * 对比查看（原图 vs 水印处理后）
+   */
+  onCompare() {
+    if (!this.data.imageSrc || !this.data.processedSrc) {
+      wx.showToast({ title: '请先添加水印', icon: 'none' });
+      return;
+    }
+    compareHelper.navigateToCompare(this.data.imageSrc, this.data.processedSrc, {
+      title: '水印对比'
+    });
   },
 
   /**

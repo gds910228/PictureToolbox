@@ -523,6 +523,7 @@
     </view>
     <view class="result-actions">
       <button class="result-btn" bindtap="saveImage">保存图片</button>
+      <button class="result-btn" bindtap="onCompare">对比查看</button>
     </view>
   </view>
 </view>

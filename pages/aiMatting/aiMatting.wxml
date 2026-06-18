@@ -37,6 +37,7 @@
         <view class="preview-tip">点击查看大图</view>
       </view>
       <button class="save-btn-small" bindtap="saveResult">保存图片</button>
+      <button wx:if="{{resultSrc}}" class="save-btn-small compare-btn-small" bindtap="onCompare">对比查看</button>
     </view>
   </view>
 

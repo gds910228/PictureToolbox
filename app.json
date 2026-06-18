@@ -11,7 +11,8 @@
     "pages/aiCaption/aiCaption",
     "pages/aiMatting/aiMatting",
     "pages/aiStyle/aiStyle",
-    "pages/aiOCR/aiOCR"
+    "pages/aiOCR/aiOCR",
+    "pages/compare/compare"
   ],
   "window": {
     "backgroundTextStyle": "light",

@@ -1,5 +1,6 @@
 // pages/compress/compress.js
 const imageProcess = require('../../utils/image-process');
+const compareHelper = require('../../utils/compare-helper');
 
 Page({
   data: {
@@ -371,6 +372,20 @@ Page({
     } catch (err) {
       console.error('保存失败', err);
     }
+  },
+
+  /**
+   * 对比查看（原图 vs 压缩后）
+   */
+  onCompare() {
+    if (!this.data.imageSrc || !this.data.compressedSrc) {
+      wx.showToast({ title: '请先压缩图片', icon: 'none' });
+      return;
+    }
+    compareHelper.navigateToCompare(this.data.imageSrc, this.data.compressedSrc, {
+      title: '压缩对比',
+      showInfo: true
+    });
   },
 
   /**

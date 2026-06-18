@@ -1,5 +1,6 @@
 // pages/aiMatting/aiMatting.js
 // AI智能抠图页面
+const compareHelper = require('../../utils/compare-helper');
 
 Page({
   data: {
@@ -277,6 +278,19 @@ ${debugInfo}
           });
         }
       }
+    });
+  },
+
+  /**
+   * 对比查看（原图 vs 抠图结果）
+   */
+  onCompare() {
+    if (!this.data.imageSrc || !this.data.resultSrc) {
+      wx.showToast({ title: '请先完成抠图', icon: 'none' });
+      return;
+    }
+    compareHelper.navigateToCompare(this.data.imageSrc, this.data.resultSrc, {
+      title: '抠图对比'
     });
   },
 
