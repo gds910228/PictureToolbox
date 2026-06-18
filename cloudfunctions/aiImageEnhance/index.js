@@ -2,6 +2,7 @@
 // AI图片增强云函数 - 超分辨率、降噪、清晰化
 
 const cloud = require('wx-server-sdk');
+const secret = require('./cloud-secret');
 
 // 初始化云开发环境
 cloud.init({
@@ -17,6 +18,9 @@ exports.main = async (event, context) => {
   const { fileID, type = 'upscale' } = event;
 
   console.log('开始AI图片增强', { fileID, type });
+
+  // 入口检查密钥配置状态（当前为桩函数，真实增强API待接入）
+  console.log('[aiImageEnhance] 密钥配置:', secret.getCredentials().available ? '已配置' : '未配置(真实增强API待接入)');
 
   try {
     if (!fileID) {

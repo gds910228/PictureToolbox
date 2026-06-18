@@ -3,6 +3,7 @@
 
 const cloud = require('wx-server-sdk');
 const tencentcloud = require('tencentcloud-sdk-nodejs');
+const secret = require('./cloud-secret');
 
 // 导入混元产品模块
 const HunyuanClient = tencentcloud.hunyuan.v20230901.Client;
@@ -84,20 +85,14 @@ exports.main = async (event, context) => {
  * 调用混元大模型API进行图片分析
  */
 async function callHunyuanAPI(imageURL) {
-  // 从环境变量获取API密钥
-  const secretId = process.env.TENCENTCLOUD_SECRET_ID;
-  const secretKey = process.env.TENCENTCLOUD_SECRET_KEY;
-  const region = process.env.TENCENTCLOUD_REGION || 'ap-guangzhou';
+  // 统一通过 cloud-secret 模块读取密钥（控制台环境变量优先）
+  const cred = secret.getCredentials();
+  const secretId = cred.secretId;
+  const secretKey = cred.secretKey;
+  const region = cred.region;
 
-  // 检查是否配置了API密钥
-  if (!secretId || !secretKey) {
+  if (!cred.available) {
     console.log('未配置API密钥，使用模拟实现');
-    return mockAnalysisResult();
-  }
-
-  // 检查是否使用占位符（如果密钥是空字符串或占位符）
-  if (secretId === '' || secretKey === '' || secretId.includes('你的') || secretKey.includes('你的')) {
-    console.log('使用占位符密钥，使用模拟实现');
     return mockAnalysisResult();
   }
 

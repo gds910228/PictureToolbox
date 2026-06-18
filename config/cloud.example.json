@@ -1,14 +1,15 @@
 {
   "env": "cloud1-xxxxxxxxxxxx",
   "tencentCloud": {
-    "secretId": "你的SecretId",
-    "secretKey": "你的SecretKey",
+    "secretId": "your_secret_id_here",
+    "secretKey": "your_secret_key_here",
     "region": "ap-guangzhou",
     "endpoint": "hunyuan.tencentcloudapi.com"
   },
   "notes": [
-    "复制此文件为 cloud.json 并填入真实配置",
-    "cloud.json 已在 .gitignore 中，不会被提交到git",
-    "请妥善保管密钥信息，不要分享或提交到公开仓库"
+    "这是模板文件（可提交到 git）。复制为 cloud.json 即为本地参考。",
+    "推荐做法：不在任何文件里写真实密钥，而是在「微信云开发控制台 → 云函数 → 环境变量」为每个云函数设置：",
+    "  TENCENTCLOUD_SECRET_ID / TENCENTCLOUD_SECRET_KEY / TENCENTCLOUD_REGION",
+    "各云函数通过 cloud-secret.js 统一读取（控制台环境变量优先，向后兼容 SECRET_ID/SECRET_KEY/API_REGION）。"
   ]
 }

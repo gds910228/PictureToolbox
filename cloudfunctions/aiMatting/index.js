@@ -3,6 +3,7 @@
 
 const cloud = require('wx-server-sdk');
 const tencentcloud = require('tencentcloud-sdk-nodejs');
+const secret = require('./cloud-secret');
 
 // 初始化云开发环境
 cloud.init({
@@ -26,6 +27,9 @@ exports.main = async (event, context) => {
         error: '缺少图片参数'
       };
     }
+
+    // 入口检查密钥（控制台环境变量优先）；未配置则抛错，外层 catch 返回失败
+    const cred = secret.assertCredentials();
 
     // 下载图片
     const downloadResult = await cloud.downloadFile({
@@ -69,14 +73,14 @@ exports.main = async (event, context) => {
  * 调用AI抠图API
  */
 async function callMattingAPI(imageBuffer, originalFileID, type) {
-  // 从环境变量获取API密钥
-  const secretId = process.env.SECRET_ID;
-  const secretKey = process.env.SECRET_KEY;
-  const region = process.env.API_REGION || 'ap-guangzhou';
+  // 统一通过 cloud-secret 模块读取密钥（防御性二次校验）
+  const cred = secret.getCredentials();
+  const secretId = cred.secretId;
+  const secretKey = cred.secretKey;
+  const region = cred.region;
 
-  // 检查是否配置了密钥
-  if (!secretId || !secretKey) {
-    throw new Error('未配置腾讯云API密钥，请在云函数环境变量中配置 SECRET_ID 和 SECRET_KEY');
+  if (!cred.available) {
+    throw new Error('未配置腾讯云API密钥：请在微信云开发控制台为该云函数设置环境变量 TENCENTCLOUD_SECRET_ID / TENCENTCLOUD_SECRET_KEY');
   }
 
   console.log('开始调用腾讯云抠图API...');

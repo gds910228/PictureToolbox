@@ -1,218 +1,69 @@
-# 敏感配置管理说明
+# 密钥与配置管理说明
 
-## 📋 配置文件结构
+> 统一方案：**密钥只在微信云开发控制台的环境变量里**，任何代码文件都不含真实密钥。
+> 各云函数通过统一的 `cloud-secret.js` 模块读取。
+
+## 📁 目录结构
 
 ```
 config/
-├── cloud.example.json    # 配置模板（提交到git）
-└── cloud.json           # 真实配置（不提交，已在.gitignore中）
+├── cloud.example.json          # 模板（可提交 git）
+├── cloud.json                  # 本地参考（已被 .gitignore 忽略，未进 git）
+├── cloud.local.json.template   # 云函数本地调试回退配置模板（可提交 git）
+└── README.md                   # 本文档
+```
+
+云函数侧（每个云函数各持一份相同副本，因微信云函数为隔离部署单元）：
+
+```
+cloudfunctionTemplate/cloud-secret.js              # canonical 源（单一事实来源）
+cloudfunctions/<每个函数>/cloud-secret.js           # 与 canonical 字节一致
+cloudfunctions/<每个函数>/local-config.json         # 本地调试密钥（gitignore，可选）
 ```
 
 ## 🔐 安全机制
 
-### 1. 敏感信息分离
+### 1. 密钥只在控制台
+真实 `SecretId` / `SecretKey` **只在**「微信云开发控制台 → 云函数 → 环境变量」为每个云函数设置：
 
-- ✅ `cloud.example.json` - 包含配置结构和说明，可以提交到git
-- ❌ `cloud.json` - 包含真实密钥，已在 `.gitignore` 中排除，不会被提交
+| 变量名 | 说明 |
+|---|---|
+| `TENCENTCLOUD_SECRET_ID` | 腾讯云 SecretId（统一主变量名） |
+| `TENCENTCLOUD_SECRET_KEY` | 腾讯云 SecretKey |
+| `TENCENTCLOUD_REGION` | 地域，如 `ap-guangzhou` |
 
-### 2. .gitignore 配置
+> 向后兼容：模块也认 `SECRET_ID` / `SECRET_KEY` / `API_REGION`，无需改动旧控制台配置。
+> 占位符（`your_*` / `你的SecretId` / `_here` / 空值）一律视为「未配置」，不会拿去鉴权。
 
-```gitignore
-# 敏感配置文件（包含API密钥等）
-config/cloud.json
-config/*.json
-!config/*.example.json
+### 2. 统一读取模块 `cloud-secret.js`
+所有 7 个业务云函数（analyzeImage / aiImageDescribe / aiCaption / aiMatting / aiStyleTransfer / aiImageEnhance / aiOCR）已改为：
+```js
+const secret = require('./cloud-secret');
+const cred = secret.getCredentials();      // { secretId, secretKey, region, available }
+// 或缺失即抛错：
+secret.assertCredentials();
 ```
+各函数原有的 mock / 抛错降级语义保持不变。
 
-这确保：
-- 真实配置 `cloud.json` 不会被提交
-- 模板文件 `cloud.example.json` 可以提交
-- 其他 `.json` 配置文件也会被排除
+### 3. 本地调试回退（可选）
+本地跑云函数时控制台变量可能不注入，可放置 `cloudfunctions/<函数>/local-config.json`（结构见 `cloud.local.json.template`）。该文件被 `.gitignore` 忽略，仅本地使用。
 
-### 3. 云函数环境变量
+### 4. 启动安全检查 `secretCheck`
+新增独立云函数 `secretCheck`，返回 `{ configured, hasSecretId, hasSecretKey, region }`（**不含任何密钥值**）。
+`app.js` 启动时调用一次；若未配置，`console.warn` 提示管理员。首页 `pages/index/index.js` 也会轻量复查并告警。
 
-云函数 `cloudfunctions/analyzeImage/config.json` 中也配置了相同的环境变量，用于云函数运行时读取。
+## 🚀 部署步骤
 
-**注意**：这个文件包含真实密钥，应该被 `.gitignore` 排除。当前为了部署方便，请在确认部署后立即删除或在 `.gitignore` 中添加：
+1. 在微信开发者工具为 **8 个云函数**（含新增 `secretCheck`）逐一「上传并部署：云端安装依赖」。
+2. 进入「云开发控制台 → 云函数 → 环境变量」，为每个函数设置 `TENCENTCLOUD_SECRET_ID` / `TENCENTCLOUD_SECRET_KEY` / `TENCENTCLOUD_REGION`。
+   - 控制台值优先于各函数 `config.json` 里的占位符。
+3. 在控制台「云函数」面板手动测试 `secretCheck`，应返回 `configured: true`。
+4. 小程序启动后控制台应出现 `[安全检查] 云函数密钥配置正常`。
 
-```gitignore
-# 云函数配置（包含敏感信息）
-cloudfunctions/*/config.json
-!cloudfunctions/*/config.example.json
-```
+## ⚠️ 关于「git 历史」的澄清
 
-## 🚀 快速开始
+经核实（`git log -S <SecretId>` / `git grep` 均为空）：**密钥从未被提交到 git 历史**，`config/cloud.json` 与 `cloudfunctions/*/config.json` 一直被 `.gitignore` 排除且未被跟踪。因此**无需** `git filter-branch` / BFG 清理历史。轮换密钥始终是好习惯，但非本任务必需。
 
-### 首次配置
+## 🔄 密钥泄露应急
 
-1. **复制配置模板**
-   ```bash
-   cp config/cloud.example.json config/cloud.json
-   ```
-
-2. **编辑真实配置**
-   ```json
-   {
-     "env": "cloud1-1gk79pjqd5e1ed35",
-     "tencentCloud": {
-       "secretId": "你的SecretId",
-       "secretKey": "你的SecretKey",
-       "region": "ap-guangzhou",
-       "endpoint": "hunyuan.tencentcloudapi.com"
-     }
-   }
-   ```
-
-3. **验证配置是否被git忽略**
-   ```bash
-   git status
-   ```
-   应该**不会**看到 `config/cloud.json`
-
-### 云函数配置
-
-云函数的配置在 `cloudfunctions/analyzeImage/config.json`：
-
-```json
-{
-  "permissions": {
-    "openapi": []
-  },
-  "env": {
-    "TENCENTCLOUD_SECRET_ID": "你的SecretId",
-    "TENCENTCLOUD_SECRET_KEY": "你的SecretKey",
-    "TENCENTCLOUD_REGION": "ap-guangzhou"
-  }
-}
-```
-
-**部署步骤**：
-1. 打开微信开发者工具
-2. 右键点击 `cloudfunctions/analyzeImage` 文件夹
-3. 选择 **"上传并部署：云端安装依赖"**
-
-## 🔍 配置验证
-
-### 检查Git状态
-
-```bash
-# 查看哪些文件会被提交
-git status
-
-# 应该看到：
-# config/cloud.example.json (可以提交)
-# 不应该看到：
-# config/cloud.json (已被忽略)
-```
-
-### 检查云函数日志
-
-部署后，在微信开发者工具中：
-1. 点击 **"云开发"** 按钮
-2. 左侧菜单 → **"云函数"**
-3. 找到 `analyzeImage` 函数
-4. 点击 **"日志"** 查看运行日志
-
-如果配置正确，日志中会显示：
-- `开始分析图片`
-- `调用混元API分析图片...`
-- `混元API返回: {...}`
-
-如果配置有误，会显示：
-- `未配置API密钥，使用模拟实现`
-- 或错误信息
-
-## ⚠️ 安全注意事项
-
-### DO's（应该做）
-
-✅ 定期更换API密钥
-✅ 为不同项目使用不同的密钥
-✅ 在腾讯云控制台设置IP白名单
-✅ 开启MFA（多因素认证）
-✅ 监控API调用日志
-✅ 设置费用告警阈值
-
-### DON'Ts（不要做）
-
-❌ 将 `config/cloud.json` 提交到git
-❌ 在代码中硬编码密钥
-❌ 在前端代码中使用密钥
-❌ 与他人共享密钥
-❌ 在公开场合展示密钥
-❌ 将密钥写在文档或注释中
-
-## 🔄 密钥泄露应急处理
-
-如果怀疑密钥泄露：
-
-1. **立即禁用泄露的密钥**
-   - 登录腾讯云控制台
-   - 访问密钥管理
-   - 禁用或删除泄露的密钥
-
-2. **创建新密钥**
-   - 生成新的SecretId/SecretKey
-   - 更新 `config/cloud.json`
-   - 更新 `cloudfunctions/analyzeImage/config.json`
-   - 重新部署云函数
-
-3. **检查调用日志**
-   - 查看API调用记录
-   - 确认是否有异常调用
-   - 评估损失并采取相应措施
-
-## 📊 配置文件对比
-
-### cloud.example.json（可分享）
-
-```json
-{
-  "env": "cloud1-xxxxxxxxxxxx",
-  "tencentCloud": {
-    "secretId": "你的SecretId",
-    "secretKey": "你的SecretKey",
-    "region": "ap-guangzhou",
-    "endpoint": "hunyuan.tencentcloudapi.com"
-  }
-}
-```
-
-### cloud.json（私密）
-
-```json
-{
-  "env": "cloud1-你的环境ID",
-  "tencentCloud": {
-    "secretId": "替换为你的SecretId",
-    "secretKey": "替换为你的SecretKey",
-    "region": "ap-guangzhou",
-    "endpoint": "hunyuan.tencentcloudapi.com"
-  }
-}
-```
-
-## 🎯 当前配置状态
-
-✅ **已完成**：
-- 配置文件模板创建
-- .gitignore 更新（排除敏感配置）
-- 云函数代码更新（支持真实API调用）
-- 真实密钥配置到云函数环境变量
-
-📋 **待完成**：
-- 部署云函数
-- 测试AI分析功能
-- 验证配置正确性
-
-## 📚 相关文档
-
-- `混元API密钥获取指南.md` - 如何获取腾讯云API密钥
-- `云开发配置快速指南.md` - 云开发环境配置
-- `AI智能压缩-部署指南.md` - AI功能详细部署说明
-
----
-
-**配置完成时间**：2026-01-22
-**配置状态**：✅ 已完成，待部署测试
-**下一步**：部署云函数并测试AI功能
+若怀疑泄露：登录腾讯云控制台 → 访问管理 → 禁用旧密钥 → 创建新密钥 → 在云开发控制台更新各云函数环境变量 → 重新部署 → 调 `secretCheck` 复核。

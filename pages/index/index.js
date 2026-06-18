@@ -132,6 +132,14 @@ Page({
     this.setData({
       tools: tools
     });
+
+    // 首页安全检查：若云函数密钥未配置，console.warn 提示管理员
+    setTimeout(() => {
+      const app = getApp();
+      if (app && app.globalData && app.globalData.secretConfigured === false) {
+        console.warn('[首页安全检查] 检测到云函数密钥未配置，AI 功能将降级。详见 app.js 启动日志。');
+      }
+    }, 3000);
   },
 
   onShow() {

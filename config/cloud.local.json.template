@@ -1,0 +1,6 @@
+{
+  "_comment": "本地云函数调试回退配置模板。复制为某云函数目录下的 local-config.json（例如 cloudfunctions/aiOCR/local-config.json），即可在「本地调试」时为该函数提供密钥。该文件已被 .gitignore 忽略，切勿提交。生产部署请改用微信云开发控制台的环境变量。",
+  "secretId": "your_secret_id_here",
+  "secretKey": "your_secret_key_here",
+  "region": "ap-guangzhou"
+}

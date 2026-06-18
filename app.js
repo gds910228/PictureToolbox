@@ -6,6 +6,9 @@ App({
     // 初始化云开发
     this.initCloud();
 
+    // 安全检查：云函数密钥是否已配置（异常时 console.warn 提示管理员）
+    this.checkSecretConfig();
+
     // 检查更新
     this.checkUpdate();
   },
@@ -63,10 +66,38 @@ App({
   },
 
   /**
+   * 安全检查：调用 secretCheck 云函数探测密钥配置状态。
+   * 前端不持有任何密钥，仅由云函数返回 configured 布尔值。
+   */
+  checkSecretConfig() {
+    wx.cloud.callFunction({
+      name: 'secretCheck',
+      success: (res) => {
+        const r = (res && res.result) || {};
+        this.globalData.secretConfigured = !!r.configured;
+        if (!r.configured) {
+          console.warn('[安全检查] 云函数密钥未配置：AI 功能将降级。请在云开发控制台为云函数设置环境变量 TENCENTCLOUD_SECRET_ID / TENCENTCLOUD_SECRET_KEY', {
+            hasSecretId: r.hasSecretId,
+            hasSecretKey: r.hasSecretKey
+          });
+        } else {
+          console.log('[安全检查] 云函数密钥配置正常');
+        }
+      },
+      fail: (err) => {
+        // secretCheck 未部署 / 不可达时也提示（不影响主流程）
+        this.globalData.secretConfigured = null;
+        console.warn('[安全检查] 无法调用 secretCheck 云函数（可能未部署）：', err && err.errMsg);
+      }
+    });
+  },
+
+  /**
    * 全局数据
    */
   globalData: {
     userInfo: null,
-    version: '1.0.0'
+    version: '1.0.0',
+    secretConfigured: null // null=未知, true=已配置, false=未配置
   }
 });

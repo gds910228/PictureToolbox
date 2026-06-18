@@ -73,5 +73,8 @@ cloudfunctions/*/*.json
 !cloudfunctions/*/package.json
 !cloudfunctions/*/*.example.json
 
+# 云函数本地调试密钥（仅本地，切勿提交）
+cloudfunctions/**/local-config.json
+
 ### cc
 /docs

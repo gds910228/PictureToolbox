@@ -1,0 +1,9 @@
+{
+  "name": "secretCheck",
+  "version": "1.0.0",
+  "description": "安全检查：返回云函数密钥配置状态（不含密钥值）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

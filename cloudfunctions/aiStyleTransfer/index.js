@@ -3,6 +3,7 @@
 
 const cloud = require('wx-server-sdk');
 const tencentcloud = require('tencentcloud-sdk-nodejs');
+const secret = require('./cloud-secret');
 
 // 初始化云开发环境
 cloud.init({
@@ -27,14 +28,11 @@ exports.main = async (event, context) => {
       };
     }
 
-    // 从环境变量获取API密钥
-    const secretId = process.env.SECRET_ID;
-    const secretKey = process.env.SECRET_KEY;
-    const region = process.env.API_REGION || 'ap-guangzhou';
-
-    if (!secretId || !secretKey) {
-      throw new Error('未配置腾讯云API密钥，请在云函数环境变量中配置 SECRET_ID 和 SECRET_KEY');
-    }
+    // 统一通过 cloud-secret 模块读取密钥；未配置则抛错（外层 catch 返回失败）
+    const cred = secret.assertCredentials();
+    const secretId = cred.secretId;
+    const secretKey = cred.secretKey;
+    const region = cred.region;
 
     // 下载图片（用于后续可能的处理）
     const downloadResult = await cloud.downloadFile({
