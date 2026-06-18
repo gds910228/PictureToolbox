@@ -49,7 +49,14 @@ Page({
   onReady() {
     if (!this._pending) return;
     if (this.data.mode === 'slide') {
-      this._initCanvas().then(() => this._loadImages());
+      this._initCanvas().then(() => {
+        // canvas 节点未就绪（重试后仍失败）时给出明确错误，避免空白无反馈
+        if (!this._canvas) {
+          this.setData({ loading: false, loadError: '对比组件初始化失败，请返回重试' });
+          return;
+        }
+        this._loadImages();
+      });
     } else {
       this._loadImages();
     }
@@ -60,33 +67,48 @@ Page({
    */
   _initCanvas() {
     return new Promise((resolve) => {
-      const query = wx.createSelectorQuery();
-      query.select('#cmpCanvas').fields({ node: true, size: true, rect: true }).exec((res) => {
-        if (!res || !res[0] || !res[0].node) {
-          resolve();
-          return;
-        }
-        const canvas = res[0].node;
-        const ctx = canvas.getContext('2d');
-        const dpr = (wx.getSystemInfoSync().pixelRatio) || 1;
-        const width = res[0].width;
-        const height = res[0].height;
+      let attempts = 0;
+      const MAX_ATTEMPTS = 8;
+      const tryQuery = () => {
+        attempts++;
+        const query = wx.createSelectorQuery();
+        query.select('#cmpCanvas').fields({ node: true, size: true, rect: true }).exec((res) => {
+          if (res && res[0] && res[0].node && res[0].width > 0) {
+            const canvas = res[0].node;
+            const ctx = canvas.getContext('2d');
+            const dpr = (wx.getSystemInfoSync().pixelRatio) || 1;
+            const width = res[0].width;
+            const height = res[0].height;
 
-        canvas.width = width * dpr;
-        canvas.height = height * dpr;
-        ctx.scale(dpr, dpr);
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
 
-        this._canvas = canvas;
-        this._ctx = ctx;
-        this._dpr = dpr;
-        this._canvasW = width;
-        this._canvasH = height;
-        this._rectLeft = res[0].left || 0;
-        this._rectTop = res[0].top || 0;
-        this._dividerX = width / 2;
+            // [DEBUG] 立即填充红色，验证 canvas 元素是否真的在屏幕上渲染
+            // 看到「红色」=canvas 能渲染；一直红=drawSlide 没跑；红一下变图=正常；红一下变空白=图没画上
+            ctx.fillStyle = '#FF003C';
+            ctx.fillRect(0, 0, width, height);
 
-        resolve();
-      });
+            this._canvas = canvas;
+            this._ctx = ctx;
+            this._dpr = dpr;
+            this._canvasW = width;
+            this._canvasH = height;
+            this._rectLeft = res[0].left || 0;
+            this._rectTop = res[0].top || 0;
+            this._dividerX = width / 2;
+
+            resolve();
+          } else if (attempts < MAX_ATTEMPTS) {
+            // canvas 节点尚未就绪（onReady 时机 / lazyCodeLoading 渲染延迟），稍后重试
+            setTimeout(tryQuery, 60);
+          } else {
+            console.warn('[compare] canvas 节点未就绪，已重试', MAX_ATTEMPTS, '次');
+            resolve();
+          }
+        });
+      };
+      tryQuery();
     });
   },
 
@@ -125,10 +147,15 @@ Page({
 
         // 滑动模式需要预加载到 Canvas Image
         if (this.data.mode === 'slide') {
-          this._preloadCanvasImages(oPath, pPath).then(() => {
-            this._computeFit();
-            this.drawSlide();
-          });
+          this._preloadCanvasImages(oPath, pPath)
+            .then(() => {
+              this._computeFit();
+              this.drawSlide();
+            })
+            .catch((err) => {
+              console.error('[compare] canvas 图片加载失败', err);
+              this.setData({ loadError: '对比图片加载失败，请返回重试' });
+            });
         }
       })
       .catch((err) => {
@@ -144,12 +171,22 @@ Page({
     const canvas = this._canvas;
     if (!canvas) return Promise.resolve();
 
-    const loadOne = (src) => new Promise((resolve, reject) => {
-      const img = canvas.createImage();
-      img.onload = () => resolve(img);
-      img.onerror = (e) => reject(e);
-      img.src = src;
+    // canvas.createImage() 对 cloud:// / 远程 https 支持不稳定（DOM <image> 更宽松），
+    // 先用 getImageInfo 归一化到本地可绘制路径，再喂给 canvas。
+    const localize = (src) => new Promise((resolve) => {
+      wx.getImageInfo({
+        src: src,
+        success: (info) => {resolve(info.path || src); },
+        fail: (e) => { console.warn('[compare] getImageInfo fail', src, e && e.errMsg); resolve(src); }
+      });
     });
+
+    const loadOne = (src) => localize(src).then((local) => new Promise((resolve, reject) => {
+      const img = canvas.createImage();
+      img.onload = () => { resolve(img); };
+      img.onerror = (e) => { console.warn('[compare] image onerror', e); reject(e); };
+      img.src = local;
+    }));
 
     return Promise.all([loadOne(oPath), loadOne(pPath)]).then(([o, p]) => {
       this._originalImg = o;
@@ -184,7 +221,8 @@ Page({
    */
   drawSlide() {
     const ctx = this._ctx;
-    if (!ctx || !this._originalImg || !this._processedImg || !this._fitRect) return;
+    const ready = !!(ctx && this._originalImg && this._processedImg && this._fitRect);
+    if (!ready) return;
 
     const cw = this._canvasW;
     const ch = this._canvasH;
