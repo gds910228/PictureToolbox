@@ -12,5 +12,8 @@
     "工具"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "piexifjs": "^1.0.6"
+  }
 }

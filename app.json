@@ -12,7 +12,9 @@
     "pages/aiMatting/aiMatting",
     "pages/aiStyle/aiStyle",
     "pages/aiOCR/aiOCR",
-    "pages/compare/compare"
+    "pages/compare/compare",
+    "pages/imgToPdf/imgToPdf",
+    "pages/exif/exif"
   ],
   "window": {
     "backgroundTextStyle": "light",

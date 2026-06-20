@@ -1,0 +1,139 @@
+<!--pages/imgToPdf/imgToPdf.wxml-->
+<view class="container">
+  <!-- 选择/列表 -->
+  <view wx:if="{{!resultFileID}}">
+    <view class="hero">
+      <view class="hero-title">📄 多图合成 PDF</view>
+      <view class="hero-sub">每页一张图，按文件名顺序合成，免费开源 pdf-lib 引擎</view>
+    </view>
+
+    <!-- 已选图片列表 -->
+    <view class="image-list" wx:if="{{images.length}}">
+      <view class="list-header">
+        <text class="list-title">已选 {{images.length}} 张图片</text>
+        <view class="list-actions">
+          <text class="link" bindtap="reSortByName">按名称排序</text>
+          <text class="link danger" bindtap="clearAll">清空</text>
+        </view>
+      </view>
+
+      <view class="image-row" wx:for="{{images}}" wx:key="path">
+        <view class="image-index">{{index + 1}}</view>
+        <image
+          class="image-thumb"
+          src="{{item.path}}"
+          mode="aspectFill"
+          data-index="{{index}}"
+          bindtap="previewLocal"
+        />
+        <view class="image-info">
+          <text class="image-name">{{item.name}}</text>
+        </view>
+        <view class="image-actions">
+          <view class="icon-btn" data-index="{{index}}" bindtap="moveUp">↑</view>
+          <view class="icon-btn" data-index="{{index}}" bindtap="moveDown">↓</view>
+          <view class="icon-btn danger" data-index="{{index}}" bindtap="removeImage">✕</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 选择按钮 -->
+    <view class="upload-card" bindtap="chooseImages" wx:if="{{images.length < 30}}">
+      <view class="upload-icon">＋</view>
+      <view class="upload-text">{{images.length ? '继续选择图片' : '选择图片'}}</view>
+      <view class="upload-sub">单次最多 30 张，自动按文件名排序</view>
+    </view>
+
+    <!-- 设置区 -->
+    <view class="settings" wx:if="{{images.length}}">
+      <view class="settings-title">PDF 设置</view>
+
+      <view class="setting-row">
+        <text class="setting-label">页面尺寸</text>
+        <view class="page-size-options">
+          <view
+            class="page-size-item {{pageSize === item.key ? 'active' : ''}}"
+            wx:for="{{pageSizeOptions}}"
+            wx:key="key"
+            wx:for-item="item"
+            data-key="{{item.key}}"
+            bindtap="onPageSizeTap"
+          >
+            <text class="ps-label">{{item.label}}</text>
+            <text class="ps-desc">{{item.desc}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="setting-row">
+        <view class="row-head">
+          <text class="setting-label">页边距</text>
+          <text class="setting-value">{{margin}} pt</text>
+        </view>
+        <slider
+          min="{{marginMin}}"
+          max="{{marginMax}}"
+          step="2"
+          value="{{margin}}"
+          bindchange="onMarginChange"
+          activeColor="#00F0FF"
+          backgroundColor="rgba(255,255,255,0.15)"
+          block-size="22"
+        />
+        <text class="setting-hint">页边距越大，图片显示越小。1 英寸 = 72 pt，A4 推荐 36 pt</text>
+      </view>
+
+      <view class="setting-row">
+        <text class="setting-label">文件名</text>
+        <input
+          class="text-input"
+          value="{{filename}}"
+          placeholder="不含扩展名"
+          bindinput="onFilenameInput"
+          maxlength="40"
+        />
+      </view>
+    </view>
+
+    <!-- 生成按钮 -->
+    <button
+      class="btn-primary"
+      wx:if="{{images.length}}"
+      bindtap="startGenerate"
+      loading="{{generating}}"
+      disabled="{{generating}}"
+    >
+      {{generating ? '生成中...' : '开始合成 PDF'}}
+    </button>
+  </view>
+
+  <!-- 结果展示 -->
+  <view class="result" wx:if="{{resultFileID}}">
+    <view class="result-card">
+      <view class="result-icon">📄</view>
+      <view class="result-title">PDF 已生成</view>
+      <view class="result-stats">
+        <view class="stat-item">
+          <text class="stat-label">总页数</text>
+          <text class="stat-value">{{resultPageCount}}</text>
+        </view>
+        <view class="stat-item">
+          <text class="stat-label">文件大小</text>
+          <text class="stat-value">{{resultSizeText}}</text>
+        </view>
+        <view class="stat-item">
+          <text class="stat-label">页面尺寸</text>
+          <text class="stat-value">{{pageSize}}</text>
+        </view>
+      </view>
+    </view>
+
+    <button class="btn-primary" bindtap="openPdf">📖 打开 PDF</button>
+    <button class="btn-secondary" bindtap="savePdfToDevice">💾 保存到本地</button>
+    <button class="btn-secondary" bindtap="reset">🔄 再做一个</button>
+
+    <view class="tip">
+      <text>💡 在打开 PDF 后，可点击右上角菜单转发到微信对话或保存到手机文件。</text>
+    </view>
+  </view>
+</view>

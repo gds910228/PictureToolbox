@@ -1,0 +1,127 @@
+<!--pages/exif/exif.wxml-->
+<view class="container">
+  <!-- 起始：选图 -->
+  <view wx:if="{{!imageSrc}}">
+    <view class="hero">
+      <view class="hero-title">🔍 EXIF 查看与抹除</view>
+      <view class="hero-sub">查看照片元数据 · 一键剥离敏感信息</view>
+    </view>
+
+    <view class="upload-card" bindtap="chooseImage">
+      <view class="upload-icon">＋</view>
+      <view class="upload-text">选择图片</view>
+      <view class="upload-sub">推荐选择 JPEG 原图</view>
+    </view>
+
+    <view class="info-card">
+      <view class="info-title">💡 什么是 EXIF？</view>
+      <view class="info-text">EXIF 是相机/手机拍照时写入的元数据，常包含：</view>
+      <view class="info-list">
+        <text>• 拍摄时间、设备型号、镜头参数</text>
+        <text>• <text class="warn">GPS 位置（敏感）</text></text>
+        <text>• 软件、序列号等隐私信息</text>
+      </view>
+      <view class="info-text">分享照片前抹除 EXIF，可保护位置和设备隐私。</view>
+    </view>
+  </view>
+
+  <!-- 已选图片 -->
+  <view wx:if="{{imageSrc}}">
+    <view class="preview-card">
+      <image
+        class="preview-img"
+        src="{{imageSrc}}"
+        mode="aspectFit"
+        bindtap="previewOriginal"
+      />
+      <view class="preview-meta">
+        <view class="meta-row">
+          <text class="meta-label">尺寸</text>
+          <text class="meta-value">{{imageInfo.width}} × {{imageInfo.height}} px</text>
+        </view>
+        <view class="meta-row">
+          <text class="meta-label">大小</text>
+          <text class="meta-value">{{imageSizeText}}</text>
+        </view>
+        <view class="meta-row">
+          <text class="meta-label">格式</text>
+          <text class="meta-value">{{imageInfo.type || '—'}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 格式提示 -->
+    <view class="format-hint" wx:if="{{formatHint}}">
+      <text>⚠️ {{formatHint}}</text>
+    </view>
+
+    <!-- EXIF 内容 -->
+    <view wx:if="{{isJpeg}}">
+      <!-- 无 EXIF -->
+      <view class="empty-card" wx:if="{{!hasExif && !processing}}">
+        <view class="empty-icon">✅</view>
+        <view class="empty-title">该图片不含 EXIF 信息</view>
+        <view class="empty-sub">可能已被抹除，或拍摄时未记录</view>
+      </view>
+
+      <!-- 有 EXIF：显示分组 -->
+      <view wx:if="{{hasExif}}">
+        <view class="section-title">
+          <text>📋 EXIF 元数据 ({{rawTagCount}} 项)</text>
+        </view>
+
+        <view class="exif-group {{group.isGps ? 'gps-group' : ''}}" wx:for="{{exifGroups}}" wx:key="name" wx:for-item="group">
+          <view class="group-header">{{group.name}}</view>
+          <view class="exif-row" wx:for="{{group.items}}" wx:key="label" wx:for-item="item">
+            <text class="exif-label">{{item.label}}</text>
+            <text class="exif-value {{item.sensitive ? 'sensitive' : ''}}">{{item.value}}</text>
+          </view>
+        </view>
+
+        <view class="warning-card">
+          <text class="warning-icon">⚠️</text>
+          <view class="warning-content">
+            <text class="warning-title">隐私提醒</text>
+            <text class="warning-text">分享带 GPS 的照片可能暴露你的家庭/工作位置。建议抹除后再发送给陌生人或上传社交媒体。</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 抹除按钮 -->
+      <button
+        class="btn-primary"
+        wx:if="{{!strippedPath}}"
+        bindtap="stripExif"
+        loading="{{processing}}"
+        disabled="{{processing}}"
+      >
+        {{processing ? processStep : '🧹 抹除 EXIF 信息'}}
+      </button>
+
+      <!-- 抹除结果 -->
+      <view wx:if="{{strippedPath}}" class="result-card {{strippedVerified ? 'success' : 'warn'}}">
+        <view class="result-icon">{{strippedVerified ? '✅' : '⚠️'}}</view>
+        <view class="result-title">
+          {{strippedVerified ? 'EXIF 已完全抹除' : '抹除部分残留'}}
+        </view>
+        <view class="result-msg">{{verifyMessage}}</view>
+
+        <view class="result-stats">
+          <view class="stat-item">
+            <text class="stat-label">原图</text>
+            <text class="stat-value">{{imageSizeText}}</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-label">抹除后</text>
+            <text class="stat-value">{{strippedSizeText}}</text>
+          </view>
+        </view>
+      </view>
+
+      <button class="btn-primary" wx:if="{{strippedPath}}" bindtap="saveStripped">💾 保存到相册</button>
+      <button class="btn-secondary" wx:if="{{strippedPath}}" bindtap="previewStripped">👀 预览抹除后图片</button>
+    </view>
+
+    <button class="btn-secondary" bindtap="reset">🔄 重新选择图片</button>
+  </view>
+</view>

@@ -48,6 +48,24 @@ Page({
         isNew: true
       },
       {
+        id: 'imgToPdf',
+        name: '多图合PDF',
+        icon: '📄',
+        desc: '多图按名称排序合成PDF，支持A4/16:9/1:1',
+        url: '/pages/imgToPdf/imgToPdf',
+        available: true,
+        isNew: true
+      },
+      {
+        id: 'exif',
+        name: 'EXIF信息',
+        icon: '🔍',
+        desc: '查看图片元数据，一键抹除GPS等隐私信息',
+        url: '/pages/exif/exif',
+        available: true,
+        isNew: true
+      },
+      {
         id: 'compress',
         name: '图片压缩',
         icon: '🗜️',
