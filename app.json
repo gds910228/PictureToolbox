@@ -13,6 +13,7 @@
     "pages/aiStyle/aiStyle",
     "pages/aiOCR/aiOCR",
     "pages/compare/compare",
+    "pages/aiEraser/aiEraser",
     "pages/imgToPdf/imgToPdf",
     "pages/exif/exif"
   ],

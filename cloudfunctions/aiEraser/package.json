@@ -1,0 +1,10 @@
+{
+  "name": "aiEraser",
+  "version": "1.0.0",
+  "description": "AI智能去水印云函数 - LaMa/HF/本地三级降级",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3",
+    "axios": "^1.6.0"
+  }
+}

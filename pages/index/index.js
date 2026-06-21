@@ -48,6 +48,15 @@ Page({
         isNew: true
       },
       {
+        id: 'aiEraser',
+        name: 'AI去水印',
+        icon: '🧹',
+        desc: '涂抹水印区域，AI智能修复去除',
+        url: '/pages/aiEraser/aiEraser',
+        available: true,
+        isNew: true
+      },
+      {
         id: 'imgToPdf',
         name: '多图合PDF',
         icon: '📄',
