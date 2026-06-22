@@ -1,31 +1,72 @@
 <!--pages/index/index.wxml-->
 <view class="container">
-  <!-- 头部区域 -->
-  <view class="header">
-    <view class="title">图片工具箱</view>
-    <view class="subtitle">智能高效 · 安全隐私</view>
+  <!-- 顶部 Banner：渐变背景 + 工具名打字机 -->
+  <view class="banner">
+    <view class="banner-bg"></view>
+    <view class="banner-glow banner-glow--cyan"></view>
+    <view class="banner-glow banner-glow--magenta"></view>
+    <view class="banner-content">
+      <view class="banner-tag">PICTURE · TOOLBOX</view>
+      <view class="banner-title">
+        <text class="banner-title-static">让图片处理</text>
+        <text class="banner-title-typed">{{typedName}}</text>
+        <text class="banner-cursor">|</text>
+      </view>
+      <view class="banner-sub">智能高效 · 安全隐私 · 一键搞定</view>
+      <view class="banner-dots">
+        <view
+          class="banner-dot {{currentToolIdx === index ? 'is-active' : ''}}"
+          wx:for="{{bannerTools}}"
+          wx:key="id"
+        ></view>
+      </view>
+    </view>
   </view>
 
-  <!-- 工具列表 -->
-  <view class="tools-grid">
+  <!-- 工具分组（折叠面板） -->
+  <view class="groups">
     <view
-      class="tool-card {{item.available ? '' : 'disabled'}} {{item.isNew ? 'new-feature' : ''}}"
-      wx:for="{{tools}}"
-      wx:key="id"
-      data-id="{{item.id}}"
-      data-name="{{item.name}}"
-      data-url="{{item.url}}"
-      data-available="{{item.available}}"
-      bindtap="onToolTap"
+      class="group"
+      wx:for="{{groups}}"
+      wx:key="key"
+      wx:for-item="group"
     >
-      <!-- NEW标识 -->
-      <view class="new-badge" wx:if="{{item.isNew}}">NEW</view>
+      <view
+        class="group-header glass-card"
+        data-key="{{group.key}}"
+        bindtap="onToggleGroup"
+      >
+        <view class="group-header-left">
+          <view class="group-icon group-icon--{{group.key}}"></view>
+          <view class="group-meta">
+            <view class="group-title">{{group.title}}</view>
+            <view class="group-sub">{{group.subtitle}} · {{group.tools.length}} 个工具</view>
+          </view>
+        </view>
+        <view class="group-chevron {{group.expanded ? 'is-expanded' : ''}}"></view>
+      </view>
 
-      <!-- 使用纯CSS绘制的图标，替代emoji -->
-      <view class="tool-icon icon-{{item.id}}"></view>
-      <view class="tool-name">{{item.name}}</view>
-      <view class="tool-desc">{{item.desc}}</view>
-      <view class="tool-status" wx:if="{{item.available === false}}">敬请期待</view>
+      <view class="group-body {{group.expanded ? 'is-expanded' : ''}}">
+        <view class="tools-grid">
+          <view
+            class="tool-card glass-card {{item.available ? '' : 'disabled'}} {{item.isNew ? 'new-feature' : ''}}"
+            wx:for="{{group.tools}}"
+            wx:key="id"
+            wx:for-item="item"
+            data-id="{{item.id}}"
+            data-name="{{item.name}}"
+            data-url="{{item.url}}"
+            data-available="{{item.available}}"
+            bindtap="onToolTap"
+          >
+            <view class="new-badge" wx:if="{{item.isNew}}">NEW</view>
+            <view class="tool-icon icon-{{item.id}}"></view>
+            <view class="tool-name">{{item.name}}</view>
+            <view class="tool-desc">{{item.desc}}</view>
+            <view class="tool-status" wx:if="{{item.available === false}}">敬请期待</view>
+          </view>
+        </view>
+      </view>
     </view>
   </view>
 

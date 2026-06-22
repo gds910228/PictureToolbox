@@ -1,132 +1,153 @@
 // pages/index/index.js
 Page({
   data: {
-    tools: [
+    // 顶部 Banner 打字机轮播的工具名
+    bannerTools: [
+      { id: 'aiDescribe', name: '智能识别' },
+      { id: 'aiMatting', name: '一键抠图' },
+      { id: 'aiEraser', name: '去水印' },
+      { id: 'aiStyle', name: '风格迁移' },
+      { id: 'aiOCR', name: '文字识别' }
+    ],
+    typedName: '',
+    currentToolIdx: 0,
+    // 分组
+    groups: [
       {
-        id: 'aiDescribe',
-        name: 'AI图片描述',
-        icon: '🤖',
-        desc: '智能识别图片内容并生成描述',
-        url: '/pages/aiDescribe/aiDescribe',
-        available: true,
-        isNew: true
+        key: 'ai',
+        title: 'AI 智能',
+        subtitle: '前沿 AI 能力加持',
+        expanded: true,
+        tools: [
+          {
+            id: 'aiDescribe',
+            name: 'AI图片描述',
+            desc: '智能识别图片内容并生成描述',
+            url: '/pages/aiDescribe/aiDescribe',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiCaption',
+            name: 'AI智能配文',
+            desc: '一键生成社交媒体文案',
+            url: '/pages/aiCaption/aiCaption',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiMatting',
+            name: 'AI智能抠图',
+            desc: '自动识别主体，一键去除背景',
+            url: '/pages/aiMatting/aiMatting',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiStyle',
+            name: 'AI风格迁移',
+            desc: '将照片转换为艺术风格',
+            url: '/pages/aiStyle/aiStyle',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiOCR',
+            name: 'AI文字识别',
+            desc: '高精度OCR识别图片中的文字',
+            url: '/pages/aiOCR/aiOCR',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiEraser',
+            name: 'AI去水印',
+            desc: '涂抹水印区域，AI智能修复去除',
+            url: '/pages/aiEraser/aiEraser',
+            available: true,
+            isNew: true
+          }
+        ]
       },
       {
-        id: 'aiCaption',
-        name: 'AI智能配文',
-        icon: '✍️',
-        desc: '一键生成社交媒体文案',
-        url: '/pages/aiCaption/aiCaption',
-        available: true,
-        isNew: true
+        key: 'basic',
+        title: '基础处理',
+        subtitle: '日常图片处理必备',
+        expanded: true,
+        tools: [
+          {
+            id: 'compress',
+            name: '图片压缩',
+            desc: '智能压缩图片，保持画质的同时减小文件大小',
+            url: '/pages/compress/compress',
+            available: true,
+            isNew: false
+          },
+          {
+            id: 'crop',
+            name: '图片裁剪',
+            desc: '支持多种常用比例裁剪，也可自定义任意比例',
+            url: '/pages/crop/crop',
+            available: true,
+            isNew: false
+          },
+          {
+            id: 'convert',
+            name: '格式转换',
+            desc: '支持JPG、PNG、WebP等主流格式互转',
+            url: '/pages/convert/convert',
+            available: true,
+            isNew: false
+          },
+          {
+            id: 'watermark',
+            name: '图片水印',
+            desc: '添加文字水印，AI智能生成文案',
+            url: '/pages/watermark/watermark',
+            available: true,
+            isNew: false
+          },
+          {
+            id: 'splice',
+            name: '图片拼接',
+            desc: '智能拼接，AI推荐布局',
+            url: '/pages/splice/splice',
+            available: true,
+            isNew: false
+          },
+          {
+            id: 'filter',
+            name: '图片滤镜',
+            desc: '多种滤镜效果，实时预览',
+            url: '/pages/filter/filter',
+            available: true,
+            isNew: false
+          },
+          {
+            id: 'exif',
+            name: 'EXIF信息',
+            desc: '查看图片元数据，一键抹除GPS等隐私信息',
+            url: '/pages/exif/exif',
+            available: true,
+            isNew: true
+          }
+        ]
       },
       {
-        id: 'aiMatting',
-        name: 'AI智能抠图',
-        icon: '✂️',
-        desc: '自动识别主体，一键去除背景',
-        url: '/pages/aiMatting/aiMatting',
-        available: true,
-        isNew: true
-      },
-      {
-        id: 'aiStyle',
-        name: 'AI风格迁移',
-        icon: '🎨',
-        desc: '将照片转换为艺术风格',
-        url: '/pages/aiStyle/aiStyle',
-        available: true,
-        isNew: true
-      },
-      {
-        id: 'aiOCR',
-        name: 'AI文字识别',
-        icon: '🔤',
-        desc: '高精度OCR识别图片中的文字',
-        url: '/pages/aiOCR/aiOCR',
-        available: true,
-        isNew: true
-      },
-      {
-        id: 'aiEraser',
-        name: 'AI去水印',
-        icon: '🧹',
-        desc: '涂抹水印区域，AI智能修复去除',
-        url: '/pages/aiEraser/aiEraser',
-        available: true,
-        isNew: true
-      },
-      {
-        id: 'imgToPdf',
-        name: '多图合PDF',
-        icon: '📄',
-        desc: '多图按名称排序合成PDF，支持A4/16:9/1:1',
-        url: '/pages/imgToPdf/imgToPdf',
-        available: true,
-        isNew: true
-      },
-      {
-        id: 'exif',
-        name: 'EXIF信息',
-        icon: '🔍',
-        desc: '查看图片元数据，一键抹除GPS等隐私信息',
-        url: '/pages/exif/exif',
-        available: true,
-        isNew: true
-      },
-      {
-        id: 'compress',
-        name: '图片压缩',
-        icon: '🗜️',
-        desc: '智能压缩图片，保持画质的同时减小文件大小',
-        url: '/pages/compress/compress',
-        available: true,
-        isNew: false
-      },
-      {
-        id: 'crop',
-        name: '图片裁剪',
-        icon: '✂️',
-        desc: '支持多种常用比例裁剪，也可自定义任意比例',
-        url: '/pages/crop/crop',
-        available: true,
-        isNew: false
-      },
-      {
-        id: 'convert',
-        name: '格式转换',
-        icon: '🔄',
-        desc: '支持JPG、PNG、WebP等主流格式互转',
-        url: '/pages/convert/convert',
-        available: true,
-        isNew: false
-      },
-      {
-        id: 'watermark',
-        name: '图片水印',
-        icon: '💧',
-        desc: '添加文字水印，AI智能生成文案',
-        url: '/pages/watermark/watermark',
-        available: true,
-        isNew: false
-      },
-      {
-        id: 'splice',
-        name: '图片拼接',
-        icon: '🔗',
-        desc: '智能拼接，AI推荐布局',
-        url: '/pages/splice/splice',
-        available: true,
-        isNew: false
-      },
-      {
-        id: 'filter',
-        name: '图片滤镜',
-        icon: '🌈',
-        desc: '多种滤镜效果，实时预览',
-        url: '/pages/filter/filter',
-        available: true,
-        isNew: false
+        key: 'creative',
+        title: '创意玩法',
+        subtitle: '让图片更有趣',
+        expanded: true,
+        tools: [
+          {
+            id: 'imgToPdf',
+            name: '多图合PDF',
+            desc: '多图按名称排序合成PDF，支持A4/16:9/1:1',
+            url: '/pages/imgToPdf/imgToPdf',
+            available: true,
+            isNew: true
+          }
+        ]
       }
     ]
   },
@@ -136,29 +157,19 @@ Page({
       title: '图个简单'
     });
 
-    // 调试：打印工具列表
-    console.log('工具列表数据:', this.data.tools);
-    console.log('可用工具数量:', this.data.tools.filter(t => t.available).length);
-    console.log('第一个工具的 available 类型:', typeof this.data.tools[0].available);
-    console.log('第一个工具的 available 值:', this.data.tools[0].available);
-
     // 将每个工具的 available 转换为布尔值
-    const tools = this.data.tools.map(tool => {
-      return {
-        id: tool.id,
-        name: tool.name,
-        icon: tool.icon,
-        desc: tool.desc,
-        url: tool.url,
+    const groups = this.data.groups.map(group => ({
+      ...group,
+      tools: group.tools.map(tool => ({
+        ...tool,
         available: Boolean(tool.available)
-      };
-    });
+      }))
+    }));
 
-    console.log('转换后的工具列表:', tools);
+    this.setData({ groups });
 
-    this.setData({
-      tools: tools
-    });
+    // 启动打字机效果
+    this._startTypewriter();
 
     // 首页安全检查：若云函数密钥未配置，console.warn 提示管理员
     setTimeout(() => {
@@ -169,8 +180,86 @@ Page({
     }, 3000);
   },
 
+  onUnload() {
+    this._stopTypewriter();
+  },
+
+  onHide() {
+    this._stopTypewriter();
+  },
+
   onShow() {
-    // 页面显示时的逻辑
+    // 若打字机定时器被清空，重新启动
+    if (!this._typeTimer) {
+      this._startTypewriter();
+    }
+  },
+
+  /**
+   * 打字机效果：逐字显示 bannerTools 中的工具名，循环切换
+   */
+  _startTypewriter() {
+    if (this._typeTimer) return;
+
+    const tools = this.data.bannerTools;
+    let toolIdx = 0;
+    let charIdx = 0;
+    let phase = 'typing'; // typing | pausing | erasing
+
+    const tick = () => {
+      const current = tools[toolIdx];
+      if (!current) return;
+
+      if (phase === 'typing') {
+        charIdx += 1;
+        this.setData({
+          typedName: current.name.slice(0, charIdx),
+          currentToolIdx: toolIdx
+        });
+        if (charIdx >= current.name.length) {
+          phase = 'pausing';
+          this._typeTimer = setTimeout(tick, 1800);
+          return;
+        }
+        this._typeTimer = setTimeout(tick, 120);
+      } else if (phase === 'pausing') {
+        phase = 'erasing';
+        tick();
+      } else if (phase === 'erasing') {
+        charIdx -= 1;
+        if (charIdx <= 0) {
+          charIdx = 0;
+          this.setData({ typedName: '' });
+          toolIdx = (toolIdx + 1) % tools.length;
+          phase = 'typing';
+          this._typeTimer = setTimeout(tick, 200);
+          return;
+        }
+        this.setData({ typedName: current.name.slice(0, charIdx) });
+        this._typeTimer = setTimeout(tick, 60);
+      }
+    };
+
+    tick();
+  },
+
+  _stopTypewriter() {
+    if (this._typeTimer) {
+      clearTimeout(this._typeTimer);
+      this._typeTimer = null;
+    }
+  },
+
+  /**
+   * 折叠 / 展开分组
+   */
+  onToggleGroup(e) {
+    const { key } = e.currentTarget.dataset;
+    const groups = this.data.groups.map(g => ({
+      ...g,
+      expanded: g.key === key ? !g.expanded : g.expanded
+    }));
+    this.setData({ groups });
   },
 
   /**
@@ -178,9 +267,7 @@ Page({
    */
   onToolTap(e) {
     const { id, name, url, available } = e.currentTarget.dataset;
-    console.log('点击工具 - ID:', id, '名称:', name, '可用:', available, '类型:', typeof available);
 
-    // available 从 dataset 传递过来时是字符串，需要转换
     const isAvailable = available === 'true' || available === true;
 
     if (!isAvailable) {
