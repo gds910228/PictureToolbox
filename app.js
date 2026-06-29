@@ -1,8 +1,6 @@
 // app.js
 App({
   onLaunch() {
-    console.log('图片工具箱启动');
-
     // 初始化云开发
     this.initCloud();
 
@@ -21,7 +19,6 @@ App({
       env: 'cloud1-1gk79pjqd5e1ed35', // 请替换为你的云开发环境ID
       traceUser: true
     });
-    console.log('云开发初始化完成');
   },
 
   onShow() {
@@ -80,8 +77,6 @@ App({
             hasSecretId: r.hasSecretId,
             hasSecretKey: r.hasSecretKey
           });
-        } else {
-          console.log('[安全检查] 云函数密钥配置正常');
         }
       },
       fail: (err) => {

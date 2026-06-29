@@ -22,7 +22,6 @@ cloud.init({
 exports.main = async (event, context) => {
   const { fileID, base64Image } = event;
 
-  console.log('开始AI文字识别', { fileID, hasBase64: !!base64Image });
 
   try {
     // 获取图片base64数据
@@ -35,7 +34,6 @@ exports.main = async (event, context) => {
       const fileRes = await cloud.downloadFile({
         fileID: fileID
       });
-      console.log('图片下载成功，大小:', fileRes.fileContent.length, 'bytes');
 
       // 服务端内容安全兜底（违规则抛错，外层 catch 返回失败）
       await contentCheck.assertImageSafe(fileRes.fileContent, cloud);
@@ -47,7 +45,6 @@ exports.main = async (event, context) => {
       const dims = getImageDimensions(fileRes.fileContent);
       imageWidth = dims.width;
       imageHeight = dims.height;
-      console.log('图片尺寸:', imageWidth, 'x', imageHeight);
 
     } else if (base64Image) {
       // 直接使用传入的base64
@@ -64,10 +61,8 @@ exports.main = async (event, context) => {
     }
 
     // 调用OCR API
-    console.log('调用腾讯云OCR API...');
     const ocrResult = await callOCRApi(imageBase64);
 
-    console.log('OCR识别完成，共', ocrResult.textDetections.length, '行文字');
 
     return {
       success: true,
@@ -95,14 +90,8 @@ async function callOCRApi(imageBase64) {
   // 统一通过 cloud-secret 模块读取密钥（控制台环境变量优先）
   const cred = secret.getCredentials();
 
-  console.log('密钥配置检查:', {
-    available: cred.available,
-    secretIdPrefix: cred.secretId ? cred.secretId.substring(0, 8) : 'null',
-    region: cred.region
-  });
 
   if (!cred.available) {
-    console.log('未配置API密钥，使用模拟实现');
     return mockOCRResult();
   }
 
@@ -136,7 +125,6 @@ async function callOCRApi(imageBase64) {
     // 调用API
     const response = await client.GeneralAccurateOCR(params);
 
-    console.log('OCR API返回状态:', response.RequestId ? '成功' : '未知');
 
     // 解析返回结果
     const result = response.Response || response;
@@ -189,7 +177,6 @@ async function callOCRApi(imageBase64) {
   } catch (err) {
     console.error('调用OCR API失败:', err);
     // API调用失败时，返回模拟结果
-    console.log('API调用失败，使用模拟实现');
     return mockOCRResult();
   }
 }

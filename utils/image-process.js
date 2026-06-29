@@ -309,8 +309,6 @@ async function convertImageFormat(filePath, format = 'jpg') {
               // 验证文件是否成功复制
               try {
                 const stats = fs.statSync(newFilePath);
-                console.log('文件复制成功:', newFilePath);
-                console.log('新文件大小:', stats.size, '字节');
               } catch (err) {
                 console.error('无法访问新文件:', err);
               }
@@ -318,7 +316,6 @@ async function convertImageFormat(filePath, format = 'jpg') {
               // 删除临时文件
               try {
                 fs.unlinkSync(res.tempFilePath);
-                console.log('临时文件已删除:', res.tempFilePath);
               } catch (e) {
                 console.warn('删除临时文件失败:', e);
               }
@@ -414,8 +411,6 @@ function saveImageToPhotosAlbum(filePath) {
     try {
       // 读取文件信息，验证文件是否存在
       const stats = fs.statSync(filePath);
-      console.log('准备保存文件:', filePath);
-      console.log('文件大小:', stats.size, '字节');
     } catch (err) {
       console.error('文件不存在或无法访问:', filePath, err);
       reject(err);

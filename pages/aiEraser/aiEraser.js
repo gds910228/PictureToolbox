@@ -182,11 +182,6 @@ Page({
           height: displayHeight
         };
 
-        console.log('[aiEraser] Canvas 初始化:', {
-          displayWidth, displayHeight,
-          pixelWidth: canvas.width, pixelHeight: canvas.height,
-          rectLeft: res[0].left, rectTop: res[0].top
-        });
 
         // 加载图片到 canvas
         that.loadImageToCanvas();
@@ -215,11 +210,6 @@ Page({
       that._drawOffsetX = (canvasW - img.width * scale) / 2;
       that._drawOffsetY = (canvasH - img.height * scale) / 2;
 
-      console.log('[aiEraser] 图片加载完成:', {
-        imgW: img.width, imgH: img.height,
-        canvasW, canvasH, scale,
-        offsetX: that._drawOffsetX, offsetY: that._drawOffsetY
-      });
 
       that._canvasReady = true;
       that.redrawCanvas();

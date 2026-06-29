@@ -37,7 +37,6 @@ Page({
           env: 'cloud1-1gk79pjqd5e1ed35', // 你的云环境ID
           traceUser: true
         });
-        console.log('云开发初始化成功');
 
         // 检查云开发是否可用
         this.setData({
@@ -158,7 +157,6 @@ Page({
    */
   async analyzeImageWithAI(filePath) {
     if (!this.data.cloudEnabled) {
-      console.log('云开发未启用，跳过AI分析');
       return;
     }
 

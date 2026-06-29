@@ -66,7 +66,6 @@ Page({
       cloudPath: cloudPath,
       filePath: filePath,
       success: res => {
-        console.log('上传成功', res.fileID);
         that.setData({
           fileID: res.fileID
         });

@@ -22,7 +22,6 @@ cloud.init({
 exports.main = async (event, context) => {
   const { fileID, base64Image, style = 'professional' } = event;
 
-  console.log('开始生成图片描述', { fileID, hasBase64: !!base64Image, style });
 
   try {
     // 如果传入的是fileID，需要先获取临时URL
@@ -36,7 +35,6 @@ exports.main = async (event, context) => {
         fileList: [fileID]
       });
       imageURL = result.fileList[0].tempFileURL;
-      console.log('获取到临时图片URL:', imageURL);
     } else if (base64Image) {
       // 使用base64图片
       imageURL = base64Image;
@@ -48,10 +46,8 @@ exports.main = async (event, context) => {
     }
 
     // 调用混元大模型API生成描述
-    console.log('调用混元API生成描述...');
     const description = await callHunyuanAPI(imageURL, style);
 
-    console.log('AI描述生成完成');
 
     return {
       success: true,
@@ -75,14 +71,8 @@ async function callHunyuanAPI(imageURL, style) {
   // 统一通过 cloud-secret 模块读取密钥（控制台环境变量优先）
   const cred = secret.getCredentials();
 
-  console.log('密钥配置检查:', {
-    available: cred.available,
-    secretIdPrefix: cred.secretId ? cred.secretId.substring(0, 8) : 'null',
-    region: cred.region
-  });
 
   if (!cred.available) {
-    console.log('未配置API密钥，使用模拟实现');
     return mockDescription(style);
   }
 
@@ -187,18 +177,15 @@ async function callHunyuanAPI(imageURL, style) {
     // 调用API
     const response = await client.ChatCompletions(params);
 
-    console.log('混元API返回:', JSON.stringify(response));
 
     // 解析返回结果（腾讯云SDK返回结构可能是 response.Response 或直接 response）
     const result = response.Response || response;
     if (result.Choices && result.Choices.length > 0 && result.Choices[0].Message) {
       const content = result.Choices[0].Message.Content;
-      console.log('成功解析AI描述:', content);
       return content.trim();
     }
 
     // 如果解析失败，使用模拟实现
-    console.log('解析API返回失败，使用模拟实现');
     return mockDescription(style);
 
   } catch (err) {

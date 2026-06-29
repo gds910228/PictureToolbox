@@ -17,10 +17,8 @@ cloud.init({
 exports.main = async (event, context) => {
   const { fileID, type = 'upscale' } = event;
 
-  console.log('开始AI图片增强', { fileID, type });
 
   // 入口检查密钥配置状态（当前为桩函数，真实增强API待接入）
-  console.log('[aiImageEnhance] 密钥配置:', secret.getCredentials().available ? '已配置' : '未配置(真实增强API待接入)');
 
   try {
     if (!fileID) {
@@ -36,13 +34,10 @@ exports.main = async (event, context) => {
     });
 
     const imageURL = result.fileList[0].tempFileURL;
-    console.log('获取到临时图片URL:', imageURL);
 
     // 调用AI增强API
-    console.log('调用AI增强API...');
     const enhanceInfo = await getEnhanceInfo(type);
 
-    console.log('AI增强完成');
 
     // 注意：由于真实的AI图片增强需要腾讯云图片处理服务
     // 这里直接返回原图片ID，模拟增强成功

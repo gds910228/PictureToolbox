@@ -248,7 +248,6 @@ Page({
     if (!fileIDs || !fileIDs.length) return;
     try {
       await wx.cloud.deleteFile({ fileList: fileIDs });
-      console.log('[imgToPdf] 已清理上传原图', fileIDs.length);
     } catch (e) {
       console.warn('[imgToPdf] 清理失败（不影响主流程）', e);
     }
@@ -291,7 +290,6 @@ Page({
       fileType: 'pdf',
       showMenu: true,
       success() {
-        console.log('打开 PDF 成功');
       },
       fail(err) {
         console.error('打开失败', err);

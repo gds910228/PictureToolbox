@@ -141,14 +141,11 @@ Page({
       });
       wx.hideLoading();
 
-      console.log('云函数返回:', res);
 
       if (res.result.success) {
         const resultFileID = res.result.fileID;
         const styleName = res.result.styleName;
 
-        console.log('转换成功，fileID:', resultFileID);
-        console.log('风格名称:', styleName);
 
         // 先下载图片到本地（更可靠）
         wx.showLoading({ title: '加载结果中...', mask: true });
@@ -156,14 +153,12 @@ Page({
         wx.cloud.downloadFile({
           fileID: resultFileID,
           success: downloadRes => {
-            console.log('下载结果图片成功，临时路径:', downloadRes.tempFilePath);
 
             that.setData({
               resultSrc: downloadRes.tempFilePath,  // 使用本地临时文件路径
               resultFileID: resultFileID
             });
 
-            console.log('已设置resultSrc为本地路径:', downloadRes.tempFilePath);
 
             wx.hideLoading();
 
@@ -254,7 +249,6 @@ Page({
     const that = this;
 
     // resultSrc 已经是本地路径了，直接保存
-    console.log('保存图片，路径:', that.data.resultSrc);
 
     wx.saveImageToPhotosAlbum({
       filePath: that.data.resultSrc,
@@ -293,7 +287,6 @@ Page({
   },
 
   onImageLoad(e) {
-    console.log('结果图片加载成功', e.detail);
   },
 
   onImageError(e) {

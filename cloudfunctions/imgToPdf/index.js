@@ -32,11 +32,6 @@ exports.main = async (event, context) => {
     filename = 'images'
   } = event;
 
-  console.log('[imgToPdf] 开始处理', {
-    count: fileIDs.length,
-    pageSize,
-    margin
-  });
 
   if (!Array.isArray(fileIDs) || fileIDs.length === 0) {
     return { success: false, error: '缺少图片列表' };
@@ -103,7 +98,6 @@ exports.main = async (event, context) => {
 
     // 4. 序列化 PDF
     const pdfBytes = await pdfDoc.save();
-    console.log('[imgToPdf] PDF 生成完成，大小', pdfBytes.length, 'bytes');
 
     // 5. 上传到云存储
     const safeName = sanitize(filename) || 'images';
@@ -114,7 +108,6 @@ exports.main = async (event, context) => {
     });
 
     const elapsed = Date.now() - startTime;
-    console.log('[imgToPdf] 上传完成', uploadRes.fileID, `${elapsed}ms`);
 
     return {
       success: true,

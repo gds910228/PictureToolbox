@@ -22,7 +22,6 @@ cloud.init({
 exports.main = async (event, context) => {
   const { fileID, base64Image, platform = 'moments', topic = '' } = event;
 
-  console.log('开始生成智能配文', { fileID, hasBase64: !!base64Image, platform, topic });
 
   try {
     // 如果传入的是fileID，需要先获取临时URL
@@ -36,7 +35,6 @@ exports.main = async (event, context) => {
         fileList: [fileID]
       });
       imageURL = result.fileList[0].tempFileURL;
-      console.log('获取到临时图片URL:', imageURL);
     } else if (base64Image) {
       // 使用base64图片
       imageURL = base64Image;
@@ -48,10 +46,8 @@ exports.main = async (event, context) => {
     }
 
     // 调用混元大模型API生成配文
-    console.log('调用混元API生成配文...');
     const captions = await callHunyuanAPI(imageURL, platform, topic);
 
-    console.log('AI配文生成完成');
 
     return {
       success: true,
@@ -75,14 +71,8 @@ async function callHunyuanAPI(imageURL, platform, topic) {
   // 统一通过 cloud-secret 模块读取密钥（控制台环境变量优先）
   const cred = secret.getCredentials();
 
-  console.log('密钥配置检查:', {
-    available: cred.available,
-    secretIdPrefix: cred.secretId ? cred.secretId.substring(0, 8) : 'null',
-    region: cred.region
-  });
 
   if (!cred.available) {
-    console.log('未配置API密钥，使用模拟实现');
     return mockCaptions(platform, topic);
   }
 
@@ -152,7 +142,6 @@ async function callHunyuanAPI(imageURL, platform, topic) {
     if (topic && topic.trim()) {
       const topicInstruction = `【重要主题要求】本次文案必须围绕"${topic}"这个主题展开，所有文案都要紧扣这个主题，体现${topic}的特点。\n\n`;
       prompt = topicInstruction + prompt;
-      console.log('已添加主题要求:', topic);
     }
 
     // 构建请求参数
@@ -181,7 +170,6 @@ async function callHunyuanAPI(imageURL, platform, topic) {
     // 调用API
     const response = await client.ChatCompletions(params);
 
-    console.log('混元API返回:', JSON.stringify(response));
 
     // 解析返回结果（腾讯云SDK返回结构可能是 response.Response 或直接 response）
     const result = response.Response || response;
@@ -193,14 +181,12 @@ async function callHunyuanAPI(imageURL, platform, topic) {
       if (jsonMatch) {
         const captions = JSON.parse(jsonMatch[0]);
         if (Array.isArray(captions) && captions.length >= 3) {
-          console.log('成功解析AI配文:', captions);
           return captions;
         }
       }
     }
 
     // 如果解析失败，使用模拟实现
-    console.log('解析API返回失败，使用模拟实现');
     return mockCaptions(platform, topic);
 
   } catch (err) {

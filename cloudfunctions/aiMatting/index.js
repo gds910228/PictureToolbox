@@ -19,7 +19,6 @@ cloud.init({
 exports.main = async (event, context) => {
   const { fileID, type = 'auto' } = event;
 
-  console.log('开始AI智能抠图', { fileID, type });
 
   try {
     if (!fileID) {
@@ -38,13 +37,11 @@ exports.main = async (event, context) => {
     });
 
     const imageBuffer = downloadResult.fileContent;
-    console.log('下载图片成功，大小:', imageBuffer.length);
 
     // 服务端内容安全兜底（违规则抛错，外层 catch 返回失败）
     await contentCheck.assertImageSafe(imageBuffer, cloud);
 
     // 调用抠图API
-    console.log('调用AI抠图API...');
     const mattingResult = await callMattingAPI(imageBuffer, fileID, type);
 
     if (!mattingResult.success) {
@@ -54,7 +51,6 @@ exports.main = async (event, context) => {
       };
     }
 
-    console.log('抠图完成');
 
     return {
       success: true,
@@ -87,7 +83,6 @@ async function callMattingAPI(imageBuffer, originalFileID, type) {
     throw new Error('未配置腾讯云API密钥：请在微信云开发控制台为该云函数设置环境变量 TENCENTCLOUD_SECRET_ID / TENCENTCLOUD_SECRET_KEY');
   }
 
-  console.log('开始调用腾讯云抠图API...');
 
   try {
     // 调用腾讯云人像抠图API
@@ -97,7 +92,6 @@ async function callMattingAPI(imageBuffer, originalFileID, type) {
       return result;
     } else {
       // 如果API调用失败，使用混元识别作为备选
-      console.log('抠图API调用失败，使用智能识别备选方案');
       return await callHunyuanRecognition(imageBuffer, type, secretId, secretKey, region);
     }
   } catch (err) {
@@ -113,7 +107,6 @@ async function callMattingAPI(imageBuffer, originalFileID, type) {
  */
 async function callTencentMattingAPI(imageBuffer, secretId, secretKey, region, type) {
   try {
-    console.log('调用人像分割API...');
 
     // 将图片转为base64
     const base64Image = imageBuffer.toString('base64');
@@ -138,16 +131,13 @@ async function callTencentMattingAPI(imageBuffer, secretId, secretKey, region, t
       RspImgType: "base64"  // 返回base64格式的透明背景图
     };
 
-    console.log('发送人像分割请求...');
     const response = await client.SegmentPortraitPic(params);
 
-    console.log('收到API响应');
 
     if (response && response.ResultImage && response.ResultImage.length > 0) {
       // API返回了抠图结果（透明背景PNG的base64数据）
       const mattingImageBuffer = Buffer.from(response.ResultImage, 'base64');
 
-      console.log('抠图成功，图片大小:', mattingImageBuffer.length);
 
       // 上传抠图后的图片到云存储
       const uploadResult = await cloud.uploadFile({
@@ -155,7 +145,6 @@ async function callTencentMattingAPI(imageBuffer, secretId, secretKey, region, t
         fileContent: mattingImageBuffer
       });
 
-      console.log('抠图并上传成功，fileID:', uploadResult.fileID);
 
       return {
         success: true,
@@ -173,8 +162,6 @@ async function callTencentMattingAPI(imageBuffer, secretId, secretKey, region, t
     }
 
   } catch (err) {
-    console.log('腾讯云人像分割API调用失败:', err.message);
-    console.log('错误详情:', JSON.stringify(err, null, 2));
     throw err;
   }
 }
@@ -200,7 +187,6 @@ async function callHunyuanRecognition(imageBuffer, type, secretId, secretKey, re
     // 将图片转为base64
     const base64Image = imageBuffer.toString('base64');
 
-    console.log('使用混元大模型识别主体...');
 
     const params = {
       Model: "hunyuan-vision",
@@ -232,7 +218,6 @@ async function callHunyuanRecognition(imageBuffer, type, secretId, secretKey, re
 
     if (response.Response && response.Response.Choices && response.Response.Choices.length > 0) {
       const content = response.Response.Choices[0].Message.Content;
-      console.log('AI识别结果:', content);
 
       // 提取JSON
       const jsonMatch = content.match(/\{[\s\S]*\}/);

@@ -22,7 +22,6 @@ cloud.init({
 exports.main = async (event, context) => {
   const { fileID, base64Image } = event;
 
-  console.log('开始分析图片', { fileID, hasBase64: !!base64Image });
 
   try {
     // 如果传入的是fileID，需要先获取临时URL
@@ -36,7 +35,6 @@ exports.main = async (event, context) => {
         fileList: [fileID]
       });
       imageURL = result.fileList[0].tempFileURL;
-      console.log('获取到临时图片URL:', imageURL);
     } else if (base64Image) {
       // 使用base64图片
       imageURL = base64Image;
@@ -54,10 +52,8 @@ exports.main = async (event, context) => {
     }
 
     // 调用混元大模型API分析图片
-    console.log('调用混元API分析图片...');
     const analysisResult = await callHunyuanAPI(imageURL);
 
-    console.log('AI分析结果:', analysisResult);
 
     return {
       success: true,
@@ -97,7 +93,6 @@ async function callHunyuanAPI(imageURL) {
   const region = cred.region;
 
   if (!cred.available) {
-    console.log('未配置API密钥，使用模拟实现');
     return mockAnalysisResult();
   }
 
@@ -157,7 +152,6 @@ async function callHunyuanAPI(imageURL) {
     // 调用API
     const response = await client.ChatCompletions(params);
 
-    console.log('混元API返回:', JSON.stringify(response));
 
     // 解析返回结果
     if (response.Response && response.Response.Choices && response.Response.Choices.length > 0) {
@@ -181,7 +175,6 @@ async function callHunyuanAPI(imageURL) {
     }
 
     // 如果解析失败，使用默认值
-    console.log('解析API返回失败，使用默认值');
     return mockAnalysisResult();
 
   } catch (err) {

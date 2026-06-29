@@ -120,7 +120,6 @@ Page({
 
       wx.hideLoading();
 
-      console.log('云函数返回结果:', res);
 
       if (res.result.success) {
         const fileID = res.result.fileID;
@@ -140,7 +139,6 @@ Page({
           wx.cloud.getTempFileURL({
             fileList: [fileID]
           }).then(urlRes => {
-            console.log('获取临时URL成功:', urlRes);
 
             that.setData({
               resultSrc: urlRes.fileList[0].tempFileURL,

@@ -21,7 +21,6 @@ cloud.init({
 // ============================================================
 exports.main = async (event, context) => {
   const { fileID, maskBase64 } = event;
-  console.log('[aiEraser] 开始处理', { fileID, hasMask: !!maskBase64 });
 
   try {
     if (!fileID) {
@@ -34,21 +33,18 @@ exports.main = async (event, context) => {
     // 1. 下载原图
     const downloadResult = await cloud.downloadFile({ fileID });
     const imageBuffer = downloadResult.fileContent;
-    console.log('[aiEraser] 下载图片成功，大小:', imageBuffer.length);
 
     // 2. 服务端内容安全兜底
     await contentCheck.assertImageSafe(imageBuffer, cloud);
 
     // 3. 解析 mask base64 → buffer
     const maskBuffer = Buffer.from(maskBase64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
-    console.log('[aiEraser] 蒙版大小:', maskBuffer.length);
 
     // 4. 三级降级依次尝试
     const creds = secret.getAllCredentials();
 
     // --- Level 1: Replicate LaMa ---
     if (creds.replicateAvailable) {
-      console.log('[aiEraser] Level 1: 尝试 Replicate LaMa');
       try {
         const result = await callReplicateLaMa(imageBuffer, maskBuffer, creds.replicateToken);
         if (result && result.success) {
@@ -56,7 +52,6 @@ exports.main = async (event, context) => {
             cloudPath: `aiEraser/${Date.now()}.png`,
             fileContent: result.buffer
           });
-          console.log('[aiEraser] Level 1 成功，fileID:', uploadResult.fileID);
           return {
             success: true,
             fileID: uploadResult.fileID,
@@ -68,13 +63,10 @@ exports.main = async (event, context) => {
       } catch (e) {
         console.warn('[aiEraser] Level 1 失败:', e.message);
       }
-    } else {
-      console.log('[aiEraser] Level 1 跳过：未配置 REPLICATE_API_TOKEN');
     }
 
     // --- Level 2: Hugging Face Inpainting ---
     if (creds.hfAvailable) {
-      console.log('[aiEraser] Level 2: 尝试 Hugging Face Inpainting');
       try {
         const result = await callHuggingFaceInpainting(imageBuffer, maskBuffer, creds.hfToken);
         if (result && result.success) {
@@ -82,7 +74,6 @@ exports.main = async (event, context) => {
             cloudPath: `aiEraser/${Date.now()}.png`,
             fileContent: result.buffer
           });
-          console.log('[aiEraser] Level 2 成功，fileID:', uploadResult.fileID);
           return {
             success: true,
             fileID: uploadResult.fileID,
@@ -95,12 +86,9 @@ exports.main = async (event, context) => {
       } catch (e) {
         console.warn('[aiEraser] Level 2 失败:', e.message);
       }
-    } else {
-      console.log('[aiEraser] Level 2 跳过：未配置 HF_API_TOKEN');
     }
 
     // --- Level 3: 返回失败，前端本地 Canvas 模糊填充兜底 ---
-    console.log('[aiEraser] Level 3: 所有云端 API 不可用，返回降级提示');
     return {
       success: false,
       level: 3,
@@ -132,17 +120,11 @@ async function callReplicateLaMa(imageBuffer, maskBuffer, token) {
   const models = secret.getReplicateModels();
   const version = secret.getReplicateLamaVersion();
 
-  console.log('[aiEraser] Replicate 配置:', {
-    models: models,
-    hasVersion: !!version,
-    versionLen: version ? version.length : 0
-  });
 
   // 依次尝试每个模型
   let lastError = null;
   for (let m = 0; m < models.length; m++) {
     const modelName = models[m];
-    console.log(`[aiEraser] 尝试 Replicate 模型 ${m+1}/${models.length}: ${modelName}`);
 
     try {
       const result = await callReplicateModel(modelName, version, imageBase64, maskBase64, token);
@@ -178,7 +160,6 @@ async function callReplicateModel(modelName, version, imageBase64, maskBase64, t
         mask: `data:image/png;base64,${maskBase64}`
       }
     };
-    console.log('[aiEraser] 使用版本号调用 Replicate API');
   } else {
     // 方式二：使用模型名（自动取最新版本）
     createUrl = `https://api.replicate.com/v1/models/${modelName}/predictions`;
@@ -188,7 +169,6 @@ async function callReplicateModel(modelName, version, imageBase64, maskBase64, t
         mask: `data:image/png;base64,${maskBase64}`
       }
     };
-    console.log('[aiEraser] 使用模型名调用 Replicate API:', modelName);
   }
 
   // 创建预测
@@ -226,7 +206,6 @@ async function callReplicateModel(modelName, version, imageBase64, maskBase64, t
     console.error('[aiEraser] Replicate 返回无 id:', JSON.stringify(createRes.data));
     throw new Error('Replicate 创建预测失败：返回无 id');
   }
-  console.log('[aiEraser] Replicate 预测已创建:', predictionId, 'status:', createRes.data.status);
 
   // 轮询等待结果（最长 120 秒，避免云函数超时）
   const maxWait = 110000;
@@ -246,7 +225,6 @@ async function callReplicateModel(modelName, version, imageBase64, maskBase64, t
     );
 
     const status = pollRes.data.status;
-    console.log(`[aiEraser] Replicate 轮询 (${Math.round(waited/1000)}s): ${status}`);
 
     if (status === 'succeeded') {
       const output = pollRes.data.output;
@@ -266,7 +244,6 @@ async function callReplicateModel(modelName, version, imageBase64, maskBase64, t
         throw new Error('Replicate 输出格式无法解析');
       }
 
-      console.log('[aiEraser] Replicate 成功，下载结果...');
       const imgRes = await axios.get(outputUrl, {
         responseType: 'arraybuffer',
         timeout: 30000

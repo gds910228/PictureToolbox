@@ -19,7 +19,6 @@ cloud.init({
 exports.main = async (event, context) => {
   const { fileID, style = 'oil-painting' } = event;
 
-  console.log('开始AI风格迁移', { fileID, style });
 
   try {
     if (!fileID) {
@@ -42,7 +41,6 @@ exports.main = async (event, context) => {
 
     const imageBuffer = downloadResult.fileContent;
     const base64Image = imageBuffer.toString('base64');
-    console.log('下载图片成功，大小:', imageBuffer.length);
 
     // 服务端内容安全兜底（违规则抛错，外层 catch 返回失败）
     await contentCheck.assertImageSafe(imageBuffer, cloud);
@@ -54,7 +52,6 @@ exports.main = async (event, context) => {
       throw new Error(styleResult.error);
     }
 
-    console.log('风格迁移完成');
 
     return {
       success: true,
@@ -92,7 +89,6 @@ async function callHunyuanStyleTransfer(base64Image, style, secretId, secretKey,
       }
     });
 
-    console.log('使用图像风格化API生成风格化图片...');
 
     // 获取云存储URL（ImageToImage需要URL，不是base64）
     const urlResult = await cloud.getTempFileURL({
@@ -100,7 +96,6 @@ async function callHunyuanStyleTransfer(base64Image, style, secretId, secretKey,
     });
 
     const imageURL = urlResult.fileList[0].tempFileURL;
-    console.log('获取图片URL:', imageURL);
 
     // 获取风格提示词
     const stylePrompt = getStylePrompt(style);
@@ -118,8 +113,6 @@ async function callHunyuanStyleTransfer(base64Image, style, secretId, secretKey,
       Strength: 0.5 // 降低到0.5，让风格转换更明显
     };
 
-    console.log('发送图像风格化请求...');
-    console.log('参数:', JSON.stringify(params, null, 2));
 
     const response = await client.ImageToImage(params);
 
@@ -134,7 +127,6 @@ async function callHunyuanStyleTransfer(base64Image, style, secretId, secretKey,
         fileContent: imageBuffer
       });
 
-      console.log('风格迁移成功，已上传:', uploadResult.fileID);
 
       return {
         success: true,
