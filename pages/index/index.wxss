@@ -1301,3 +1301,76 @@
     border-color: var(--color-hot-magenta);
   }
 }
+
+/* ============================================================
+ * AI 老照片上色图标：中心圆「灰→彩」渐变填充 + 呼吸（色彩注入），
+ * 外环旋转双色边（色环扫过）。隐喻黑白图被注入色彩。
+ * ============================================================ */
+.icon-aiColorize {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 中心圆：背景从灰渐变扫向霓虹双色 + 呼吸缩放（色彩逐渐注入） */
+.icon-aiColorize::before {
+  content: '';
+  position: absolute;
+  width: 38rpx;
+  height: 38rpx;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  background: linear-gradient(120deg, #8b9dc3 0%, var(--color-neon-cyan) 48%, var(--color-hot-magenta) 100%);
+  background-size: 220% 100%;
+  background-position: 0% 0;
+  transform: translate(-50%, -50%) scale(0.82);
+  box-shadow: 0 0 14rpx rgba(139, 157, 195, 0.5);
+  animation: colorizeFill 2.6s ease-in-out infinite;
+  z-index: 2;
+}
+
+@keyframes colorizeFill {
+  0% {
+    background-position: 0% 0;
+    transform: translate(-50%, -50%) scale(0.82);
+    box-shadow: 0 0 14rpx rgba(139, 157, 195, 0.5);
+  }
+  50% {
+    background-position: 55% 0;
+    transform: translate(-50%, -50%) scale(1.08);
+    box-shadow: 0 0 22rpx rgba(0, 240, 255, 0.7);
+  }
+  100% {
+    background-position: 100% 0;
+    transform: translate(-50%, -50%) scale(0.82);
+    box-shadow: 0 0 22rpx rgba(255, 0, 128, 0.7);
+  }
+}
+
+/* 外环：双色边旋转（上色扫过感，类似色环） */
+.icon-aiColorize::after {
+  content: '';
+  position: absolute;
+  width: 52rpx;
+  height: 52rpx;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  border: 3rpx solid transparent;
+  border-top-color: var(--color-neon-cyan);
+  border-right-color: var(--color-hot-magenta);
+  transform: translate(-50%, -50%) rotate(0deg);
+  opacity: 0.85;
+  animation: colorizeSweep 2.6s linear infinite;
+  z-index: 1;
+}
+
+@keyframes colorizeSweep {
+  0% { transform: translate(-50%, -50%) rotate(0deg); opacity: 0.85; }
+  50% { opacity: 0.5; }
+  100% { transform: translate(-50%, -50%) rotate(360deg); opacity: 0.85; }
+}

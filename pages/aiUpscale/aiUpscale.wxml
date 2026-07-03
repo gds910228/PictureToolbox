@@ -117,7 +117,7 @@
       <view class="info-item"><text class="info-num">4</text><text class="info-text">AI 放大耗时约 10-60 秒，请耐心等待</text></view>
     </view>
     <view class="info-note">
-      AI 放大基于云端 Real-ESRGAN（付费 API，含免费额度）；云端不可用时自动降级为本地基础放大，并明确提示。
+      AI 放大基于云端 Real-ESRGAN（付费 API）；云端不可用时自动降级为本地基础放大，并明确提示。
     </view>
   </view>
 </view>

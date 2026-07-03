@@ -16,7 +16,8 @@
     "pages/aiEraser/aiEraser",
     "pages/imgToPdf/imgToPdf",
     "pages/exif/exif",
-    "pages/aiUpscale/aiUpscale"
+    "pages/aiUpscale/aiUpscale",
+    "pages/aiColorize/aiColorize"
   ],
   "window": {
     "backgroundTextStyle": "light",

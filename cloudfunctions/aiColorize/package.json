@@ -1,0 +1,10 @@
+{
+  "name": "aiColorize",
+  "version": "1.0.0",
+  "description": "AI老照片上色云函数 - Replicate DeOldify 异步任务，无本地伪上色兜底",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3",
+    "axios": "^1.6.0"
+  }
+}

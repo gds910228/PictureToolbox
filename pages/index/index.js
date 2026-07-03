@@ -8,6 +8,7 @@ Page({
       { id: 'aiEraser', name: '去水印' },
       { id: 'aiStyle', name: '风格迁移' },
       { id: 'aiUpscale', name: 'AI放大' },
+      { id: 'aiColorize', name: '老照片上色' },
       { id: 'aiOCR', name: '文字识别' }
     ],
     typedName: '',
@@ -153,6 +154,14 @@ Page({
             name: '多图合PDF',
             desc: '多图按名称排序合成PDF，支持A4/16:9/1:1',
             url: '/pages/imgToPdf/imgToPdf',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiColorize',
+            name: 'AI老照片上色',
+            desc: '黑白老照片智能上色，自然/复古风格',
+            url: '/pages/aiColorize/aiColorize',
             available: true,
             isNew: true
           }

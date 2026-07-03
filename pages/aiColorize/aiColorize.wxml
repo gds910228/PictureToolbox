@@ -1,0 +1,108 @@
+<!--pages/aiColorize/aiColorize.wxml-->
+<view class="container">
+  <view class="page-header">
+    <text class="page-title">AI 老照片上色</text>
+    <text class="page-subtitle">智能为黑白/灰度老照片上色，自然 / 复古两种风格</text>
+  </view>
+
+  <!-- Step 1: 选择图片 -->
+  <view class="step-section" wx:if="{{!imageSrc}}">
+    <view class="upload-box" bindtap="chooseImage">
+      <view class="upload-icon">+</view>
+      <text class="upload-text">点击选择黑白照片</text>
+      <text class="upload-hint">支持 JPG / PNG，最长边自动限制 1440px</text>
+    </view>
+  </view>
+
+  <!-- Step 2: 风格 + 上色 -->
+  <view class="step-section" wx:if="{{imageSrc && !resultSrc}}">
+    <view class="preview-box" bindtap="previewOriginal">
+      <image class="preview-image" src="{{imageSrc}}" mode="aspectFit" />
+    </view>
+
+    <!-- 黑白检测提示 -->
+    <view class="hint-banner {{isColorImage ? 'hint-warn' : 'hint-info'}}" wx:if="{{colorHint}}">
+      <text class="hint-icon">{{isColorImage ? '⚠️' : 'ℹ️'}}</text>
+      <text class="hint-text">{{colorHint}}</text>
+    </view>
+
+    <!-- 风格选择 -->
+    <view class="opt-group">
+      <text class="opt-title">上色风格</text>
+      <view class="style-row">
+        <view class="style-item {{style === 'natural' ? 'active' : ''}}" data-style="natural" bindtap="selectStyle">
+          <text class="style-icon">🌿</text>
+          <text class="style-name">自然</text>
+          <text class="style-desc">色彩克制还原</text>
+        </view>
+        <view class="style-item {{style === 'vintage' ? 'active' : ''}}" data-style="vintage" bindtap="selectStyle">
+          <text class="style-icon">🎞️</text>
+          <text class="style-name">复古</text>
+          <text class="style-desc">浓郁胶片感</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 上色按钮 -->
+    <view class="action-section">
+      <button class="btn-repair" bindtap="startColorize" disabled="{{processing}}">
+        <text wx:if="{{!processing}}">🎨 开始 AI 上色</text>
+        <text wx:else>处理中 {{progress}}%</text>
+      </button>
+      <text class="status-text" wx:if="{{processing}}">{{statusText}}</text>
+      <view class="progress-bar" wx:if="{{processing}}">
+        <view class="progress-inner" style="width: {{progress}}%;"></view>
+      </view>
+    </view>
+
+    <!-- 错误提示 -->
+    <view class="error-banner" wx:if="{{errorMsg}}">
+      <text class="error-icon">⚠️</text>
+      <text class="error-text">{{errorMsg}}</text>
+    </view>
+  </view>
+
+  <!-- Step 3: 结果对比 -->
+  <view class="step-section result-section" wx:if="{{resultSrc}}">
+    <view class="result-compare">
+      <view class="result-item">
+        <view class="result-title">原图</view>
+        <view class="result-box" bindtap="previewOriginal">
+          <image class="result-image" src="{{imageSrc}}" mode="aspectFit" />
+        </view>
+      </view>
+      <view class="result-item">
+        <view class="result-title">上色后</view>
+        <view class="result-box result-box-after" bindtap="previewResult">
+          <image class="result-image" src="{{resultSrc}}" mode="aspectFit" />
+          <view class="engine-tag" wx:if="{{engine}}">{{engineText}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="scale-tag-row" wx:if="{{resultSrc}}">
+      <text class="scale-tag">{{styleName}}风格</text>
+    </view>
+
+    <!-- 操作按钮 -->
+    <view class="result-actions">
+      <button class="btn-compare" bindtap="onCompare">对比查看</button>
+      <button class="btn-save" bindtap="saveResult">保存到相册</button>
+      <button class="btn-retry" bindtap="resetAll">重新处理</button>
+    </view>
+  </view>
+
+  <!-- 功能说明 -->
+  <view class="info-section" wx:if="{{!resultSrc}}">
+    <view class="info-title">使用说明</view>
+    <view class="info-list">
+      <view class="info-item"><text class="info-num">1</text><text class="info-text">选择黑白或灰度老照片（最长边自动限制 1440px）</text></view>
+      <view class="info-item"><text class="info-num">2</text><text class="info-text">选择「自然」或「复古」上色风格</text></view>
+      <view class="info-item"><text class="info-num">3</text><text class="info-text">点击开始上色，AI 处理约 10~60 秒</text></view>
+      <view class="info-item"><text class="info-num">4</text><text class="info-text">彩色图片可继续尝试，但效果可能不明显</text></view>
+    </view>
+    <view class="info-note">
+      AI 上色基于云端 DeOldify（付费 API），服务不可用时将直接提示「当前服务繁忙，请稍后再试」，不生成低质量伪结果。
+    </view>
+  </view>
+</view>
