@@ -7,6 +7,7 @@ Page({
       { id: 'aiMatting', name: '一键抠图' },
       { id: 'aiEraser', name: '去水印' },
       { id: 'aiStyle', name: '风格迁移' },
+      { id: 'aiUpscale', name: 'AI放大' },
       { id: 'aiOCR', name: '文字识别' }
     ],
     typedName: '',
@@ -64,6 +65,14 @@ Page({
             name: 'AI去水印',
             desc: '涂抹水印区域，AI智能修复去除',
             url: '/pages/aiEraser/aiEraser',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiUpscale',
+            name: 'AI图片放大',
+            desc: '2x/4x超分辨率放大，可选降噪锐化',
+            url: '/pages/aiUpscale/aiUpscale',
             available: true,
             isNew: true
           }

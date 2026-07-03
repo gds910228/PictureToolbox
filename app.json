@@ -15,7 +15,8 @@
     "pages/compare/compare",
     "pages/aiEraser/aiEraser",
     "pages/imgToPdf/imgToPdf",
-    "pages/exif/exif"
+    "pages/exif/exif",
+    "pages/aiUpscale/aiUpscale"
   ],
   "window": {
     "backgroundTextStyle": "light",

@@ -1226,3 +1226,77 @@
   border-radius: 2rpx;
   box-shadow: 0 0 10rpx rgba(0,240,255,0.6);
 }
+
+/* ===================================
+   AI UPSCALE ICON - 中心图块呼吸放大 + 外扩波纹
+   语义：原图 → AI 超分辨率放大，分辨率向外提升
+   =================================== */
+
+.icon-aiUpscale {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 中心原图块：渐变填充 + 呼吸放大（AI 增强细节） */
+.icon-aiUpscale::before {
+  content: '';
+  position: absolute;
+  width: 40rpx;
+  height: 40rpx;
+  top: 50%;
+  left: 50%;
+  border-radius: 8rpx;
+  background: linear-gradient(135deg, var(--color-neon-cyan) 0%, var(--color-hot-magenta) 100%);
+  transform: translate(-50%, -50%) scale(0.85);
+  box-shadow: 0 0 18rpx rgba(0, 240, 255, 0.6);
+  animation: upscaleCore 2s ease-in-out infinite;
+  z-index: 2;
+}
+
+@keyframes upscaleCore {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(0.8);
+    box-shadow: 0 0 18rpx rgba(0, 240, 255, 0.6);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.12);
+    box-shadow: 0 0 28rpx rgba(255, 0, 128, 0.75);
+  }
+}
+
+/* 外扩波纹框：从中心向外扩散并淡出（放大扩散波） */
+.icon-aiUpscale::after {
+  content: '';
+  position: absolute;
+  width: 40rpx;
+  height: 40rpx;
+  top: 50%;
+  left: 50%;
+  border: 3rpx solid var(--color-neon-cyan);
+  border-radius: 10rpx;
+  transform: translate(-50%, -50%) scale(0.8);
+  opacity: 0.9;
+  box-shadow: 0 0 12rpx rgba(0, 240, 255, 0.4);
+  animation: upscaleWave 2s ease-out infinite;
+  z-index: 1;
+}
+
+@keyframes upscaleWave {
+  0% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0.9;
+    border-color: var(--color-neon-cyan);
+  }
+  70% {
+    border-color: var(--color-hot-magenta);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.2);
+    opacity: 0;
+    border-color: var(--color-hot-magenta);
+  }
+}

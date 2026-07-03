@@ -1,0 +1,10 @@
+{
+  "name": "aiUpscale",
+  "version": "1.0.0",
+  "description": "AI图片放大增强云函数 - Replicate Real-ESRGAN 异步任务 + 本地基础放大降级",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3",
+    "axios": "^1.6.0"
+  }
+}
