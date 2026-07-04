@@ -140,6 +140,14 @@ Page({
             url: '/pages/exif/exif',
             available: true,
             isNew: true
+          },
+          {
+            id: 'similarity',
+            name: '找重复图',
+            desc: '双图相似度对比，多图批量查重',
+            url: '/pages/similarity/similarity',
+            available: true,
+            isNew: true
           }
         ]
       },

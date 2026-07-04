@@ -1,0 +1,230 @@
+<!--pages/similarity/similarity.wxml-->
+<view class="container">
+  <view class="page-head">
+    <view class="page-title">找重复图</view>
+    <view class="page-sub">双图相似度对比 · 多图批量查重</view>
+  </view>
+
+  <!-- 模式切换 -->
+  <view class="mode-tabs glass-card">
+    <view
+      class="mode-tab {{mode === 'pair' ? 'is-active' : ''}}"
+      data-mode="pair"
+      bindtap="onModeChange"
+    >双图对比</view>
+    <view
+      class="mode-tab {{mode === 'batch' ? 'is-active' : ''}}"
+      data-mode="batch"
+      bindtap="onModeChange"
+    >批量查重</view>
+  </view>
+
+  <!-- ============== 双图模式 ============== -->
+  <view wx:if="{{mode === 'pair'}}" class="section">
+    <view class="pair-grid">
+      <!-- 图 A -->
+      <view class="upload-slot">
+        <view
+          wx:if="{{imageA}}"
+          class="slot-filled"
+          data-url="{{imageA}}"
+          data-list="{{[imageA, imageB]}}"
+          bindtap="onPreviewImage"
+        >
+          <image class="slot-img" src="{{imageA}}" mode="aspectFill" />
+          <view class="slot-remove" catchtap="onRemoveA">✕</view>
+          <view class="slot-tag">A</view>
+        </view>
+        <view wx:else class="slot-empty" bindtap="onPickA">
+          <view class="slot-plus">＋</view>
+          <view class="slot-hint">图片 A</view>
+        </view>
+      </view>
+      <!-- 图 B -->
+      <view class="upload-slot">
+        <view
+          wx:if="{{imageB}}"
+          class="slot-filled"
+          data-url="{{imageB}}"
+          data-list="{{[imageA, imageB]}}"
+          bindtap="onPreviewImage"
+        >
+          <image class="slot-img" src="{{imageB}}" mode="aspectFill" />
+          <view class="slot-remove" catchtap="onRemoveB">✕</view>
+          <view class="slot-tag">B</view>
+        </view>
+        <view wx:else class="slot-empty" bindtap="onPickB">
+          <view class="slot-plus">＋</view>
+          <view class="slot-hint">图片 B</view>
+        </view>
+      </view>
+    </view>
+
+    <button
+      class="btn btn-primary"
+      loading="{{pairLoading}}"
+      disabled="{{!imageA || !imageB}}"
+      bindtap="onCompare"
+    >{{pairLoading ? '计算中…' : '开始对比'}}</button>
+
+    <!-- 双图结果 -->
+    <view wx:if="{{pairResult}}" class="result-card glass-card">
+      <view class="score-ring score-{{pairResult.level.tone}}">
+        <text class="score-num">{{pairResult.score}}</text>
+        <text class="score-unit">分</text>
+      </view>
+      <view class="score-label label-{{pairResult.level.tone}}">{{pairResult.level.label}}</view>
+
+      <view class="score-bar">
+        <view class="score-bar-fill score-{{pairResult.level.tone}}" style="width:{{pairResult.score}}%"></view>
+      </view>
+
+      <view class="dist-grid">
+        <view class="dist-item">
+          <text class="dist-name">pHash 感知哈希</text>
+          <text class="dist-val">距离 {{pairResult.pDist}}</text>
+          <text class="dist-note">主分数依据</text>
+        </view>
+        <view class="dist-item">
+          <text class="dist-name">dHash 差值哈希</text>
+          <text class="dist-val">距离 {{pairResult.dDist}}</text>
+        </view>
+        <view class="dist-item">
+          <text class="dist-name">aHash 均值哈希</text>
+          <text class="dist-val">距离 {{pairResult.aDist}}</text>
+        </view>
+      </view>
+      <view class="dist-tip">距离越小越相似，0 表示像素级一致。</view>
+    </view>
+  </view>
+
+  <!-- ============== 批量模式 ============== -->
+  <view wx:if="{{mode === 'batch'}}" class="section">
+    <button class="btn btn-secondary" bindtap="onPickBatch">
+      选择图片（已选 {{batchList.length}}/{{9}}）
+    </button>
+
+    <!-- 已选缩略图网格 -->
+    <view wx:if="{{batchList.length}}" class="thumb-grid">
+      <view
+        class="thumb-item"
+        wx:for="{{batchList}}"
+        wx:key="path"
+      >
+        <image
+          class="thumb-img"
+          src="{{item.path}}"
+          mode="aspectFill"
+          data-url="{{item.path}}"
+          data-list="{{batchList}}"
+          catchtap="onPreviewImage"
+        />
+        <view class="thumb-remove" data-index="{{index}}" catchtap="onRemoveBatchItem">✕</view>
+      </view>
+    </view>
+
+    <!-- 阈值档位 -->
+    <view wx:if="{{batchList.length >= 2}}" class="threshold-box glass-card">
+      <view class="threshold-title">查重严格度</view>
+      <view class="threshold-tabs">
+        <view
+          wx:for="{{thresholds}}"
+          wx:key="key"
+          class="threshold-tab {{thresholdKey === item.key ? 'is-active' : ''}}"
+          data-key="{{item.key}}"
+          bindtap="onThresholdChange"
+        >{{item.label}}</view>
+      </view>
+      <view class="threshold-desc">
+        <block wx:for="{{thresholds}}" wx:key="key">
+          <text wx:if="{{thresholdKey === item.key}}">{{item.desc}}（距离 ≤ {{item.value}}）</text>
+        </block>
+      </view>
+    </view>
+
+    <button
+      wx:if="{{batchList.length >= 2}}"
+      class="btn btn-primary"
+      loading="{{batchLoading}}"
+      disabled="{{batchLoading}}"
+      bindtap="onCheckBatch"
+    >{{batchLoading ? '查重中…' : '开始查重'}}</button>
+
+    <!-- 进度 -->
+    <view wx:if="{{progress.show}}" class="progress-box">
+      <view class="progress-text">计算相似度 {{progress.done}}/{{progress.total}}</view>
+      <view class="progress-bar">
+        <view class="progress-bar-fill" style="width:{{progress.total ? progress.done / progress.total * 100 : 0}}%"></view>
+      </view>
+    </view>
+
+    <!-- 批量结果 -->
+    <view wx:if="{{batchResult}}" class="result-card glass-card">
+      <view class="batch-summary">
+        <view class="summary-item">
+          <text class="summary-num warn">{{batchResult.duplicateGroupCount}}</text>
+          <text class="summary-label">重复组</text>
+        </view>
+        <view class="summary-item">
+          <text class="summary-num">{{batchResult.duplicateCount}}</text>
+          <text class="summary-label">重复图</text>
+        </view>
+        <view class="summary-item">
+          <text class="summary-num">{{batchResult.uniqueCount}}</text>
+          <text class="summary-label">独立图</text>
+        </view>
+      </view>
+
+      <view wx:if="{{batchResult.errorCount}}" class="batch-warn">
+        {{batchResult.errorCount}} 张图处理失败已跳过
+      </view>
+
+      <view wx:if="{{batchResult.duplicateGroupCount === 0}}" class="empty-dup">
+        未发现近似重复图，所有图片互不相同。
+      </view>
+
+      <!-- 重复组列表 -->
+      <view
+        wx:for="{{batchResult.groups}}"
+        wx:key="index"
+        wx:for-item="grp"
+      >
+        <view wx:if="{{grp.isDuplicate}}" class="dup-group">
+          <view class="dup-group-head">
+            <text class="dup-group-title">相似组 #{{index + 1}}</text>
+            <text class="dup-group-count">{{grp.size}} 张 · 建议保留 1 张</text>
+          </view>
+          <view class="dup-thumb-row">
+            <view
+              class="dup-thumb"
+              wx:for="{{grp.items}}"
+              wx:key="path"
+              wx:for-item="it"
+            >
+              <image
+                class="dup-thumb-img"
+                src="{{it.path}}"
+                mode="aspectFill"
+                data-url="{{it.path}}"
+                data-list="{{grp.items}}"
+                catchtap="onPreviewImage"
+              />
+              <view class="dup-thumb-score">{{it.score}}</view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <button wx:if="{{batchList.length}}" class="btn btn-secondary btn-reset" bindtap="onClearBatch">清空重来</button>
+    </view>
+  </view>
+
+  <!-- ============== 诚实说明 ============== -->
+  <view class="honest-card glass-card">
+    <view class="honest-title">ℹ️ 工作原理</view>
+    <view class="honest-line">基于感知哈希（pHash / dHash / aHash）的像素级近似检测，全程本地计算。</view>
+    <view class="honest-line ok">✓ 能识别：压缩、缩放、轻微裁剪/调色后的重复图，完全相同的图。</view>
+    <view class="honest-line no">✗ 不识别：内容语义相似但像素不同（同人物不同姿态、同场景不同角度）。</view>
+    <view class="honest-tip">批量模式受小程序限制，仅检测你手动选中的图（每次最多 {{9}} 张），无法扫描整个相册。</view>
+  </view>
+</view>

@@ -17,7 +17,8 @@
     "pages/imgToPdf/imgToPdf",
     "pages/exif/exif",
     "pages/aiUpscale/aiUpscale",
-    "pages/aiColorize/aiColorize"
+    "pages/aiColorize/aiColorize",
+    "pages/similarity/similarity"
   ],
   "window": {
     "backgroundTextStyle": "light",

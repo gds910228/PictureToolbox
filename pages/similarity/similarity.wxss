@@ -1,0 +1,467 @@
+/* pages/similarity/similarity.wxss - 找重复图（赛博朋克风格，复用全局变量/玻璃卡片） */
+
+.container {
+  /* 本页补充的灰阶（全局仅定义 100/200/500/800） */
+  --color-gray-300: #C8CDD6;
+  --color-gray-400: #9AA1AD;
+  min-height: 100vh;
+  padding: 32rpx 24rpx 80rpx;
+  box-sizing: border-box;
+}
+
+/* ============== 页头 ============== */
+.page-head {
+  margin-bottom: 32rpx;
+}
+.page-title {
+  font-size: 44rpx;
+  font-weight: 800;
+  color: var(--color-white);
+  letter-spacing: 2rpx;
+  margin-bottom: 8rpx;
+  text-shadow: 0 0 16rpx rgba(0, 240, 255, 0.35);
+}
+.page-sub {
+  font-size: 24rpx;
+  color: var(--color-gray-400);
+  letter-spacing: 1rpx;
+}
+
+/* ============== 模式 Tab ============== */
+.mode-tabs {
+  display: flex;
+  padding: 8rpx;
+  margin-bottom: 32rpx;
+}
+.mode-tab {
+  flex: 1;
+  text-align: center;
+  padding: 20rpx 0;
+  font-size: 28rpx;
+  color: var(--color-gray-400);
+  border-radius: var(--radius-md, 16rpx);
+  transition: all 0.3s ease;
+  letter-spacing: 1rpx;
+}
+.mode-tab.is-active {
+  color: var(--color-white);
+  background: var(--gradient-neon);
+  box-shadow: 0 0 18rpx rgba(0, 240, 255, 0.4);
+  font-weight: 700;
+}
+
+/* ============== 通用区段 ============== */
+.section {
+  margin-bottom: 32rpx;
+}
+.result-card {
+  margin-top: 32rpx;
+  padding: 40rpx 32rpx;
+}
+
+/* ============== 双图：上传槽 ============== */
+.pair-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24rpx;
+  margin-bottom: 32rpx;
+}
+.upload-slot {
+  position: relative;
+}
+.slot-empty {
+  height: 360rpx;
+  border: 2rpx dashed rgba(0, 240, 255, 0.4);
+  border-radius: var(--radius-lg, 24rpx);
+  background: rgba(0, 240, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+.slot-empty:active {
+  background: rgba(0, 240, 255, 0.1);
+  border-color: var(--color-neon-cyan);
+}
+.slot-plus {
+  font-size: 64rpx;
+  color: var(--color-neon-cyan);
+  line-height: 1;
+  margin-bottom: 12rpx;
+  text-shadow: 0 0 12rpx rgba(0, 240, 255, 0.5);
+}
+.slot-hint {
+  font-size: 24rpx;
+  color: var(--color-gray-400);
+  letter-spacing: 1rpx;
+}
+.slot-filled {
+  position: relative;
+  height: 360rpx;
+  border-radius: var(--radius-lg, 24rpx);
+  overflow: hidden;
+  border: 1rpx solid rgba(0, 240, 255, 0.4);
+  box-shadow: 0 0 18rpx rgba(0, 240, 255, 0.2);
+}
+.slot-img {
+  width: 100%;
+  height: 100%;
+}
+.slot-remove {
+  position: absolute;
+  top: 12rpx;
+  right: 12rpx;
+  width: 40rpx;
+  height: 40rpx;
+  line-height: 40rpx;
+  text-align: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 24rpx;
+  z-index: 2;
+}
+.slot-tag {
+  position: absolute;
+  top: 12rpx;
+  left: 12rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  background: var(--gradient-neon);
+  color: #0a0e27;
+  font-size: 20rpx;
+  font-weight: 800;
+  z-index: 2;
+}
+
+/* ============== 双图结果：分数环 ============== */
+.score-ring {
+  width: 240rpx;
+  height: 240rpx;
+  border-radius: 50%;
+  margin: 0 auto 24rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 4rpx solid currentColor;
+  box-shadow: 0 0 30rpx rgba(0, 0, 0, 0.3), inset 0 0 24rpx rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+.score-num {
+  font-size: 80rpx;
+  font-weight: 900;
+  line-height: 1;
+  color: currentColor;
+  text-shadow: 0 0 16rpx currentColor;
+}
+.score-unit {
+  font-size: 24rpx;
+  color: currentColor;
+  margin-top: 4rpx;
+  opacity: 0.85;
+}
+.score-label {
+  text-align: center;
+  font-size: 30rpx;
+  font-weight: 700;
+  margin-bottom: 24rpx;
+  letter-spacing: 2rpx;
+}
+/* tone 配色 */
+.score-dup, .label-dup { color: #ff3b6b; }
+.score-high, .label-high { color: #38ef7d; }
+.score-mid, .label-mid { color: var(--color-neon-cyan); }
+.score-low, .label-low { color: var(--color-gray-300); }
+.score-diff, .label-diff { color: var(--color-gray-500); }
+
+/* 分数进度条 */
+.score-bar {
+  height: 14rpx;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999rpx;
+  overflow: hidden;
+  margin-bottom: 32rpx;
+}
+.score-bar-fill {
+  height: 100%;
+  border-radius: 999rpx;
+  transition: width 0.6s ease;
+  box-shadow: 0 0 12rpx currentColor;
+}
+.score-dup { background: #ff3b6b; }
+.score-high { background: #38ef7d; }
+.score-mid { background: var(--color-neon-cyan); }
+.score-low { background: var(--color-gray-300); }
+.score-diff { background: var(--color-gray-500); }
+
+/* 距离明细 */
+.dist-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+.dist-item {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md, 16rpx);
+  padding: 20rpx 12rpx;
+  text-align: center;
+}
+.dist-name {
+  display: block;
+  font-size: 20rpx;
+  color: var(--color-gray-400);
+  margin-bottom: 8rpx;
+}
+.dist-val {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--color-white);
+}
+.dist-note {
+  display: block;
+  font-size: 18rpx;
+  color: var(--color-neon-cyan);
+  margin-top: 6rpx;
+}
+.dist-tip {
+  font-size: 22rpx;
+  color: var(--color-gray-500);
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ============== 批量：缩略图网格 ============== */
+.thumb-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16rpx;
+  margin: 24rpx 0;
+}
+.thumb-item {
+  position: relative;
+  height: 200rpx;
+  border-radius: var(--radius-md, 16rpx);
+  overflow: hidden;
+  border: 1rpx solid rgba(255, 255, 255, 0.12);
+}
+.thumb-img {
+  width: 100%;
+  height: 100%;
+}
+.thumb-remove {
+  position: absolute;
+  top: 6rpx;
+  right: 6rpx;
+  width: 36rpx;
+  height: 36rpx;
+  line-height: 36rpx;
+  text-align: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 22rpx;
+}
+
+/* ============== 阈值档位 ============== */
+.threshold-box {
+  padding: 24rpx;
+  margin: 24rpx 0;
+}
+.threshold-title {
+  font-size: 26rpx;
+  color: var(--color-gray-200);
+  margin-bottom: 16rpx;
+  letter-spacing: 1rpx;
+}
+.threshold-tabs {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+.threshold-tab {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+  border-radius: var(--radius-md, 16rpx);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+  font-size: 26rpx;
+  color: var(--color-gray-300);
+  transition: all 0.3s ease;
+}
+.threshold-tab.is-active {
+  color: #0a0e27;
+  background: var(--gradient-neon);
+  border-color: transparent;
+  font-weight: 700;
+  box-shadow: 0 0 14rpx rgba(0, 240, 255, 0.35);
+}
+.threshold-desc {
+  font-size: 22rpx;
+  color: var(--color-gray-500);
+  line-height: 1.5;
+}
+
+/* ============== 进度 ============== */
+.progress-box {
+  margin: 24rpx 0;
+}
+.progress-text {
+  font-size: 24rpx;
+  color: var(--color-neon-cyan);
+  margin-bottom: 12rpx;
+  letter-spacing: 1rpx;
+}
+.progress-bar {
+  height: 12rpx;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999rpx;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--gradient-neon);
+  border-radius: 999rpx;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10rpx rgba(0, 240, 255, 0.5);
+}
+
+/* ============== 批量结果 ============== */
+.batch-summary {
+  display: flex;
+  justify-content: space-around;
+  padding-bottom: 24rpx;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 24rpx;
+}
+.summary-item {
+  text-align: center;
+}
+.summary-num {
+  display: block;
+  font-size: 52rpx;
+  font-weight: 900;
+  color: var(--color-neon-cyan);
+  line-height: 1.1;
+  text-shadow: 0 0 14rpx rgba(0, 240, 255, 0.4);
+}
+.summary-num.warn {
+  color: #ff3b6b;
+  text-shadow: 0 0 14rpx rgba(255, 59, 107, 0.4);
+}
+.summary-label {
+  display: block;
+  font-size: 22rpx;
+  color: var(--color-gray-400);
+  margin-top: 8rpx;
+  letter-spacing: 1rpx;
+}
+.batch-warn {
+  font-size: 22rpx;
+  color: #ffb84d;
+  text-align: center;
+  margin-bottom: 20rpx;
+}
+.empty-dup {
+  text-align: center;
+  font-size: 26rpx;
+  color: var(--color-gray-300);
+  padding: 32rpx 0;
+  line-height: 1.6;
+}
+
+/* 重复组 */
+.dup-group {
+  margin-bottom: 28rpx;
+  padding: 24rpx;
+  background: rgba(255, 59, 107, 0.06);
+  border: 1rpx solid rgba(255, 59, 107, 0.3);
+  border-radius: var(--radius-lg, 24rpx);
+}
+.dup-group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+.dup-group-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #ff5c82;
+  letter-spacing: 1rpx;
+}
+.dup-group-count {
+  font-size: 22rpx;
+  color: var(--color-gray-400);
+}
+.dup-thumb-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+.dup-thumb {
+  position: relative;
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: var(--radius-md, 16rpx);
+  overflow: hidden;
+  border: 1rpx solid rgba(255, 255, 255, 0.15);
+}
+.dup-thumb-img {
+  width: 100%;
+  height: 100%;
+}
+.dup-thumb-score {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 4rpx 0;
+}
+
+.btn-reset {
+  margin-top: 24rpx;
+}
+
+/* ============== 诚实说明卡片 ============== */
+.honest-card {
+  padding: 32rpx;
+  margin-top: 16rpx;
+}
+.honest-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--color-neon-cyan);
+  margin-bottom: 16rpx;
+  letter-spacing: 1rpx;
+}
+.honest-line {
+  font-size: 24rpx;
+  color: var(--color-gray-300);
+  line-height: 1.7;
+  margin-bottom: 8rpx;
+}
+.honest-line.ok {
+  color: #38ef7d;
+}
+.honest-line.no {
+  color: var(--color-gray-500);
+}
+.honest-tip {
+  font-size: 22rpx;
+  color: var(--color-gray-500);
+  line-height: 1.6;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.08);
+}
