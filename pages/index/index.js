@@ -76,6 +76,14 @@ Page({
             url: '/pages/aiUpscale/aiUpscale',
             available: true,
             isNew: true
+          },
+          {
+            id: 'aiColorize',
+            name: 'AI老照片上色',
+            desc: '黑白老照片智能上色，自然/复古风格',
+            url: '/pages/aiColorize/aiColorize',
+            available: true,
+            isNew: true
           }
         ]
       },
@@ -126,14 +134,6 @@ Page({
             isNew: false
           },
           {
-            id: 'filter',
-            name: '图片滤镜',
-            desc: '多种滤镜效果，实时预览',
-            url: '/pages/filter/filter',
-            available: true,
-            isNew: false
-          },
-          {
             id: 'exif',
             name: 'EXIF信息',
             desc: '查看图片元数据，一键抹除GPS等隐私信息',
@@ -158,12 +158,12 @@ Page({
             isNew: true
           },
           {
-            id: 'aiColorize',
-            name: 'AI老照片上色',
-            desc: '黑白老照片智能上色，自然/复古风格',
-            url: '/pages/aiColorize/aiColorize',
+            id: 'filter',
+            name: '图片滤镜',
+            desc: '多种滤镜效果，实时预览',
+            url: '/pages/filter/filter',
             available: true,
-            isNew: true
+            isNew: false
           }
         ]
       }

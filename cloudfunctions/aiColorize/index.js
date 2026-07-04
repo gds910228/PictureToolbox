@@ -128,7 +128,17 @@ async function queryTask(event) {
       timeout: HTTP_TIMEOUT
     });
   } catch (e) {
-    console.error('[aiColorize] 查询预测失败:', e.message);
+    // 瞬时错误（超时/网络中断/5xx/429）→ 当作「还在处理」，前端继续轮询，
+    // 避免一次网络毛刺就让整单判死（已付费预测被白白浪费）。
+    const noResp = !e.response;
+    const code = e.response && e.response.status;
+    const transient = noResp || code === 429 || code >= 500;
+    if (transient) {
+      console.warn('[aiColorize] 查询瞬时失败，将继续轮询:', e.code || code || 'network', e.message);
+      return { success: true, status: 'processing', taskId };
+    }
+    // 终态错误（404 任务不存在 / 401 鉴权失败 / 400）→ 重试无意义，如实报繁忙
+    console.error('[aiColorize] 查询终态失败:', code || '', e.message);
     return { success: false, status: 'failed', reason: BUSY_MSG, errorCode: 'E003' };
   }
 
