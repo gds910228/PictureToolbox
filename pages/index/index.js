@@ -1,4 +1,30 @@
 // pages/index/index.js
+
+// NEW 标签依据：上线日期距今 < NEW_WINDOW_DAYS 才显示，到期自动摘标。
+// 新增功能只需在 LAUNCH_DATES 填上线日期（YYYY-MM-DD），无需手动清理 isNew。
+// 未登记的功能默认不挂 NEW。
+const NEW_WINDOW_DAYS = 14;
+const LAUNCH_DATES = {
+  aiDescribe: '2026-03-05',
+  aiCaption: '2026-03-05',
+  aiMatting: '2026-03-04',
+  aiStyle: '2026-03-05',
+  aiOCR: '2026-06-17',
+  aiEraser: '2026-06-21',
+  imgToPdf: '2026-06-20',
+  exif: '2026-06-20',
+  aiUpscale: '2026-07-03',
+  aiColorize: '2026-07-03',
+  similarity: '2026-07-03'
+};
+
+function isToolNew(toolId) {
+  const launch = LAUNCH_DATES[toolId];
+  if (!launch) return false;
+  const days = (Date.now() - new Date(launch).getTime()) / 86400000;
+  return days < NEW_WINDOW_DAYS;
+}
+
 Page({
   data: {
     // 顶部 Banner 打字机轮播的工具名
@@ -22,18 +48,10 @@ Page({
         expanded: true,
         tools: [
           {
-            id: 'aiDescribe',
-            name: 'AI图片描述',
-            desc: '智能识别图片内容并生成描述',
-            url: '/pages/aiDescribe/aiDescribe',
-            available: true,
-            isNew: true
-          },
-          {
-            id: 'aiCaption',
-            name: 'AI智能配文',
-            desc: '一键生成社交媒体文案',
-            url: '/pages/aiCaption/aiCaption',
+            id: 'aiOCR',
+            name: 'AI文字识别',
+            desc: '高精度OCR识别图片中的文字',
+            url: '/pages/aiOCR/aiOCR',
             available: true,
             isNew: true
           },
@@ -46,22 +64,6 @@ Page({
             isNew: true
           },
           {
-            id: 'aiStyle',
-            name: 'AI风格迁移',
-            desc: '将照片转换为艺术风格',
-            url: '/pages/aiStyle/aiStyle',
-            available: true,
-            isNew: true
-          },
-          {
-            id: 'aiOCR',
-            name: 'AI文字识别',
-            desc: '高精度OCR识别图片中的文字',
-            url: '/pages/aiOCR/aiOCR',
-            available: true,
-            isNew: true
-          },
-          {
             id: 'aiEraser',
             name: 'AI去水印',
             desc: '涂抹水印区域，AI智能修复去除',
@@ -70,10 +72,34 @@ Page({
             isNew: true
           },
           {
+            id: 'aiCaption',
+            name: 'AI智能配文',
+            desc: '一键生成社交媒体文案',
+            url: '/pages/aiCaption/aiCaption',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiDescribe',
+            name: 'AI图片描述',
+            desc: '智能识别图片内容并生成描述',
+            url: '/pages/aiDescribe/aiDescribe',
+            available: true,
+            isNew: true
+          },
+          {
             id: 'aiUpscale',
             name: 'AI图片放大',
             desc: '2x/4x超分辨率放大，可选降噪锐化',
             url: '/pages/aiUpscale/aiUpscale',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiStyle',
+            name: 'AI风格迁移',
+            desc: '将照片转换为艺术风格',
+            url: '/pages/aiStyle/aiStyle',
             available: true,
             isNew: true
           },
@@ -110,6 +136,14 @@ Page({
             isNew: false
           },
           {
+            id: 'splice',
+            name: '图片拼接',
+            desc: '智能拼接，AI推荐布局',
+            url: '/pages/splice/splice',
+            available: true,
+            isNew: false
+          },
+          {
             id: 'convert',
             name: '格式转换',
             desc: '支持JPG、PNG、WebP等主流格式互转',
@@ -122,14 +156,6 @@ Page({
             name: '图片水印',
             desc: '添加文字水印，AI智能生成文案',
             url: '/pages/watermark/watermark',
-            available: true,
-            isNew: false
-          },
-          {
-            id: 'splice',
-            name: '图片拼接',
-            desc: '智能拼接，AI推荐布局',
-            url: '/pages/splice/splice',
             available: true,
             isNew: false
           },
@@ -188,7 +214,8 @@ Page({
       ...group,
       tools: group.tools.map(tool => ({
         ...tool,
-        available: Boolean(tool.available)
+        available: Boolean(tool.available),
+        isNew: isToolNew(tool.id)
       }))
     }));
 
