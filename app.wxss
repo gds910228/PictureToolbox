@@ -116,6 +116,16 @@ page::before {
    BUTTONS
    =================================== */
 
+/* 微信 <button> 原生组件默认带 line-height/padding，仅靠 line-height 居中在不同基础库/机型下文字会偏下。
+   统一用 flex 居中 + 清零 padding + border-box，覆盖所有页面按钮（各页 .btn-primary 未设 display/padding，此规则生效）。 */
+button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 .btn {
   width: 100%;
   height: 96rpx;
