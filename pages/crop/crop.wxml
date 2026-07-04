@@ -1,144 +1,90 @@
 <!--pages/crop/crop.wxml-->
 <view class="container">
-  <!-- 上传区域 -->
-  <view class="upload-section" wx:if="{{!showResult}}">
+  <!-- 步骤 1：选图 -->
+  <view wx:if="{{!imageSrc}}" class="upload-section">
     <view class="upload-box" bindtap="chooseImage">
       <text class="upload-icon">✂️</text>
       <text class="upload-text">点击选择图片</text>
+      <text class="upload-sub">智能构图 · 多比例 / 平台尺寸交互裁剪</text>
+    </view>
+    <view class="upload-tip">本地算法即时定位主体，拖拽缩放微调，实时预览</view>
+  </view>
+
+  <!-- 步骤 2：交互式裁剪 -->
+  <view wx:if="{{imageSrc && !showResult}}" class="editor">
+    <view class="stage-wrap">
+      <view class="stage" style="width:{{stageW}}px;height:{{stageH}}px;">
+        <image class="stage-img" src="{{imageSrc}}" mode="scaleToFill"
+               style="width:{{stageW}}px;height:{{stageH}}px;" />
+        <view class="crop-box"
+              style="left:{{box.x}}px;top:{{box.y}}px;width:{{box.w}}px;height:{{box.h}}px;"
+              catchtouchstart="onBoxTouchStart"
+              catchtouchmove="onBoxTouchMove"
+              catchtouchend="onBoxTouchEnd">
+          <view class="handle h-tl"></view>
+          <view class="handle h-tr"></view>
+          <view class="handle h-bl"></view>
+          <view class="handle h-br"></view>
+        </view>
+      </view>
     </view>
 
-    <image
-      wx:if="{{imageSrc}}"
-      class="preview-image"
-      src="{{imageSrc}}"
-      mode="aspectFit"
-      bindtap="previewImage"
-      data-url="{{imageSrc}}"
-    />
+    <view class="detect-label" wx:if="{{detectSource === 'local'}}">
+      <text class="dot"></text>
+      <text>本地智能构图</text>
+    </view>
 
-    <!-- 显示原图尺寸 -->
-    <view class="image-info" wx:if="{{imageSrc}}">
-      <text class="info-text">原图尺寸：{{imageWidth}} × {{imageHeight}} px</text>
+    <view class="preset-section">
+      <view class="section-title">比例</view>
+      <view class="preset-row">
+        <view wx:for="{{ratioPresets}}" wx:key="id"
+              class="preset-chip {{presetId === item.id ? 'active' : ''}}"
+              data-id="{{item.id}}" bindtap="selectRatio">
+          <text class="chip-name">{{item.name}}</text>
+          <text class="chip-desc">{{item.desc}}</text>
+        </view>
+      </view>
+
+      <view class="section-title">平台尺寸</view>
+      <view class="preset-row">
+        <view wx:for="{{platformPresets}}" wx:key="id"
+              class="preset-chip {{presetId === item.id ? 'active' : ''}}"
+              data-id="{{item.id}}" bindtap="selectPlatform">
+          <text class="chip-name">{{item.name}}</text>
+          <text class="chip-desc">{{item.desc}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="slider-section">
+      <view class="section-title">缩放微调</view>
+      <slider class="zoom-slider" min="30" max="100" value="{{sliderVal}}"
+              block-size="22" activeColor="#00f0ff" backgroundColor="rgba(255,255,255,0.1)"
+              bindchanging="onSlider" bindchange="onSlider" />
+    </view>
+
+    <view class="preview-section">
+      <view class="section-title">实时预览</view>
+      <view class="preview-pane" style="width:{{previewW}}px;height:{{previewH}}px;">
+        <image class="preview-img" src="{{imageSrc}}" mode="scaleToFill"
+               style="width:{{pvImgW}}px;height:{{pvImgH}}px;transform:translate({{pvX}}px,{{pvY}}px);" />
+      </view>
+    </view>
+
+    <view class="actions">
+      <button class="btn-primary" bindtap="onConfirm" loading="{{processing}}" disabled="{{processing}}">
+        {{processing ? '裁剪中...' : '完成裁剪'}}
+      </button>
+      <button class="btn-secondary" bindtap="resetAll">重新选图</button>
     </view>
   </view>
 
-  <!-- 裁剪模式选择 -->
-  <view class="mode-section" wx:if="{{imageSrc && !showResult}}">
-    <view class="mode-tabs">
-      <view
-        class="mode-tab {{cropMode === 'ratio' ? 'active' : ''}}"
-        data-mode="ratio"
-        bindtap="switchCropMode"
-      >
-        按比例裁剪
-      </view>
-      <view
-        class="mode-tab {{cropMode === 'pixel' ? 'active' : ''}}"
-        data-mode="pixel"
-        bindtap="switchCropMode"
-      >
-        按像素裁剪
-      </view>
-    </view>
-  </view>
-
-  <!-- 按比例裁剪 -->
-  <view class="ratio-section" wx:if="{{imageSrc && !showResult && cropMode === 'ratio'}}">
-    <view class="section-title">选择裁剪比例</view>
-    <view class="ratio-list">
-      <view
-        class="ratio-item {{selectedRatio === index ? 'active' : ''}}"
-        wx:for="{{ratios}}"
-        wx:key="name"
-        data-index="{{index}}"
-        bindtap="selectRatio"
-      >
-        <view class="ratio-name">{{item.name}}</view>
-        <view class="ratio-desc" wx:if="{{item.desc}}">{{item.desc}}</view>
-      </view>
-    </view>
-
-    <!-- 自定义比例输入 -->
-    <view class="custom-ratio-input" wx:if="{{showCustomRatio}}">
-      <view class="section-title">输入自定义比例</view>
-      <view class="ratio-input-group">
-        <input
-          class="ratio-input"
-          type="number"
-          placeholder="宽度"
-          value="{{customWidth}}"
-          bindinput="onWidthInput"
-        />
-        <text class="ratio-separator">:</text>
-        <input
-          class="ratio-input"
-          type="number"
-          placeholder="高度"
-          value="{{customHeight}}"
-          bindinput="onHeightInput"
-        />
-      </view>
-      <view class="ratio-hint">例如输入 16:9 表示宽高比为16:9</view>
-    </view>
-  </view>
-
-  <!-- 按像素裁剪 -->
-  <view class="pixel-section" wx:if="{{imageSrc && !showResult && cropMode === 'pixel'}}">
-    <view class="section-title">输入裁剪尺寸（像素）</view>
-    <view class="pixel-input-group">
-      <view class="pixel-input-item">
-        <text class="pixel-label">宽度</text>
-        <input
-          class="pixel-input"
-          type="number"
-          placeholder="最大{{imageWidth}}"
-          value="{{customWidth}}"
-          bindinput="onWidthInput"
-        />
-        <text class="pixel-unit">px</text>
-      </view>
-      <view class="pixel-input-item">
-        <text class="pixel-label">高度</text>
-        <input
-          class="pixel-input"
-          type="number"
-          placeholder="最大{{imageHeight}}"
-          value="{{customHeight}}"
-          bindinput="onHeightInput"
-        />
-        <text class="pixel-unit">px</text>
-      </view>
-    </view>
-    <view class="ratio-hint">将从图片中心裁剪指定尺寸</view>
-  </view>
-
-  <!-- 裁剪按钮 -->
-  <button
-    wx:if="{{imageSrc && !showResult}}"
-    class="btn-primary"
-    bindtap="startCrop"
-    loading="{{cropping}}"
-    disabled="{{cropping}}"
-  >
-    {{cropping ? '裁剪中...' : '开始裁剪'}}
-  </button>
-
-  <!-- 结果展示 -->
-  <view class="result-section" wx:if="{{showResult}}">
-    <view class="result-title">裁剪完成！</view>
-
-    <view class="image-comparison">
-      <view class="image-item">
-        <image class="result-image" src="{{imageSrc}}" mode="aspectFit" />
-        <text class="image-label">原图</text>
-      </view>
-      <view class="image-item">
-        <image class="result-image" src="{{croppedSrc}}" mode="aspectFit" />
-        <text class="image-label">裁剪后</text>
-      </view>
-    </view>
-
-    <button class="btn-primary" bindtap="saveImage">保存到相册</button>
-    <button class="btn-secondary" bindtap="chooseImage">继续裁剪</button>
+  <!-- 步骤 3：结果 -->
+  <view wx:if="{{showResult}}" class="result-section">
+    <view class="result-title">裁剪完成</view>
+    <image class="result-img" src="{{resultSrc}}" mode="aspectFit" bindtap="previewResult" />
+    <view class="result-info">{{resultInfo}}</view>
+    <button class="btn-primary" bindtap="saveResult">保存到相册</button>
+    <button class="btn-secondary" bindtap="resetAll">再裁一张</button>
   </view>
 </view>
