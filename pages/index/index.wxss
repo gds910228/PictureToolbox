@@ -826,6 +826,52 @@
   50% { width: 30rpx; opacity: 0.6; }
 }
 
+/* AI Chat Icon - 图片相框(左上青) + 对话气泡(右下粉,内含三点,呼吸缩放) */
+.icon-aiChat {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-aiChat::before {
+  content: '';
+  position: absolute;
+  width: 42rpx;
+  height: 32rpx;
+  top: 22rpx;
+  left: 16rpx;
+  border: 3rpx solid var(--color-neon-cyan);
+  border-radius: 8rpx;
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.2) 0%, rgba(255, 0, 128, 0.15) 100%);
+  box-shadow: 0 0 12rpx rgba(0, 240, 255, 0.4);
+}
+
+.icon-aiChat::after {
+  content: '';
+  position: absolute;
+  width: 40rpx;
+  height: 32rpx;
+  bottom: 20rpx;
+  right: 14rpx;
+  border: 3rpx solid var(--color-hot-magenta);
+  border-radius: 10rpx;
+  background-color: rgba(255, 0, 128, 0.08);
+  background-image: radial-gradient(circle, var(--color-hot-magenta) 2.5rpx, transparent 3rpx);
+  background-size: 12rpx 100%;
+  background-repeat: repeat-x;
+  background-position: 8rpx center;
+  box-shadow: 0 0 12rpx rgba(255, 0, 128, 0.35);
+  animation: chatBubble 1.8s ease-in-out infinite;
+}
+
+@keyframes chatBubble {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 12rpx rgba(255, 0, 128, 0.35); }
+  50% { transform: scale(1.1); box-shadow: 0 0 18rpx rgba(255, 0, 128, 0.6); }
+}
+
 /* AI Matting Icon - 主体方块从虚线底板抠起浮起 */
 .icon-aiMatting {
   width: 96rpx;

@@ -1,0 +1,98 @@
+<!--pages/aiChat/aiChat.wxml-->
+<view class="container">
+  <!-- 标题 -->
+  <view class="page-header">
+    <text class="page-title">AI图片问答</text>
+    <text class="page-subtitle">上传图片，自由提问，多轮追问</text>
+  </view>
+
+  <!-- 图片栏 -->
+  <view class="image-bar">
+    <view class="thumb-wrap" wx:if="{{imageSrc}}" bindtap="chooseImage">
+      <image class="thumb" src="{{imageSrc}}" mode="aspectFill" />
+      <view class="change-tip">换图</view>
+    </view>
+    <view class="upload-btn" wx:else bindtap="chooseImage">
+      <text class="upload-plus">＋</text>
+      <text class="upload-text">上传图片</text>
+    </view>
+    <view class="clear-btn" wx:if="{{messages.length}}" bindtap="clearChat">清空会话</view>
+  </view>
+
+  <!-- 对话列表 -->
+  <scroll-view
+    class="chat-list"
+    scroll-y
+    scroll-into-view="{{scrollAnchor}}"
+    scroll-with-animation
+    enhanced
+    show-scrollbar="{{false}}"
+  >
+    <view wx:if="{{!imageSrc}}" class="empty-tip">
+      <text>上传一张图片，开始向它提问</text>
+    </view>
+    <view wx:elif="{{messages.length === 0}}" class="empty-tip">
+      <text>图片已就绪，试试下方的快捷问题，或直接输入</text>
+    </view>
+
+    <view
+      wx:for="{{messages}}"
+      wx:key="index"
+      class="msg msg-{{item.role}}"
+    >
+      <view class="bubble {{item.role}}-bubble {{item.pending ? 'pending' : ''}} {{item.error ? 'error' : ''}}">
+        <view wx:if="{{item.pending}}" class="typing-dots">
+          <text class="dot"></text>
+          <text class="dot"></text>
+          <text class="dot"></text>
+        </view>
+        <text wx:else user-select="{{true}}" class="bubble-text">{{item.content}}</text>
+        <view wx:if="{{item.demo}}" class="demo-tag">演示模式</view>
+      </view>
+      <view class="msg-actions" wx:if="{{item.role === 'assistant' && !item.pending}}">
+        <text class="act" data-idx="{{index}}" bindtap="onCopy">复制</text>
+        <text
+          wx:if="{{index === messages.length - 1}}"
+          class="act"
+          bindtap="regenerate"
+        >重新生成</text>
+      </view>
+    </view>
+
+    <view id="bottom" class="anchor"></view>
+  </scroll-view>
+
+  <!-- 预设快捷问题 -->
+  <view class="presets" wx:if="{{imageSrc}}">
+    <view
+      class="preset"
+      wx:for="{{presets}}"
+      wx:key="*this"
+      data-q="{{item}}"
+      bindtap="onPreset"
+    >{{item}}</view>
+  </view>
+
+  <!-- 输入栏 -->
+  <view class="input-bar">
+    <view class="cap-tip" wx:if="{{reachedCap}}">已达 {{10}} 轮上限，清空会话后可继续</view>
+    <view class="input-row">
+      <input
+        class="input"
+        value="{{input}}"
+        bindinput="onInput"
+        bindconfirm="send"
+        placeholder="问点什么..."
+        placeholder-class="input-ph"
+        confirm-type="send"
+        disabled="{{sending || reachedCap}}"
+        maxlength="200"
+      />
+      <button
+        class="send-btn"
+        bindtap="send"
+        disabled="{{sending || reachedCap || !fileID}}"
+      >{{sending ? '…' : '发送'}}</button>
+    </view>
+  </view>
+</view>

@@ -5,8 +5,6 @@
 // 未登记的功能默认不挂 NEW。
 const NEW_WINDOW_DAYS = 14;
 const LAUNCH_DATES = {
-  aiDescribe: '2026-03-05',
-  aiCaption: '2026-03-05',
   aiMatting: '2026-03-04',
   aiStyle: '2026-03-05',
   aiOCR: '2026-06-17',
@@ -15,6 +13,7 @@ const LAUNCH_DATES = {
   exif: '2026-06-20',
   aiUpscale: '2026-07-03',
   aiColorize: '2026-07-03',
+  aiChat: '2026-07-03',
   similarity: '2026-07-03'
 };
 
@@ -29,7 +28,7 @@ Page({
   data: {
     // 顶部 Banner 打字机轮播的工具名
     bannerTools: [
-      { id: 'aiDescribe', name: '智能识别' },
+      { id: 'aiChat', name: '图片问答' },
       { id: 'aiMatting', name: '一键抠图' },
       { id: 'aiEraser', name: '去水印' },
       { id: 'aiStyle', name: '风格迁移' },
@@ -72,18 +71,10 @@ Page({
             isNew: true
           },
           {
-            id: 'aiCaption',
-            name: 'AI智能配文',
-            desc: '一键生成社交媒体文案',
-            url: '/pages/aiCaption/aiCaption',
-            available: true,
-            isNew: true
-          },
-          {
-            id: 'aiDescribe',
-            name: 'AI图片描述',
-            desc: '智能识别图片内容并生成描述',
-            url: '/pages/aiDescribe/aiDescribe',
+            id: 'aiChat',
+            name: 'AI图片问答',
+            desc: '上传图片自由提问，多轮对话追问细节',
+            url: '/pages/aiChat/aiChat',
             available: true,
             isNew: true
           },
