@@ -1241,7 +1241,7 @@
   border-bottom: 2rpx solid var(--color-neon-cyan);
 }
 
-/* GIF Icon - 胶片帧 + 播放三角 */
+/* GIF Icon - 胶片帧（孔位滚动）+ 播放三角（呼吸辉光） */
 .icon-makeGif {
   width: 96rpx;
   height: 96rpx;
@@ -1257,10 +1257,16 @@
   transform: translate(-50%, -50%);
   border: 2rpx solid var(--color-neon-cyan);
   border-radius: 8rpx;
-  background:
-    radial-gradient(circle, rgba(0,240,255,0.55) 2rpx, transparent 3rpx) 0 8rpx / 12rpx 12rpx,
-    linear-gradient(135deg, rgba(255,0,128,0.18) 0%, rgba(0,240,255,0.12) 100%);
-  box-shadow: 0 0 14rpx rgba(0,240,255,0.35);
+  background-color: rgba(10, 14, 39, 0.55);
+  background-image:
+    radial-gradient(circle, rgba(0, 240, 255, 0.85) 2rpx, transparent 3rpx),
+    radial-gradient(circle, rgba(0, 240, 255, 0.85) 2rpx, transparent 3rpx),
+    linear-gradient(135deg, rgba(255, 0, 128, 0.20) 0%, rgba(0, 240, 255, 0.14) 100%);
+  background-position: 0 3rpx, 0 59rpx, 0 0;
+  background-size: 10rpx 10rpx, 10rpx 10rpx, 100% 100%;
+  background-repeat: repeat-x, repeat-x, no-repeat;
+  box-shadow: 0 0 14rpx rgba(0, 240, 255, 0.35);
+  animation: gif-film-roll 1.6s linear infinite;
 }
 .icon-makeGif::after {
   content: '';
@@ -1273,7 +1279,22 @@
   border-left: 18rpx solid var(--color-hot-magenta);
   border-top: 12rpx solid transparent;
   border-bottom: 12rpx solid transparent;
-  filter: drop-shadow(0 0 6rpx rgba(255,0,128,0.6));
+  filter: drop-shadow(0 0 6rpx rgba(255, 0, 128, 0.6));
+  animation: gif-play-pulse 1.6s ease-in-out infinite;
+}
+@keyframes gif-film-roll {
+  from { background-position: 0 3rpx, 0 59rpx, 0 0; }
+  to   { background-position: 10rpx 3rpx, 10rpx 59rpx, 0 0; }
+}
+@keyframes gif-play-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 5rpx rgba(255, 0, 128, 0.55));
+    opacity: 0.82;
+  }
+  50% {
+    filter: drop-shadow(0 0 11rpx rgba(255, 0, 128, 1));
+    opacity: 1;
+  }
 }
 
 /* EXIF 图标：放大镜 */
