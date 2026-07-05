@@ -1,0 +1,163 @@
+<!-- pages/formatRecommend/formatRecommend.wxml -->
+<view class="page-container">
+
+  <!-- 页头 -->
+  <view class="page-header">
+    <view class="header-line"></view>
+    <text class="header-title">格式推荐</text>
+    <text class="header-sub">分析图片特征 · 推荐最优格式 · 本地启发式</text>
+  </view>
+
+  <!-- 隐藏画布（取像素 / 转换导出） -->
+  <canvas type="2d" id="analyzeCanvas" class="hidden-canvas"></canvas>
+
+  <!-- 选图 -->
+  <view class="card section">
+    <view class="section-title"><text>选择图片</text></view>
+    <block wx:if="{{!sourcePath}}">
+      <button class="btn btn-primary" bindtap="chooseImage">上传图片</button>
+      <view class="hint">支持 JPG / PNG，本地分析特征，不上传服务器</view>
+    </block>
+    <block wx:else>
+      <view class="src-preview" bindtap="previewSource">
+        <image class="src-img" src="{{sourcePath}}" mode="aspectFit"></image>
+      </view>
+      <view class="src-meta" wx:if="{{sourceW}}">{{sourceMetaText}}</view>
+      <view class="src-actions">
+        <button class="btn btn-secondary src-btn" bindtap="chooseImage">换一张</button>
+        <button class="btn btn-secondary src-btn danger" bindtap="clearImage">清空</button>
+      </view>
+    </block>
+  </view>
+
+  <!-- 分析中 -->
+  <view class="card section" wx:if="{{analyzing}}">
+    <view class="analyzing-row">
+      <view class="loading-dot"></view>
+      <text class="analyzing-text">正在分析图片特征...</text>
+    </view>
+  </view>
+
+  <!-- 图片特征 -->
+  <view class="card section" wx:if="{{primary}}">
+    <view class="section-title">
+      <text>图片特征</text>
+      <text class="section-count">{{featureCount}} 项</text>
+    </view>
+    <view class="feature-grid">
+      <view class="feature-cell">
+        <text class="feature-label">透明通道</text>
+        <text class="feature-value">{{alphaText}}</text>
+      </view>
+      <view class="feature-cell">
+        <text class="feature-label">颜色数量</text>
+        <text class="feature-value">{{colorCountText}}</text>
+      </view>
+      <view class="feature-cell">
+        <text class="feature-label">图像类型</text>
+        <text class="feature-value">{{typeText}}</text>
+      </view>
+      <view class="feature-cell">
+        <text class="feature-label">边缘密度</text>
+        <text class="feature-value">{{edgeText}}</text>
+      </view>
+      <view class="feature-cell">
+        <text class="feature-label">平坦区域</text>
+        <text class="feature-value">{{flatText}}</text>
+      </view>
+      <view class="feature-cell">
+        <text class="feature-label">分辨率</text>
+        <text class="feature-value feature-value-sm">{{resolutionText}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 使用场景 -->
+  <view class="card section" wx:if="{{primary}}">
+    <view class="section-title"><text>使用场景</text></view>
+    <view class="scenario-row">
+      <view wx:for="{{scenarios}}" wx:key="id"
+            class="scenario-chip {{currentScenario===item.id?'active':''}}"
+            data-id="{{item.id}}" bindtap="selectScenario">
+        {{item.name}}
+      </view>
+    </view>
+    <view class="hint">场景影响推荐权重：微信传播优先兼容性，归档优先体积</view>
+  </view>
+
+  <!-- 推荐结果 -->
+  <view class="card section" wx:if="{{primary}}">
+    <view class="section-title"><text>格式推荐</text></view>
+
+    <!-- 主推 -->
+    <view class="rec-card primary">
+      <view class="rec-head">
+        <text class="rec-format">{{primary.formatUpper}}</text>
+        <text class="rec-badge primary-badge">主推</text>
+        <text class="rec-conv {{primary.convertible?'ok':'warn'}}">{{primary.convText}}</text>
+      </view>
+      <view class="rec-meta">
+        <text class="rec-quality">质量：{{primary.qualityText}}</text>
+        <text class="rec-size">{{primary.sizeText}}</text>
+      </view>
+      <view class="rec-reason">{{primary.reason}}</view>
+    </view>
+
+    <!-- 备选 -->
+    <view wx:for="{{alternatives}}" wx:key="format" class="rec-card alt">
+      <view class="rec-head">
+        <text class="rec-format">{{item.formatUpper}}</text>
+        <text class="rec-badge">备选</text>
+        <text class="rec-conv {{item.convertible?'ok':'warn'}}">{{item.convText}}</text>
+      </view>
+      <view class="rec-meta">
+        <text class="rec-quality">质量：{{item.qualityText}}</text>
+        <text class="rec-size">{{item.sizeText}}</text>
+      </view>
+      <view class="rec-reason">{{item.reason}}</view>
+    </view>
+  </view>
+
+  <!-- 格式转换（JPG/PNG，Canvas 实转 + 实测算体积） -->
+  <view class="card section" wx:if="{{primary && showConvert}}">
+    <view class="section-title"><text>格式转换（实测算体积）</text></view>
+
+    <view class="convert-row">
+      <text class="convert-label">输出格式</text>
+      <view class="format-toggle">
+        <view wx:for="{{convertFormats}}" wx:key="format"
+              class="format-chip {{convertFormat===item.format?'active':''}}"
+              data-format="{{item.format}}" bindtap="selectConvertFormat">
+          {{item.label}}
+        </view>
+      </view>
+    </view>
+
+    <view class="convert-row" wx:if="{{convertFormat==='jpg'}}">
+      <text class="convert-label">质量 {{convertQualityText}}</text>
+      <slider class="quality-slider" min="40" max="100" step="5" value="{{convertQuality}}"
+              bindchanging="onQualityChanging" bindchange="onQualityChange"
+              block-color="#00F0FF" activeColor="#00F0FF" backgroundColor="rgba(255,255,255,0.12)"/>
+    </view>
+
+    <view class="convert-est" wx:if="{{convertEstText}}">预估体积：{{convertEstText}}</view>
+
+    <view class="convert-actions">
+      <button class="btn btn-primary convert-btn" bindtap="doConvert" loading="{{converting}}" disabled="{{converting}}">
+        {{converting ? '转换中...' : '开始转换'}}
+      </button>
+    </view>
+    <view class="hint">JPG/PNG 由本工具 Canvas 实转并实测体积；WebP/AVIF 需专业工具导出</view>
+  </view>
+
+  <!-- 转换结果 -->
+  <view class="card section" wx:if="{{convertPath}}">
+    <view class="section-title"><text>转换结果</text></view>
+    <view class="preview-wrap" bindtap="previewConvert">
+      <image class="preview-img" src="{{convertPath}}" mode="widthFix"></image>
+    </view>
+    <view class="result-meta" wx:if="{{convertSizeText}}"><text>实际体积：{{convertSizeText}}</text></view>
+    <button class="btn btn-secondary save-btn" bindtap="saveConvert">保存到相册</button>
+  </view>
+
+</view>
