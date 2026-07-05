@@ -20,7 +20,8 @@
     "pages/aiColorize/aiColorize",
     "pages/aiChat/aiChat",
     "pages/similarity/similarity",
-    "pages/makeGif/makeGif"
+    "pages/makeGif/makeGif",
+    "pages/colorAnalysis/colorAnalysis"
   ],
   "window": {
     "backgroundTextStyle": "light",

@@ -1,0 +1,105 @@
+<!-- pages/colorAnalysis/colorAnalysis.wxml -->
+<view class="page-container">
+
+  <!-- 页头 -->
+  <view class="page-header">
+    <view class="header-line"></view>
+    <text class="header-title">颜色分析</text>
+    <text class="header-sub">提取主色调 · 生成色卡 · 本地分析</text>
+  </view>
+
+  <!-- 隐藏画布（取像素 / 绘制色卡图） -->
+  <canvas type="2d" id="analyzeCanvas" class="hidden-canvas"></canvas>
+
+  <!-- 选图 -->
+  <view class="card section">
+    <view class="section-title"><text>选择图片</text></view>
+    <block wx:if="{{!sourcePath}}">
+      <button class="btn btn-primary" bindtap="chooseImage">上传图片</button>
+      <view class="hint">支持 JPG / PNG，本地提取主色，不上传服务器</view>
+    </block>
+    <block wx:else>
+      <view class="src-preview" bindtap="previewSource">
+        <image class="src-img" src="{{sourcePath}}" mode="aspectFit"></image>
+      </view>
+      <view class="src-meta" wx:if="{{sourceW}}">原图尺寸：{{sourceW}} × {{sourceH}} px</view>
+      <view class="src-actions">
+        <button class="btn btn-secondary src-btn" bindtap="chooseImage">换一张</button>
+        <button class="btn btn-secondary src-btn danger" bindtap="clearImage">清空</button>
+      </view>
+    </block>
+  </view>
+
+  <!-- 提取参数 -->
+  <view class="card section" wx:if="{{sourcePath}}">
+    <view class="section-title"><text>提取参数</text></view>
+    <view class="opt-row">
+      <text class="opt-label">颜色数量</text>
+      <slider class="count-slider" min="{{minCount}}" max="{{maxCount}}" step="1" value="{{colorCount}}"
+              bindchanging="onCountChanging" bindchange="onCountChange"
+              block-color="#00F0FF" activeColor="#00F0FF" backgroundColor="rgba(255,255,255,0.12)"/>
+      <text class="count-text">{{colorCountText}}</text>
+    </view>
+    <view class="hint">拖动调整主色数量（{{minCount}}-{{maxCount}} 个），松手自动重新提取</view>
+  </view>
+
+  <!-- 分析中 -->
+  <view class="card section" wx:if="{{analyzing}}">
+    <view class="analyzing-row">
+      <view class="loading-dot"></view>
+      <text class="analyzing-text">正在分析像素...</text>
+    </view>
+  </view>
+
+  <!-- 色卡结果 -->
+  <view class="card section" wx:if="{{palette.length}}">
+    <view class="section-title">
+      <text>色卡</text>
+      <text class="section-count">{{palette.length}} 色</text>
+    </view>
+
+    <!-- 视觉色卡条：点击复制 -->
+    <view class="palette-strip">
+      <view wx:for="{{palette}}" wx:key="hex"
+            class="palette-block"
+            style="background:{{item.hex}}"
+            data-hex="{{item.hex}}" bindtap="tapColor">
+        <text class="palette-pct" style="color:{{item.textColor}}">{{item.pct}}%</text>
+      </view>
+    </view>
+
+    <!-- 详细列表 -->
+    <view class="color-list">
+      <view wx:for="{{palette}}" wx:key="hex" class="color-row" data-hex="{{item.hex}}" bindtap="tapColor">
+        <view class="color-swatch" style="background:{{item.hex}}"></view>
+        <view class="color-info">
+          <text class="color-hex">{{item.hex}}</text>
+          <text class="color-sub">{{item.rgbText}}</text>
+          <text class="color-sub">{{item.hslText}}</text>
+        </view>
+        <view class="color-pct-wrap">
+          <text class="color-pct-num">{{item.pct}}%</text>
+          <view class="color-pct-bar"><view class="color-pct-fill" style="width:{{item.pct}}%"></view></view>
+        </view>
+        <view class="copy-icon">复制</view>
+      </view>
+    </view>
+
+    <!-- 操作 -->
+    <view class="palette-actions">
+      <button class="btn btn-secondary action-btn" bindtap="copyAllHex">复制全部 HEX</button>
+      <button class="btn btn-primary action-btn" bindtap="exportCard">导出色卡图</button>
+    </view>
+  </view>
+
+  <!-- 导出结果 -->
+  <view class="card section" wx:if="{{exportPath}}">
+    <view class="section-title"><text>色卡图</text></view>
+    <view class="preview-wrap" bindtap="previewCard">
+      <image class="preview-img" src="{{exportPath}}" mode="widthFix"></image>
+    </view>
+    <view class="result-meta" wx:if="{{exportSizeText}}"><text>{{exportSizeText}}</text></view>
+    <button class="btn btn-secondary save-btn" bindtap="saveCard">保存到相册</button>
+  </view>
+
+</view>

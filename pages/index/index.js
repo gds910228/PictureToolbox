@@ -15,7 +15,8 @@ const LAUNCH_DATES = {
   aiColorize: '2026-07-03',
   aiChat: '2026-07-03',
   similarity: '2026-07-03',
-  makeGif: '2026-07-03'
+  makeGif: '2026-07-03',
+  colorAnalysis: '2026-07-03'
 };
 
 function isToolNew(toolId) {
@@ -156,6 +157,14 @@ Page({
             name: 'EXIF信息',
             desc: '查看图片元数据，一键抹除GPS等隐私信息',
             url: '/pages/exif/exif',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'colorAnalysis',
+            name: '颜色分析',
+            desc: '提取图片主色调，生成色卡并导出HEX/RGB/HSL',
+            url: '/pages/colorAnalysis/colorAnalysis',
             available: true,
             isNew: true
           },
