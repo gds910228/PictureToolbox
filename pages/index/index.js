@@ -45,6 +45,78 @@ Page({
     // 分组
     groups: [
       {
+        key: 'ai',
+        title: 'AI 智能',
+        subtitle: '前沿 AI 能力加持',
+        expanded: true,
+        tools: [
+          {
+            id: 'aiOCR',
+            name: '文字识别',
+            desc: '高精度OCR识别图片中的文字',
+            url: '/pages/aiOCR/aiOCR',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiMatting',
+            name: '智能抠图',
+            desc: '自动识别主体，一键去除背景',
+            url: '/pages/aiMatting/aiMatting',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiEraser',
+            name: '去水印',
+            desc: '涂抹水印区域，AI智能修复去除',
+            url: '/pages/aiEraser/aiEraser',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiColorize',
+            name: '老照片上色',
+            desc: '黑白老照片智能上色，自然/复古风格',
+            url: '/pages/aiColorize/aiColorize',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiChat',
+            name: '图片问答',
+            desc: '上传图片自由提问，多轮对话追问细节',
+            url: '/pages/aiChat/aiChat',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiCaption',
+            name: '智能配文',
+            desc: '一键生成朋友圈、小红书等社媒配文',
+            url: '/pages/aiCaption/aiCaption',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiUpscale',
+            name: '图片放大',
+            desc: '2x/4x超分辨率放大，可选降噪锐化',
+            url: '/pages/aiUpscale/aiUpscale',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiStyle',
+            name: '风格迁移',
+            desc: '将照片转换为艺术风格',
+            url: '/pages/aiStyle/aiStyle',
+            available: true,
+            isNew: true
+          }
+        ]
+      },
+      {
         key: 'basic',
         title: '基础处理',
         subtitle: '日常图片处理必备',
@@ -119,78 +191,6 @@ Page({
             name: '找重复图',
             desc: '双图相似度对比，多图批量查重',
             url: '/pages/similarity/similarity',
-            available: true,
-            isNew: true
-          }
-        ]
-      },
-      {
-        key: 'ai',
-        title: 'AI 智能',
-        subtitle: '前沿 AI 能力加持',
-        expanded: true,
-        tools: [
-          {
-            id: 'aiOCR',
-            name: 'AI文字识别',
-            desc: '高精度OCR识别图片中的文字',
-            url: '/pages/aiOCR/aiOCR',
-            available: true,
-            isNew: true
-          },
-          {
-            id: 'aiMatting',
-            name: 'AI智能抠图',
-            desc: '自动识别主体，一键去除背景',
-            url: '/pages/aiMatting/aiMatting',
-            available: true,
-            isNew: true
-          },
-          {
-            id: 'aiEraser',
-            name: 'AI去水印',
-            desc: '涂抹水印区域，AI智能修复去除',
-            url: '/pages/aiEraser/aiEraser',
-            available: true,
-            isNew: true
-          },
-          {
-            id: 'aiColorize',
-            name: 'AI老照片上色',
-            desc: '黑白老照片智能上色，自然/复古风格',
-            url: '/pages/aiColorize/aiColorize',
-            available: true,
-            isNew: true
-          },
-          {
-            id: 'aiChat',
-            name: 'AI图片问答',
-            desc: '上传图片自由提问，多轮对话追问细节',
-            url: '/pages/aiChat/aiChat',
-            available: true,
-            isNew: true
-          },
-          {
-            id: 'aiCaption',
-            name: 'AI智能配文',
-            desc: '一键生成朋友圈、小红书等社媒配文',
-            url: '/pages/aiCaption/aiCaption',
-            available: true,
-            isNew: true
-          },
-          {
-            id: 'aiUpscale',
-            name: 'AI图片放大',
-            desc: '2x/4x超分辨率放大，可选降噪锐化',
-            url: '/pages/aiUpscale/aiUpscale',
-            available: true,
-            isNew: true
-          },
-          {
-            id: 'aiStyle',
-            name: 'AI风格迁移',
-            desc: '将照片转换为艺术风格',
-            url: '/pages/aiStyle/aiStyle',
             available: true,
             isNew: true
           }

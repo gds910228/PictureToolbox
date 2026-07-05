@@ -279,49 +279,58 @@
   border-color: rgba(255, 107, 53, 0.4);
 }
 
-/* AI 图标：脉冲圆点 */
+/* AI 图标：四角星（双色光晕旋转） */
 .group-icon--ai::before {
   content: '';
-  width: 28rpx;
-  height: 28rpx;
-  border-radius: 50%;
-  background: var(--gradient-neon);
-  box-shadow: 0 0 12rpx rgba(0, 240, 255, 0.6);
-  animation: aiDot 2s ease-in-out infinite;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -3rpx 0 0 -15rpx;
+  width: 30rpx;
+  height: 6rpx;
+  background: linear-gradient(to right, transparent 0%, var(--color-neon-cyan) 50%, transparent 100%);
+  filter: drop-shadow(0 0 5rpx rgba(0, 240, 255, 0.85));
+  animation: aiSparkleSpin 4s linear infinite;
 }
 
 .group-icon--ai::after {
   content: '';
   position: absolute;
-  width: 8rpx;
-  height: 8rpx;
-  border-radius: 50%;
-  background: var(--color-neon-cyan);
-  top: 12rpx;
-  right: 12rpx;
-  box-shadow: 0 0 6rpx var(--color-neon-cyan);
+  top: 50%;
+  left: 50%;
+  margin: -15rpx 0 0 -3rpx;
+  width: 6rpx;
+  height: 30rpx;
+  background: linear-gradient(to bottom, transparent 0%, var(--color-hot-magenta) 50%, transparent 100%);
+  filter: drop-shadow(0 0 5rpx rgba(255, 0, 128, 0.85));
+  animation: aiSparkleSpin 4s linear infinite;
 }
 
-@keyframes aiDot {
-  0%, 100% { transform: scale(1);   box-shadow: 0 0 12rpx rgba(0, 240, 255, 0.6); }
-  50%      { transform: scale(1.15); box-shadow: 0 0 20rpx rgba(255, 0, 128, 0.7); }
+@keyframes aiSparkleSpin {
+  0%   { transform: rotate(0deg)   scale(1);    }
+  50%  { transform: rotate(180deg) scale(1.15); }
+  100% { transform: rotate(360deg) scale(1);    }
 }
 
 /* 基础图标：齿轮 */
 .group-icon--basic::before {
   content: '';
-  width: 36rpx;
-  height: 36rpx;
+  width: 40rpx;
+  height: 40rpx;
   border-radius: 50%;
-  border: 4rpx solid var(--color-neon-cyan);
-  background: radial-gradient(circle, rgba(0, 240, 255, 0.3) 0%, transparent 70%);
+  background:
+    radial-gradient(circle, rgba(0, 240, 255, 0.45) 0%, rgba(0, 240, 255, 0.12) 38%, transparent 42%),
+    repeating-conic-gradient(var(--color-neon-cyan) 0deg 14deg, transparent 14deg 45deg);
   box-shadow: 0 0 10rpx rgba(0, 240, 255, 0.45);
-  animation: rotate 6s linear infinite;
+  animation: rotate 8s linear infinite;
 }
 
 .group-icon--basic::after {
   content: '';
   position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -5rpx 0 0 -5rpx;
   width: 10rpx;
   height: 10rpx;
   border-radius: 50%;
@@ -329,16 +338,16 @@
   box-shadow: 0 0 8rpx var(--color-neon-cyan);
 }
 
-/* 创意图标：闪光 */
+/* 创意图标：魔法棒 */
 .group-icon--creative::before {
   content: '';
-  width: 0;
-  height: 0;
-  border-left: 16rpx solid transparent;
-  border-right: 16rpx solid transparent;
-  border-bottom: 30rpx solid var(--color-hot-magenta);
-  filter: drop-shadow(0 0 10rpx rgba(255, 0, 128, 0.7));
-  animation: sparkle 1.6s ease-in-out infinite;
+  width: 6rpx;
+  height: 34rpx;
+  border-radius: 3rpx;
+  background: linear-gradient(to top, var(--color-electric-purple) 0%, var(--color-hot-magenta) 55%, var(--color-solar-flare) 100%);
+  transform: rotate(45deg);
+  box-shadow: 0 0 8rpx rgba(255, 107, 53, 0.6);
+  animation: wandGlow 2s ease-in-out infinite;
 }
 
 .group-icon--creative::after {
@@ -346,20 +355,27 @@
   position: absolute;
   width: 6rpx;
   height: 6rpx;
+  top: 14rpx;
+  right: 14rpx;
   border-radius: 50%;
   background: var(--color-solar-flare);
-  top: 18rpx;
-  right: 14rpx;
   box-shadow:
     0 0 6rpx var(--color-solar-flare),
-    -18rpx 12rpx 0 -1rpx #ffea00,
-    -18rpx 12rpx 6rpx -1rpx #ffea00;
-  animation: sparkle 1.6s ease-in-out 0.4s infinite;
+    0 -7rpx 0 -1rpx var(--color-solar-flare),
+    0  7rpx 0 -1rpx var(--color-solar-flare),
+   -7rpx 0  0 -1rpx var(--color-solar-flare),
+    7rpx 0  0 -1rpx var(--color-solar-flare);
+  animation: twinkle 1.4s ease-in-out infinite;
 }
 
-@keyframes sparkle {
-  0%, 100% { transform: scale(1);   opacity: 1; }
-  50%      { transform: scale(0.6); opacity: 0.6; }
+@keyframes wandGlow {
+  0%, 100% { box-shadow: 0 0 6rpx rgba(255, 107, 53, 0.5); }
+  50%      { box-shadow: 0 0 14rpx rgba(255, 0, 128, 0.85); }
+}
+
+@keyframes twinkle {
+  0%, 100% { transform: scale(1)    rotate(0deg);  opacity: 1;    }
+  50%      { transform: scale(0.55) rotate(45deg); opacity: 0.65; }
 }
 
 .group-meta {
