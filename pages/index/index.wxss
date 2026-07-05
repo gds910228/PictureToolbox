@@ -1241,6 +1241,41 @@
   border-bottom: 2rpx solid var(--color-neon-cyan);
 }
 
+/* GIF Icon - 胶片帧 + 播放三角 */
+.icon-makeGif {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+}
+.icon-makeGif::before {
+  content: '';
+  position: absolute;
+  width: 56rpx;
+  height: 72rpx;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: 2rpx solid var(--color-neon-cyan);
+  border-radius: 8rpx;
+  background:
+    radial-gradient(circle, rgba(0,240,255,0.55) 2rpx, transparent 3rpx) 0 8rpx / 12rpx 12rpx,
+    linear-gradient(135deg, rgba(255,0,128,0.18) 0%, rgba(0,240,255,0.12) 100%);
+  box-shadow: 0 0 14rpx rgba(0,240,255,0.35);
+}
+.icon-makeGif::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 0;
+  top: 50%;
+  left: calc(50% + 3rpx);
+  transform: translateY(-50%);
+  border-left: 18rpx solid var(--color-hot-magenta);
+  border-top: 12rpx solid transparent;
+  border-bottom: 12rpx solid transparent;
+  filter: drop-shadow(0 0 6rpx rgba(255,0,128,0.6));
+}
+
 /* EXIF 图标：放大镜 */
 .icon-exif {
   width: 96rpx;

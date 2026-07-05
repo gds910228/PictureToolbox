@@ -14,7 +14,8 @@ const LAUNCH_DATES = {
   aiUpscale: '2026-07-03',
   aiColorize: '2026-07-03',
   aiChat: '2026-07-03',
-  similarity: '2026-07-03'
+  similarity: '2026-07-03',
+  makeGif: '2026-07-03'
 };
 
 function isToolNew(toolId) {
@@ -175,10 +176,10 @@ Page({
         expanded: true,
         tools: [
           {
-            id: 'imgToPdf',
-            name: '多图合PDF',
-            desc: '多图按名称排序合成PDF，支持A4/16:9/1:1',
-            url: '/pages/imgToPdf/imgToPdf',
+            id: 'makeGif',
+            name: 'GIF制作',
+            desc: '多图合成动图，本地生成无需联网',
+            url: '/pages/makeGif/makeGif',
             available: true,
             isNew: true
           },
@@ -189,6 +190,14 @@ Page({
             url: '/pages/filter/filter',
             available: true,
             isNew: false
+          },
+          {
+            id: 'imgToPdf',
+            name: '多图合PDF',
+            desc: '多图按名称排序合成PDF，支持A4/16:9/1:1',
+            url: '/pages/imgToPdf/imgToPdf',
+            available: true,
+            isNew: true
           }
         ]
       }

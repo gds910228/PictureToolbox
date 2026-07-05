@@ -1,0 +1,142 @@
+<!-- pages/makeGif/makeGif.wxml -->
+<view class="page-container">
+
+  <!-- 页头 -->
+  <view class="page-header">
+    <view class="header-line"></view>
+    <text class="header-title">GIF 制作</text>
+    <text class="header-sub">多图合成动图 · 本地生成 · 无需联网</text>
+  </view>
+
+  <!-- 隐藏画布（用于逐帧合成与取像素） -->
+  <canvas type="2d" id="gifCanvas" class="hidden-canvas"></canvas>
+
+  <!-- 图片选择 -->
+  <view class="card section">
+    <view class="section-title">
+      <text>图片序列</text>
+      <text class="section-count">{{images.length}}/{{maxImages}}</text>
+    </view>
+
+    <view class="reorder-bar" wx:if="{{images.length > 0}}">
+      <view class="reorder-btn {{selectedIndex < 0 ? 'disabled' : ''}}" bindtap="moveLeft">◀ 左移</view>
+      <view class="reorder-btn {{selectedIndex < 0 ? 'disabled' : ''}}" bindtap="moveRight">右移 ▶</view>
+      <view class="reorder-spacer"></view>
+      <view class="reorder-btn danger" bindtap="clearAll">清空</view>
+    </view>
+
+    <scroll-view scroll-x class="thumb-strip" enhanced show-scrollbar="{{false}}">
+      <view class="thumb-list">
+        <block wx:for="{{images}}" wx:key="path">
+          <view class="thumb {{selectedIndex === index ? 'selected' : ''}}"
+                data-index="{{index}}" bindtap="tapImage">
+            <image class="thumb-img" src="{{item.path}}" mode="aspectFill"></image>
+            <view class="thumb-order">{{index + 1}}</view>
+            <view class="thumb-del" catchtap="removeImage" data-index="{{index}}">×</view>
+          </view>
+        </block>
+        <view class="thumb-add" wx:if="{{images.length < maxImages}}" bindtap="addImages">
+          <text class="add-plus">+</text>
+          <text class="add-text">添加</text>
+        </view>
+      </view>
+    </scroll-view>
+    <view class="hint" wx:if="{{images.length < minImages}}">至少选择 {{minImages}} 张图片（点击缩略图选中后可调整顺序）</view>
+    <view class="hint" wx:else>点击缩略图选中，使用上方按钮调整顺序</view>
+  </view>
+
+  <!-- 参数设置 -->
+  <view class="card section">
+    <view class="section-title"><text>生成参数</text></view>
+
+    <view class="opt-row">
+      <text class="opt-label">宽高比</text>
+      <view class="opt-group">
+        <view wx:for="{{aspectOptions}}" wx:key="value"
+              class="opt-chip {{aspect === item.value ? 'active' : ''}}"
+              data-value="{{item.value}}" bindtap="setAspect">{{item.label}}</view>
+      </view>
+    </view>
+
+    <view class="opt-row">
+      <text class="opt-label">输出尺寸</text>
+      <view class="opt-group">
+        <view wx:for="{{sizeOptions}}" wx:key="value"
+              class="opt-chip {{outSize === item.value ? 'active' : ''}}"
+              data-value="{{item.value}}" bindtap="setOutSize">{{item.label}}</view>
+        <text class="opt-suffix">px</text>
+      </view>
+    </view>
+
+    <view class="opt-row">
+      <text class="opt-label">每帧时长</text>
+      <slider class="delay-slider" min="50" max="3000" step="50" value="{{delayMs}}"
+              bindchanging="onDelayChanging" bindchange="onDelayChange"
+              block-color="#00F0FF" activeColor="#00F0FF" backgroundColor="rgba(255,255,255,0.12)"/>
+      <text class="delay-text">{{delayText}}</text>
+    </view>
+
+    <view class="opt-row">
+      <text class="opt-label">循环播放</text>
+      <view class="opt-group">
+        <switch checked="{{loop}}" bindchange="toggleLoop" color="#00F0FF"/>
+      </view>
+    </view>
+
+    <view class="opt-row">
+      <text class="opt-label">色彩抖动</text>
+      <view class="opt-group">
+        <switch checked="{{dither}}" bindchange="toggleDither" color="#00F0FF"/>
+      </view>
+      <text class="opt-tip">提升色彩过渡，关闭则帧间更稳定</text>
+    </view>
+  </view>
+
+  <!-- 字幕 -->
+  <view class="card section">
+    <view class="section-title"><text>字幕（可选）</text></view>
+    <input class="subtitle-input" value="{{subtitle}}" placeholder="输入字幕文字（留空则不加）"
+           maxlength="40" bindinput="onSubtitleInput"/>
+    <view class="opt-row">
+      <text class="opt-label">位置</text>
+      <view class="opt-group">
+        <view class="opt-chip {{subtitlePos === 'top' ? 'active' : ''}}" data-value="top" bindtap="setSubtitlePos">顶部</view>
+        <view class="opt-chip {{subtitlePos === 'bottom' ? 'active' : ''}}" data-value="bottom" bindtap="setSubtitlePos">底部</view>
+      </view>
+    </view>
+    <view class="opt-row">
+      <text class="opt-label">字号</text>
+      <view class="opt-group">
+        <view class="opt-chip {{subtitleSize === 'small' ? 'active' : ''}}" data-value="small" bindtap="setSubtitleSize">小</view>
+        <view class="opt-chip {{subtitleSize === 'medium' ? 'active' : ''}}" data-value="medium" bindtap="setSubtitleSize">中</view>
+        <view class="opt-chip {{subtitleSize === 'large' ? 'active' : ''}}" data-value="large" bindtap="setSubtitleSize">大</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 生成 -->
+  <view class="card section">
+    <button class="btn btn-primary generate-btn {{generating ? 'loading' : ''}}"
+            disabled="{{generating || images.length < minImages}}" bindtap="generate">
+      {{generating ? progressText : '生成 GIF'}}
+    </button>
+    <view class="progress-wrap" wx:if="{{generating}}">
+      <view class="progress-bar"><view class="progress-fill" style="width: {{progress}}%"></view></view>
+      <text class="progress-text">{{progress}}%</text>
+    </view>
+  </view>
+
+  <!-- 结果 -->
+  <view class="card section result-section" wx:if="{{resultPath}}">
+    <view class="section-title"><text>预览</text></view>
+    <view class="preview-wrap" bindtap="previewImage">
+      <image class="preview-img" src="{{resultPath}}" mode="aspectFit"></image>
+    </view>
+    <view class="result-meta">
+      <text>文件大小：{{resultSizeText}}</text>
+    </view>
+    <button class="btn btn-secondary save-btn" bindtap="saveGif">保存到相册</button>
+    <view class="hint">注：部分机型相册不播放动图预览，但 GIF 文件已正确保存，转发/收藏可正常播放。</view>
+  </view>
+
+</view>

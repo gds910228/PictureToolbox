@@ -1,0 +1,9 @@
+{
+  "name": "makeGif",
+  "version": "1.0.0",
+  "description": "GIF制作云函数增强位（暂未启用，MVP 为前端本地实现）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

@@ -19,7 +19,8 @@
     "pages/aiUpscale/aiUpscale",
     "pages/aiColorize/aiColorize",
     "pages/aiChat/aiChat",
-    "pages/similarity/similarity"
+    "pages/similarity/similarity",
+    "pages/makeGif/makeGif"
   ],
   "window": {
     "backgroundTextStyle": "light",
