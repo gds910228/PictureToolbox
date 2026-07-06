@@ -1,5 +1,8 @@
 // cloudfunctions/aiImageDescribe/index.js
 // AI图片描述云函数 - 使用混元大模型生成图片描述
+//
+// 定位：生成客观描述/解读（看懂图）。社媒发布文案请用 aiCaption 云函数；
+// 本函数 social 风格已移除以避免与 aiCaption 配文重叠。
 
 const cloud = require('wx-server-sdk');
 const tencentcloud = require('tencentcloud-sdk-nodejs');
@@ -114,13 +117,6 @@ async function callHunyuanAPI(imageURL, style) {
 4. 说明构图和视角
 5. 150-200字`,
 
-      social: `请为这张图片写一段适合社交媒体的描述。要求：
-1. 用轻松活泼的语言
-2. 可以使用emoji表情
-3. 适合发朋友圈、小红书等平台
-4. 引发共鸣或互动
-5. 50-80字`,
-
       concise: `请用一句话简洁概括这张图片的内容。要求：
 1. 抓住最核心的元素和主题
 2. 10-20字之间
@@ -205,8 +201,6 @@ function mockDescription(style) {
     artistic: `光影如诗，如梦似幻。画面流淌着温柔的色调，每一个细节都在诉说着独特的故事。这不仅是影像，更是凝固的时光，值得细细品味与珍藏。✨`,
 
     detailed: `这是一张构图精美的图片。从整体来看，画面层次分明，布局合理。前景部分细节清晰，主体突出；中景部分过渡自然，元素协调；背景部分简洁大方，不喧宾夺主。色彩运用恰到好处，明暗对比适度，充分展现了创作者的用心和技巧。`,
-
-    social: `捕捉到的美好瞬间～ 📷 这样的画面真的太治愈了！每一个细节都充满惊喜，让人忍不住想多看几眼。生活需要这样的小确幸，你说是吗？ 😊✨ #生活美学 #视觉盛宴`,
 
     concise: `精美的画面构图，光线柔和，色彩和谐。`,
 

@@ -1,45 +1,70 @@
 <view class="container">
   <view class="page-header">
-    <text class="page-title">AI智能配文</text>
-    <text class="page-subtitle">一键生成社交媒体文案</text>
+    <text class="page-title">AI 智能配文</text>
+    <text class="page-subtitle">看图一键生成社媒文案 · 混元大模型</text>
   </view>
 
-  <view class="image-section">
-    <image class="preview-image {{imageSrc ? '' : 'placeholder'}}" src="{{imageSrc}}" mode="aspectFit" bindtap="chooseImage" />
+  <!-- 图片选择区 -->
+  <view class="card image-section" bindtap="chooseImage">
+    <image class="preview-image {{imageSrc ? '' : 'placeholder'}}" src="{{imageSrc}}" mode="aspectFit" />
+    <view class="image-hint">{{imageSrc ? '点击更换图片' : '点击上传图片'}}</view>
   </view>
 
-  <view class="platform-section">
+  <!-- 平台选择 -->
+  <view class="card">
     <view class="section-title">选择平台</view>
     <view class="platform-list">
       <view class="platform-item {{selectedPlatform === item.value ? 'active' : ''}}"
-            wx:for="{{platforms}}" wx:key="value" data-platform="{{item.value}}" bindtap="selectPlatform">
+            wx:for="{{platforms}}" wx:key="value"
+            data-platform="{{item.value}}" bindtap="selectPlatform">
         <text class="platform-icon">{{item.icon}}</text>
         <text class="platform-label">{{item.label}}</text>
       </view>
     </view>
   </view>
 
-  <view class="topic-section">
+  <!-- 主题（可选） -->
+  <view class="card">
     <view class="section-title">指定主题（可选）</view>
-    <input class="topic-input" placeholder="例如：美食、旅行、穿搭..." value="{{topic}}" bindinput="onTopicInput" />
+    <input class="topic-input" placeholder="例如：美食、旅行、穿搭..."
+           placeholder-class="topic-ph" value="{{topic}}" bindinput="onTopicInput" />
   </view>
 
-  <view class="generate-section">
-    <button class="generate-btn" bindtap="generateCaption" disabled="{{loading || !fileID}}">
-      {{loading ? '生成中...' : (topic ? '生成「' + topic + '」主题配文' : '生成配文')}}
-    </button>
+  <!-- 生成按钮 -->
+  <button class="btn btn-primary generate-btn" bindtap="generateCaption" disabled="{{loading || !fileID}}">
+    {{loading ? '生成中...' : '生成配文'}}
+  </button>
+
+  <!-- 失败态 -->
+  <view class="card error-card" wx:if="{{hasError}}">
+    <view class="error-icon">⚠</view>
+    <view class="error-text">{{errorMsg}}</view>
+    <view class="error-sub" wx:if="{{errorType === 'rate_limit'}}">次日 0 点自动重置</view>
+    <button class="btn btn-secondary retry-btn" wx:if="{{errorType === 'service'}}" bindtap="retry">重试</button>
   </view>
 
+  <!-- 结果区 -->
   <view class="results-section" wx:if="{{captions.length > 0}}">
-    <view class="section-title">生成的文案</view>
+    <view class="results-header">
+      <text class="section-title">生成的文案</text>
+      <button class="regen-btn" bindtap="regenerate" disabled="{{loading}}">换一批</button>
+    </view>
+
+    <view class="mock-badge" wx:if="{{isMock}}">示例文案（未配置 AI 密钥）</view>
+    <view class="quota-info" wx:else>今日已用 {{used}}/{{limit}} 次</view>
+
     <view class="result-info" wx:if="{{topic}}">
-      <text class="info-text">平台：{{selectedPlatformLabel}} | 主题：{{topic}}</text>
+      <text>平台：{{selectedPlatformLabel}} | 主题：{{topic}}</text>
     </view>
-    <view class="caption-item" wx:for="{{captions}}" wx:key="index">
+
+    <view class="caption-item" wx:for="{{captions}}" wx:key="index"
+          data-caption="{{item}}" bindtap="copyCaption">
       <text class="caption-text">{{item}}</text>
-      <view class="caption-actions">
-        <button class="copy-btn" data-caption="{{item}}" bindtap="copyCaption">复制</button>
-      </view>
+      <view class="copy-mark">复制</view>
     </view>
+  </view>
+
+  <view class="disclaimer">
+    配文由混元大模型生成，仅供参考，请自行核实后发布。
   </view>
 </view>

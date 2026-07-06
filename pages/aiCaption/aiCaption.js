@@ -1,9 +1,19 @@
 // pages/aiCaption/aiCaption.js
+// AI 智能配文：选图 → 混元 VLM 看图 → 按平台生成 3 条可发布配文 → 一键复制
+//
+// 定位：aiCaption = 帮这张图配句话发出去（可发布文案，按平台口吻 + 话题标签）
+// 区别于 aiDescribe = 看懂这张图（客观描述/解读，不面向发布）。
+//
+// 云函数返回约定（见 cloudfunctions/aiCaption/index.js）：
+//   success:true  → captions[]，mock=true 表示示例文案（密钥未配置），另带 used/limit
+//   success:false → error='rate_limit'（配额用完）或 error=服务异常文案
+
 Page({
   data: {
     imageSrc: '',
     fileID: '',
     captions: [],
+    isMock: false,          // 云函数返回 mock 示例文案
     selectedPlatform: 'moments',
     selectedPlatformLabel: '朋友圈',
     platforms: [
@@ -13,7 +23,14 @@ Page({
       { value: 'douyin', label: '抖音', icon: '🎵' }
     ],
     topic: '',
-    loading: false
+    loading: false,
+    // 失败态
+    hasError: false,
+    errorType: '',          // '' | 'service' | 'rate_limit'
+    errorMsg: '',
+    // 配额
+    used: 0,
+    limit: 20
   },
 
   chooseImage() {
@@ -27,7 +44,11 @@ Page({
         that.setData({
           imageSrc: tempFilePath,
           fileID: '',
-          captions: []
+          captions: [],
+          isMock: false,
+          hasError: false,
+          errorType: '',
+          errorMsg: ''
         });
         that.uploadImage(tempFilePath);
       }
@@ -66,7 +87,11 @@ Page({
     this.setData({
       selectedPlatform: platform,
       selectedPlatformLabel: platformLabel,
-      captions: []
+      captions: [],
+      isMock: false,
+      hasError: false,
+      errorType: '',
+      errorMsg: ''
     });
   },
 
@@ -74,43 +99,88 @@ Page({
     this.setData({ topic: e.detail.value });
   },
 
+  /**
+   * 生成配文（重试 / 换一批 共用此入口：同图同平台同主题重新调用）
+   */
   async generateCaption() {
-    const that = this;
-    if (!that.data.fileID) {
+    if (!this.data.fileID) {
       wx.showToast({ title: '请先选择图片', icon: 'none' });
       return;
     }
 
-    that.setData({ loading: true });
+    this.setData({
+      loading: true,
+      hasError: false,
+      errorType: '',
+      errorMsg: '',
+      captions: []
+    });
     wx.showLoading({ title: 'AI创作中...', mask: true });
 
     try {
       const res = await wx.cloud.callFunction({
         name: 'aiCaption',
         data: {
-          fileID: that.data.fileID,
-          platform: that.data.selectedPlatform,
-          topic: that.data.topic
+          fileID: this.data.fileID,
+          platform: this.data.selectedPlatform,
+          topic: this.data.topic
         }
       });
 
       wx.hideLoading();
-      if (res.result.success) {
-        that.setData({ captions: res.result.captions });
+      const r = (res && res.result) || {};
+
+      if (r.success) {
+        this.setData({
+          captions: Array.isArray(r.captions) ? r.captions : [],
+          isMock: !!r.mock,
+          used: r.used || 0,
+          limit: r.limit || this.data.limit
+        });
+      } else if (r.error === 'rate_limit') {
+        this.setData({
+          hasError: true,
+          errorType: 'rate_limit',
+          errorMsg: `今日 ${r.limit || this.data.limit} 次配额已用完`,
+          used: r.used || 0,
+          limit: r.limit || this.data.limit,
+          isMock: false
+        });
       } else {
-        wx.showToast({ title: '生成失败', icon: 'none' });
+        this.setData({
+          hasError: true,
+          errorType: 'service',
+          errorMsg: r.error || '生成失败，请稍后重试',
+          isMock: false
+        });
       }
     } catch (err) {
       console.error('调用失败', err);
       wx.hideLoading();
-      wx.showToast({ title: '生成失败', icon: 'none' });
+      this.setData({
+        hasError: true,
+        errorType: 'service',
+        errorMsg: '网络异常，请稍后重试',
+        isMock: false
+      });
     } finally {
-      that.setData({ loading: false });
+      this.setData({ loading: false });
     }
+  },
+
+  /** 失败态重试 */
+  retry() {
+    this.generateCaption();
+  },
+
+  /** 成功态「换一批」 */
+  regenerate() {
+    this.generateCaption();
   },
 
   copyCaption(e) {
     const caption = e.currentTarget.dataset.caption;
+    if (!caption) return;
     wx.setClipboardData({
       data: caption,
       success() {

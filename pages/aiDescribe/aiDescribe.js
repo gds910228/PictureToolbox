@@ -1,5 +1,9 @@
 // pages/aiDescribe/aiDescribe.js
 // AI图片描述页面
+//
+// 定位：aiDescribe = 看懂这张图（客观描述/解读，输出一段描述图本身的话）
+// 区别于 aiCaption = 帮这张图配句话发出去（可发布文案，按平台口吻 + 话题）。
+// 本页 social 风格已移除（与 aiCaption 配文重叠）；社媒发布文案请用 aiCaption。
 
 Page({
   data: {
@@ -11,7 +15,6 @@ Page({
       { value: 'professional', label: '专业描述', icon: '📝' },
       { value: 'artistic', label: '诗意描述', icon: '🎨' },
       { value: 'detailed', label: '详细描述', icon: '🔍' },
-      { value: 'social', label: '社交媒体', icon: '📱' },
       { value: 'concise', label: '简洁概括', icon: '⚡' },
       { value: 'ecommerce', label: '电商推广', icon: '🛒' },
       { value: 'photography', label: '摄影点评', icon: '📷' },
