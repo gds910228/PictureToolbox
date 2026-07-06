@@ -10,6 +10,7 @@ Page({
     imageSrc: '',
     fileID: '',
     description: '',
+    isMock: false, // 云函数返回 mock 示例文案（未配置 AI 密钥）
     selectedStyle: 'professional',
     styles: [
       { value: 'professional', label: '专业描述', icon: '📝' },
@@ -38,7 +39,8 @@ Page({
         that.setData({
           imageSrc: tempFilePath,
           fileID: '',
-          description: ''
+          description: '',
+          isMock: false
         });
 
         // 上传到云存储
@@ -92,7 +94,8 @@ Page({
     const style = e.currentTarget.dataset.style;
     this.setData({
       selectedStyle: style,
-      description: ''
+      description: '',
+      isMock: false
     });
   },
 
@@ -133,7 +136,8 @@ Page({
 
       if (res.result.success) {
         that.setData({
-          description: res.result.description
+          description: res.result.description,
+          isMock: !!res.result.isMock
         });
       } else {
         wx.showToast({

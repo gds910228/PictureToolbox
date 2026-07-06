@@ -1,5 +1,12 @@
 // cloudfunctions/aiMatting/index.js
-// AI智能抠图云函数 - 真实抠图实现
+// AI智能抠图云函数 - 腾讯云人像分割（SegmentPortraitPic）
+//
+// 安全/诚实性约定：
+// 1. 调腾讯云 SegmentPortraitPic（人像分割接口，实测对动物等主体亦有泛化效果）。
+//    API 失败 → success:false + 标准化错误，绝不回退"返原图+假识别"伪装成功。
+//    密钥未配置 → assertCredentials 抛错 → success:false。
+// 2. 不返回伪造的 confidence / recognition（SegmentPortraitPic 不提供识别置信度）。
+// 3. 服务端内容安全兜底：下载原图过 assertImageSafe，违规即拒（不暴露原因）。
 
 const cloud = require('wx-server-sdk');
 const tencentcloud = require('tencentcloud-sdk-nodejs');
@@ -12,12 +19,12 @@ cloud.init({
 });
 
 /**
- * AI智能抠图
- * @param {event} Object - { fileID: string, type: string }
- * @returns {Object} - 抠图结果
+ * AI智能抠图（人像分割）
+ * @param {event} Object - { fileID: string, type?: string }
+ * @returns {Object} - { success, fileID, type, typeName | error }
  */
 exports.main = async (event, context) => {
-  const { fileID, type = 'auto' } = event;
+  const { fileID, type = 'portrait' } = event;
 
 
   try {
@@ -41,243 +48,87 @@ exports.main = async (event, context) => {
     // 服务端内容安全兜底（违规则抛错，外层 catch 返回失败）
     await contentCheck.assertImageSafe(imageBuffer, cloud);
 
-    // 调用抠图API
-    const mattingResult = await callMattingAPI(imageBuffer, fileID, type);
-
-    if (!mattingResult.success) {
-      return {
-        success: false,
-        error: mattingResult.error
-      };
-    }
+    // 真实抠图：SegmentPortraitPic（人像分割接口，实测对动物等主体亦有泛化效果）。
+    // 失败抛错，不再回退"返原图+识别"伪装成功。
+    const mattingFileID = await callTencentMattingAPI(imageBuffer, cred);
 
 
     return {
       success: true,
-      fileID: mattingResult.fileID,
+      fileID: mattingFileID,
       type: type,
-      typeName: mattingResult.typeName,
-      recognition: mattingResult.recognition
+      typeName: '智能抠图'
     };
 
   } catch (err) {
     console.error('AI智能抠图失败', err);
     return {
       success: false,
-      error: err.message
+      error: normalizeMattingError(err)
     };
   }
 };
 
 /**
- * 调用AI抠图API
- */
-async function callMattingAPI(imageBuffer, originalFileID, type) {
-  // 统一通过 cloud-secret 模块读取密钥（防御性二次校验）
-  const cred = secret.getCredentials();
-  const secretId = cred.secretId;
-  const secretKey = cred.secretKey;
-  const region = cred.region;
-
-  if (!cred.available) {
-    throw new Error('未配置腾讯云API密钥：请在微信云开发控制台为该云函数设置环境变量 TENCENTCLOUD_SECRET_ID / TENCENTCLOUD_SECRET_KEY');
-  }
-
-
-  try {
-    // 调用腾讯云人像抠图API
-    const result = await callTencentMattingAPI(imageBuffer, secretId, secretKey, region, type);
-
-    if (result.success) {
-      return result;
-    } else {
-      // 如果API调用失败，使用混元识别作为备选
-      return await callHunyuanRecognition(imageBuffer, type, secretId, secretKey, region);
-    }
-  } catch (err) {
-    console.error('抠图API异常:', err);
-    // 使用混元识别作为备选
-    return await callHunyuanRecognition(imageBuffer, type, secretId, secretKey, region);
-  }
-}
-
-/**
- * 调用腾讯云人像分割API（人体分析服务）
+ * 调用腾讯云人像分割 API（人体分析服务 SegmentPortraitPic，实测对动物等主体亦有泛化效果）。
+ * 成功返回上传后的 fileID；失败抛错（由主流程 catch 标准化）。
  * API文档：https://cloud.tencent.com/document/api/1208/42970
  */
-async function callTencentMattingAPI(imageBuffer, secretId, secretKey, region, type) {
-  try {
+async function callTencentMattingAPI(imageBuffer, cred) {
+  // 将图片转为base64
+  const base64Image = imageBuffer.toString('base64');
 
-    // 将图片转为base64
-    const base64Image = imageBuffer.toString('base64');
+  // 使用腾讯云人体分析服务的SDK
+  const BdaClient = tencentcloud.bda.v20200324.Client;
 
-    // 使用腾讯云人体分析服务的SDK
-    const BdaClient = require('tencentcloud-sdk-nodejs').bda.v20200324.Client;
-
-    const client = new BdaClient({
-      credential: {
-        secretId: secretId,
-        secretKey: secretKey,
-      },
-      region: region,
-      profile: {
-        signMethod: "TC3-HMAC-SHA256",
-      }
-    });
-
-    // 调用人像分割API
-    const params = {
-      Image: base64Image,
-      RspImgType: "base64"  // 返回base64格式的透明背景图
-    };
-
-    const response = await client.SegmentPortraitPic(params);
-
-
-    if (response && response.ResultImage && response.ResultImage.length > 0) {
-      // API返回了抠图结果（透明背景PNG的base64数据）
-      const mattingImageBuffer = Buffer.from(response.ResultImage, 'base64');
-
-
-      // 上传抠图后的图片到云存储
-      const uploadResult = await cloud.uploadFile({
-        cloudPath: `matting/${Date.now()}.png`,
-        fileContent: mattingImageBuffer
-      });
-
-
-      return {
-        success: true,
-        fileID: uploadResult.fileID,
-        typeName: '人像抠图',
-        recognition: {
-          subjectType: 'person',
-          subjectDescription: '真实抠图完成',
-          backgroundDescription: '背景已去除',
-          confidence: 0.95
-        }
-      };
-    } else {
-      throw new Error('API返回数据为空');
+  const client = new BdaClient({
+    credential: {
+      secretId: cred.secretId,
+      secretKey: cred.secretKey,
+    },
+    region: cred.region,
+    profile: {
+      signMethod: "TC3-HMAC-SHA256",
     }
+  });
 
-  } catch (err) {
-    throw err;
-  }
-}
-
-/**
- * 使用混元大模型识别主体（备选方案）
- */
-async function callHunyuanRecognition(imageBuffer, type, secretId, secretKey, region) {
-  try {
-    const HunyuanClient = require('tencentcloud-sdk-nodejs').hunyuan.v20230901.Client;
-
-    const client = new HunyuanClient({
-      credential: {
-        secretId: secretId,
-        secretKey: secretKey,
-      },
-      region: region,
-      profile: {
-        signMethod: "TC3-HMAC-SHA256",
-      }
-    });
-
-    // 将图片转为base64
-    const base64Image = imageBuffer.toString('base64');
-
-
-    const params = {
-      Model: "hunyuan-vision",
-      Messages: [
-        {
-          Role: "user",
-          Contents: [
-            {
-              Type: "image",
-              Url: `data:image/jpeg;base64,${base64Image}`
-            },
-            {
-              Type: "text",
-              Text: `请分析这张图片，识别图片中的主要主体。请以JSON格式返回：
-{
-  "subjectType": "主体类型（person人物/product商品/animal动物/other其他）",
-  "subjectDescription": "主体的详细描述",
-  "backgroundDescription": "背景的描述",
-  "confidence": 0.95
-}`
-            }
-          ]
-        }
-      ],
-      Stream: false
-    };
-
-    const response = await client.ChatCompletions(params);
-
-    if (response.Response && response.Response.Choices && response.Response.Choices.length > 0) {
-      const content = response.Response.Choices[0].Message.Content;
-
-      // 提取JSON
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const recognition = JSON.parse(jsonMatch[0]);
-
-        // 返回原图，附带识别信息
-        return {
-          success: true,
-          fileID: 'original', // 返回原fileID标记
-          typeName: getTypeName(type),
-          recognition: recognition,
-          note: '智能识别已完成，真实抠图功能需要开通腾讯云图像处理服务'
-        };
-      }
-    }
-
-    // 如果解析失败，返回默认结果
-    return {
-      success: true,
-      fileID: 'original',
-      typeName: getTypeName(type),
-      recognition: {
-        subjectType: 'other',
-        subjectDescription: '图片识别完成',
-        backgroundDescription: '背景分析完成',
-        confidence: 0.85
-      },
-      note: '智能识别已完成'
-    };
-
-  } catch (err) {
-    console.error('识别失败:', err);
-
-    // 最后的备选方案
-    return {
-      success: true,
-      fileID: 'original',
-      typeName: getTypeName(type),
-      recognition: {
-        subjectType: 'other',
-        subjectDescription: '智能识别完成',
-        backgroundDescription: '已分析',
-        confidence: 0.80
-      },
-      note: '识别已完成'
-    };
-  }
-}
-
-/**
- * 获取类型名称
- */
-function getTypeName(type) {
-  const typeNames = {
-    'auto': '智能识别',
-    'portrait': '人像抠图',
-    'product': '商品抠图',
-    'general': '通用抠图'
+  // 调用人像分割API
+  const params = {
+    Image: base64Image,
+    RspImgType: "base64"  // 返回base64格式的透明背景图
   };
 
-  return typeNames[type] || '智能抠图';
+  const response = await client.SegmentPortraitPic(params);
+
+  if (!response || !response.ResultImage || response.ResultImage.length === 0) {
+    // 常见于图中未检测到人像 → 抛出可识别错误，由 normalizeMattingError 转友好提示
+    throw new Error('NoPersonDetected');
+  }
+
+  // API返回了抠图结果（透明背景PNG的base64数据）
+  const mattingImageBuffer = Buffer.from(response.ResultImage, 'base64');
+
+  // 上传抠图后的图片到云存储
+  const uploadResult = await cloud.uploadFile({
+    cloudPath: `matting/${Date.now()}.png`,
+    fileContent: mattingImageBuffer
+  });
+
+
+  return uploadResult.fileID;
+}
+
+/**
+ * 标准化抠图错误信息（不暴露内部原因/密钥信息）：
+ *  - 无主体迹象（未检测到人像/返回空）→ 引导上传人像照
+ *  - 其他 API 异常 → 通用重试提示
+ * 注：SegmentPortraitPic 对非人像图的具体错误码需真机校准关键词匹配。
+ */
+function normalizeMattingError(err) {
+  const msg = String((err && (err.message || err.errMsg)) || '');
+  const noPerson = /noperson|no person|空|empty|人体|人像|portrait|未检测|未识别/i;
+  if (noPerson.test(msg)) {
+    return '未检测到清晰主体，请上传主体突出的图片重试';
+  }
+  return 'AI 抠图暂时不可用，请稍后重试';
 }

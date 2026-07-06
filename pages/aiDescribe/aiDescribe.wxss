@@ -1,7 +1,8 @@
-/* pages/aiDescribe/aiDescribe.wxss */
+/* pages/aiDescribe/aiDescribe.wxss
+   赛博朋克主题（对齐 aiCaption，使用 app.wxss 设计令牌） */
+
 .container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #0A0E27 0%, #1a1f3a 100%);
   padding: 20rpx;
 }
 
@@ -14,19 +15,20 @@
   display: block;
   font-size: 48rpx;
   font-weight: bold;
-  color: #ffffff;
+  color: var(--color-white);
   margin-bottom: 10rpx;
+  text-shadow: 0 0 16rpx rgba(0, 240, 255, 0.3);
 }
 
 .page-subtitle {
   display: block;
   font-size: 28rpx;
-  color: #8b9dc3;
+  color: var(--color-gray-500);
 }
 
 .image-section {
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 20rpx;
+  border-radius: var(--radius-lg);
   padding: 20rpx;
   margin-bottom: 30rpx;
 }
@@ -34,7 +36,7 @@
 .preview-image {
   width: 100%;
   height: 400rpx;
-  border-radius: 12rpx;
+  border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.1);
 }
 
@@ -42,14 +44,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(0, 240, 255, 0.04);
+  border: 2rpx dashed rgba(0, 240, 255, 0.3);
   position: relative;
 }
 
 .preview-image.placeholder::after {
   content: '点击上传图片';
   position: absolute;
-  color: #8b9dc3;
+  color: var(--color-gray-500);
   font-size: 28rpx;
 }
 
@@ -59,7 +62,7 @@
 
 .section-title {
   font-size: 32rpx;
-  color: #ffffff;
+  color: var(--color-white);
   margin-bottom: 20rpx;
   font-weight: bold;
 }
@@ -72,7 +75,7 @@
 
 .style-item {
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 12rpx;
+  border-radius: var(--radius-md);
   padding: 15rpx 10rpx;
   display: flex;
   flex-direction: column;
@@ -90,12 +93,13 @@
 
 .style-label {
   font-size: 24rpx;
-  color: #ffffff;
+  color: var(--color-white);
 }
 
 .style-item.active {
-  background: rgba(102, 126, 234, 0.2);
-  border-color: #667eea;
+  background: rgba(0, 240, 255, 0.12);
+  border-color: var(--color-neon-cyan);
+  box-shadow: 0 0 14rpx rgba(0, 240, 255, 0.35);
 }
 
 .generate-section {
@@ -105,9 +109,9 @@
 .generate-btn {
   width: 100%;
   height: 90rpx;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #ffffff;
-  border-radius: 45rpx;
+  background: var(--gradient-neon);
+  color: var(--color-deep-space);
+  border-radius: var(--radius-lg);
   font-size: 32rpx;
   font-weight: bold;
   border: none;
@@ -115,16 +119,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: var(--shadow-neon);
 }
 
 .generate-btn[disabled] {
   background: rgba(255, 255, 255, 0.1);
-  color: #8b9dc3;
+  color: var(--color-gray-500);
+  box-shadow: none;
 }
 
 .result-section {
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 20rpx;
+  border-radius: var(--radius-lg);
   padding: 30rpx;
 }
 
@@ -135,9 +141,21 @@
   margin-bottom: 20rpx;
 }
 
+/* 示例文案角标（未配置 AI 密钥时显示，复用 aiCaption 的 mock-badge 样式） */
+.mock-badge {
+  display: inline-block;
+  font-size: 22rpx;
+  color: var(--color-solar-flare);
+  background: rgba(255, 107, 53, 0.12);
+  border: 1rpx solid rgba(255, 107, 53, 0.4);
+  border-radius: 999rpx;
+  padding: 6rpx 16rpx;
+  margin-bottom: 20rpx;
+}
+
 .result-title {
   font-size: 32rpx;
-  color: #ffffff;
+  color: var(--color-white);
   font-weight: bold;
 }
 
@@ -145,25 +163,29 @@
   width: 120rpx;
   height: 60rpx;
   line-height: 60rpx;
-  background: rgba(102, 126, 234, 0.3);
-  color: #667eea;
-  border-radius: 30rpx;
+  background: rgba(0, 240, 255, 0.1);
+  color: var(--color-neon-cyan);
+  border: 1rpx solid rgba(0, 240, 255, 0.4);
+  border-radius: 999rpx;
   font-size: 24rpx;
-  border: none;
   text-align: center;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+.copy-btn::after {
+  border: none;
+}
+
 .result-content {
   background: rgba(0, 0, 0, 0.2);
-  border-radius: 12rpx;
+  border-radius: var(--radius-md);
   padding: 20rpx;
 }
 
 .description-text {
   font-size: 28rpx;
-  color: #ffffff;
+  color: var(--color-white);
   line-height: 1.8;
 }

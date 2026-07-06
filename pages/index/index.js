@@ -15,6 +15,7 @@ const LAUNCH_DATES = {
   aiColorize: '2026-07-03',
   aiChat: '2026-07-03',
   aiCaption: '2026-07-03',
+  aiDescribe: '2026-07-06',
   similarity: '2026-07-03',
   makeGif: '2026-07-03',
   colorAnalysis: '2026-07-03',
@@ -71,7 +72,7 @@ Page({
           {
             id: 'aiMatting',
             name: '智能抠图',
-            desc: '自动识别主体，一键去除背景',
+            desc: '智能抠图，一键去除背景',
             url: '/pages/aiMatting/aiMatting',
             available: true,
             isNew: true
@@ -105,6 +106,14 @@ Page({
             name: '智能配文',
             desc: '一键生成朋友圈、小红书等社媒配文',
             url: '/pages/aiCaption/aiCaption',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiDescribe',
+            name: '图片描述',
+            desc: '7种风格智能描述图片，看懂画面内容',
+            url: '/pages/aiDescribe/aiDescribe',
             available: true,
             isNew: true
           },

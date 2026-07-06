@@ -22,131 +22,151 @@ function compressImage(filePath, quality = 80) {
 }
 
 /**
- * 智能压缩图片 - 自动寻找最佳质量
- * @param {string} filePath - 图片路径
- * @param {number} targetSizeKB - 目标文件大小（KB），如果为0则只保证画质
- * @param {Function} onProgress - 进度回调
- * @param {object} aiAnalysis - AI分析结果（可选）
- * @returns {Promise<{path: string, quality: number, size: number}>} 压缩结果
+ * 本地图像复杂度分析（canvas 2D，无需云函数/AI）。
+ * 缩到 128 边采样画到离屏 canvas，读像素算 Sobel 边缘强度均值，
+ * 据此映射图像类型 + 感知安全质量起点，供智能压缩画质自适应。
+ * @param {string} filePath
+ * @returns {Promise<{detail:number, imageType:string, suggestedQuality:number, minQuality:number}>}
  */
-async function smartCompressImage(filePath, targetSizeKB = 0, onProgress = null, aiAnalysis = null) {
+function analyzeImageComplexity(filePath) {
+  return new Promise((resolve) => {
+    const SAMPLE = 128; // 采样边长，足够反映细节又省内存/时间
+    getImageInfo(filePath).then((info) => {
+      const { width, height, path } = info;
+      if (!width || !height) { resolve(_complexityFallback()); return; }
+      const scale = Math.min(SAMPLE / width, SAMPLE / height) || 1;
+      const w = Math.max(1, Math.round(width * scale));
+      const h = Math.max(1, Math.round(height * scale));
+
+      const canvas = wx.createOffscreenCanvas({ type: '2d', width: w, height: h });
+      const ctx = canvas.getContext('2d');
+      const image = canvas.createImage();
+
+      image.onload = () => {
+        try {
+          ctx.drawImage(image, 0, 0, w, h);
+          const data = ctx.getImageData(0, 0, w, h).data;
+          // Sobel 边缘强度均值（亮度通道，|gx|+|gy|）
+          const lum = (p) => 0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2];
+          let sum = 0, count = 0;
+          const stride = w * 4;
+          for (let y = 1; y < h - 1; y++) {
+            for (let x = 1; x < w - 1; x++) {
+              const i = y * stride + x * 4;
+              const gx = Math.abs(lum(i) - lum(i + 4));
+              const gy = Math.abs(lum(i) - lum(i + stride));
+              sum += gx + gy;
+              count++;
+            }
+          }
+          const edgeMean = count ? sum / count : 0; // 0~510
+          resolve(_mapComplexity(edgeMean));
+        } catch (e) {
+          console.warn('[analyzeImageComplexity] 取像素失败', e);
+          resolve(_complexityFallback());
+        }
+      };
+
+      image.onerror = () => {
+        console.warn('[analyzeImageComplexity] canvas 加载图片失败');
+        resolve(_complexityFallback());
+      };
+
+      image.src = path;
+    }).catch(() => resolve(_complexityFallback()));
+  });
+}
+
+// 边缘强度均值 → 图像类型 + 质量起点（阈值经验值，真机可校准）
+// edgeMean 典型：纯色~0、渐变~3、风景~10-25、人像~20-40、文字/截图~40-80+
+function _mapComplexity(edgeMean) {
+  let imageType, suggestedQuality, minQuality;
+  if (edgeMean >= 40) {
+    imageType = 'text';        // 文字/截图/线稿：高频细节，对压缩极敏感
+    suggestedQuality = 90;
+    minQuality = 78;
+  } else if (edgeMean >= 22) {
+    imageType = 'portrait';    // 人像/建筑：需保细节
+    suggestedQuality = 84;
+    minQuality = 65;
+  } else if (edgeMean >= 8) {
+    imageType = 'landscape';   // 风景：可适度压缩
+    suggestedQuality = 76;
+    minQuality = 50;
+  } else {
+    imageType = 'other';       // 渐变/纯色：可激进压缩
+    suggestedQuality = 68;
+    minQuality = 40;
+  }
+  return { detail: edgeMean, imageType, suggestedQuality, minQuality };
+}
+
+function _complexityFallback() {
+  // canvas 不可用/解码失败时，保守用较高质量兜底（不阻断压缩）
+  return { detail: 0, imageType: 'other', suggestedQuality: 80, minQuality: 55 };
+}
+
+/**
+ * 智能压缩图片 - 本地画质驱动（无需 AI/云函数）。
+ * canvas 分析图像高频细节，按内容类型自适应质量起点；
+ * 无目标体积时直接用感知安全质量压缩（画质由内容决定，不由原图大小决定）；
+ * 有目标体积时在 [minQuality, 100] 二分搜索满足体积的最高质量（不压破画质下限）。
+ * @param {string} filePath - 图片路径
+ * @param {number} targetSizeKB - 目标文件大小（KB），0 表示只保证画质
+ * @param {Function} onProgress - 进度回调
+ * @returns {Promise<{path: string, quality: number, size: number, imageType: string}>} 压缩结果
+ */
+async function smartCompressImage(filePath, targetSizeKB = 0, onProgress = null) {
   try {
-    // 获取原图大小
     const originalSize = await getFileSize(filePath);
     const originalSizeKB = originalSize / 1024;
 
-    // 如果原图已经小于目标大小，直接返回
+    // 本地复杂度分析 → 质量起点与画质下限
+    const analysis = await analyzeImageComplexity(filePath);
+    const { imageType, suggestedQuality, minQuality } = analysis;
+
+    // 原图已小于目标体积，直接返回（仍带类型信息）
     if (targetSizeKB > 0 && originalSizeKB <= targetSizeKB) {
-      return {
-        path: filePath,
-        quality: 100,
-        size: originalSize
-      };
+      return { path: filePath, quality: 100, size: originalSize, imageType };
     }
 
-    // 根据AI分析结果确定压缩策略
-    let strategy = 'balanced'; // 默认平衡策略
-    let minQuality = 10;
-    let maxQuality = 100;
-
-    if (aiAnalysis && aiAnalysis.recommendation) {
-      strategy = aiAnalysis.recommendation.strategy || 'balanced';
-
-      // 根据策略调整搜索范围
-      if (strategy === 'quality-priority') {
-        // 质量优先：保持较高质量
-        minQuality = Math.max(60, aiAnalysis.recommendation.suggestedQuality - 15);
-        maxQuality = Math.min(100, aiAnalysis.recommendation.suggestedQuality + 10);
-      } else if (strategy === 'size-priority') {
-        // 大小优先：可以降低质量
-        minQuality = 10;
-        maxQuality = Math.min(80, aiAnalysis.recommendation.suggestedQuality);
-      } else {
-        // 平衡策略
-        minQuality = Math.max(50, aiAnalysis.recommendation.suggestedQuality - 20);
-        maxQuality = Math.min(95, aiAnalysis.recommendation.suggestedQuality + 15);
-      }
+    // 无目标体积：直接用感知安全质量压缩（不再用"原图大小比例"拍脑袋目标）
+    if (targetSizeKB === 0) {
+      const compressedPath = await compressImage(filePath, suggestedQuality);
+      const compressedSize = await getFileSize(compressedPath);
+      return { path: compressedPath, quality: suggestedQuality, size: compressedSize, imageType };
     }
 
+    // 有目标体积：二分搜索 [minQuality, 100] 找满足体积的最高质量
+    let lo = minQuality;
+    let hi = 100;
     let bestResult = null;
+    const maxIterations = 10;
 
-    // 二分查找最佳质量
-    const maxIterations = targetSizeKB > 0 ? 10 : 7; // 有目标大小时多尝试几次
+    for (let i = 0; i < maxIterations && lo <= hi; i++) {
+      const quality = Math.floor((lo + hi) / 2);
+      if (onProgress) onProgress(quality, i + 1);
 
-    for (let i = 0; i < maxIterations; i++) {
-      const quality = Math.floor((minQuality + maxQuality) / 2);
-
-      if (onProgress) {
-        onProgress(quality, i + 1);
-      }
-
-      // 压缩图片
       const compressedPath = await compressImage(filePath, quality);
       const compressedSize = await getFileSize(compressedPath);
       const compressedSizeKB = compressedSize / 1024;
 
-      // 检查是否满足目标大小
-      if (targetSizeKB === 0) {
-        // 如果没有目标大小，根据策略选择
-        if (strategy === 'quality-priority') {
-          // 质量优先：选择能保持80%以上大小的质量
-          if (compressedSizeKB > originalSizeKB * 0.8) {
-            bestResult = { path: compressedPath, quality, size: compressedSize };
-            minQuality = quality + 1; // 继续尝试更高质量
-          } else {
-            maxQuality = quality - 1;
-          }
-        } else if (strategy === 'size-priority') {
-          // 大小优先：尽可能压缩
-          if (compressedSizeKB < originalSizeKB * 0.3) {
-            bestResult = { path: compressedPath, quality, size: compressedSize };
-            minQuality = quality + 1;
-          } else {
-            bestResult = { path: compressedPath, quality, size: compressedSize };
-            maxQuality = quality - 1;
-          }
-        } else {
-          // 平衡策略：压缩到50-70%
-          if (compressedSizeKB < originalSizeKB * 0.5) {
-            bestResult = { path: compressedPath, quality, size: compressedSize };
-            minQuality = quality + 1;
-          } else if (compressedSizeKB > originalSizeKB * 0.7) {
-            maxQuality = quality - 1;
-          } else {
-            bestResult = { path: compressedPath, quality, size: compressedSize };
-            maxQuality = quality - 1;
-          }
-        }
+      if (compressedSizeKB <= targetSizeKB) {
+        bestResult = { path: compressedPath, quality, size: compressedSize };
+        lo = quality + 1; // 满足体积，尝试更高质量
       } else {
-        // 有目标大小
-        if (compressedSizeKB <= targetSizeKB) {
-          // 满足目标大小，尝试提高质量
-          bestResult = { path: compressedPath, quality, size: compressedSize };
-          minQuality = quality + 1;
-        } else {
-          // 文件太大，降低质量
-          maxQuality = quality - 1;
-        }
-      }
-
-      // 如果质量范围太小，退出
-      if (maxQuality < minQuality) {
-        break;
+        hi = quality - 1; // 超体积，降质量
       }
     }
 
-    // 如果没有找到合适的压缩结果，使用AI建议的质量或默认质量
+    // 搜索未果（minQuality 仍超目标体积）→ 取 minQuality 兜底，至少保证画质下限
     if (!bestResult) {
-      const fallbackQuality = (aiAnalysis && aiAnalysis.recommendation)
-        ? aiAnalysis.recommendation.suggestedQuality
-        : 80;
-
-      const defaultPath = await compressImage(filePath, fallbackQuality);
-      const defaultSize = await getFileSize(defaultPath);
-      bestResult = { path: defaultPath, quality: fallbackQuality, size: defaultSize };
+      const compressedPath = await compressImage(filePath, minQuality);
+      const compressedSize = await getFileSize(compressedPath);
+      bestResult = { path: compressedPath, quality: minQuality, size: compressedSize };
     }
 
-    return bestResult;
+    return { ...bestResult, imageType };
   } catch (err) {
     throw err;
   }
@@ -520,7 +540,7 @@ function saveImageToPhotosAlbum(filePath) {
  */
 function getFileSize(filePath) {
   return new Promise((resolve, reject) => {
-    wx.getFileInfo({
+    wx.getFileSystemManager().getFileInfo({
       filePath: filePath,
       success: (res) => {
         resolve(res.size);
@@ -1543,6 +1563,7 @@ function _fallbackCompress(filePath, quality) {
 module.exports = {
   compressImage,
   smartCompressImage,
+  analyzeImageComplexity,
   getImageInfo,
   cropImage,
   convertImageFormat,

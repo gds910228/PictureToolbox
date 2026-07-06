@@ -1,5 +1,11 @@
 // cloudfunctions/analyzeImage/index.js
 // AI图片分析云函数 - 使用混元大模型分析图片内容
+//
+// 安全/诚实性约定（对齐 aiCaption）：
+// 1. 密钥未配置 → 返回固定 mock 示例结果（附 isMock:true，仅供本地开发），前端标注「示例分析」；
+//    密钥已配置但调用/解析失败 → 返回 success:false（不再静默 mock，避免假分析冒充 AI）。
+// 2. 服务端内容安全兜底：下载原图过 assertImageSafe，违规即拒（不暴露原因）。
+// 3. 多模态消息用规范格式 {Type:'image_url', ImageUrl:{Url}}（与 aiCaption/aiImageDescribe 一致）。
 
 const cloud = require('wx-server-sdk');
 const tencentcloud = require('tencentcloud-sdk-nodejs');
@@ -17,7 +23,7 @@ cloud.init({
 /**
  * 分析图片内容类型和推荐压缩策略
  * @param {event} Object - { fileID: string, base64Image: string }
- * @returns {Object} - 分析结果
+ * @returns {Object} - { success, isMock, imageType, confidence, recommendation | error }
  */
 exports.main = async (event, context) => {
   const { fileID, base64Image } = event;
@@ -51,12 +57,13 @@ exports.main = async (event, context) => {
       };
     }
 
-    // 调用混元大模型API分析图片
+    // 调用混元大模型API分析图片（失败抛错，由 catch 返回失败，不再静默 mock）
     const analysisResult = await callHunyuanAPI(imageURL);
 
 
     return {
       success: true,
+      isMock: analysisResult.isMock,
       imageType: analysisResult.imageType,
       confidence: analysisResult.confidence,
       recommendation: {
@@ -71,7 +78,7 @@ exports.main = async (event, context) => {
     console.error('图片分析失败', err);
     return {
       success: false,
-      error: err.message,
+      error: err.message || 'AI 分析暂时不可用，请稍后重试',
       recommendation: {
         imageType: 'unknown',
         strategy: 'balanced',
@@ -83,47 +90,45 @@ exports.main = async (event, context) => {
 };
 
 /**
- * 调用混元大模型API进行图片分析
+ * 调用混元大模型API进行图片分析。
+ * 密钥未配置 → 固定 mock 示例 + isMock:true；密钥可用但调用/解析失败 → 抛错（不 mock）。
  */
 async function callHunyuanAPI(imageURL) {
   // 统一通过 cloud-secret 模块读取密钥（控制台环境变量优先）
   const cred = secret.getCredentials();
-  const secretId = cred.secretId;
-  const secretKey = cred.secretKey;
-  const region = cred.region;
 
   if (!cred.available) {
-    return mockAnalysisResult();
+    return { ...mockAnalysisResult(), isMock: true };
   }
 
-  try {
-    // 实例化混元客户端
-    const client = new HunyuanClient({
-      credential: {
-        secretId: secretId,
-        secretKey: secretKey,
-      },
-      region: region,
-      profile: {
-        signMethod: "TC3-HMAC-SHA256",
-      }
-    });
+  // 实例化混元客户端
+  const client = new HunyuanClient({
+    credential: {
+      secretId: cred.secretId,
+      secretKey: cred.secretKey,
+    },
+    region: cred.region,
+    profile: {
+      signMethod: "TC3-HMAC-SHA256",
+    }
+  });
 
-    // 构建请求参数
-    const params = {
-      // 使用ChatCompletions接口进行图片理解
-      Model: "hunyuan-vision", // 视觉理解模型
-      Messages: [
-        {
-          Role: "user",
-          Contents: [
-            {
-              Type: "image",
+  // 构建请求参数（多模态消息用规范 Contents 数组格式：image_url + text）
+  const params = {
+    Model: "hunyuan-vision", // 视觉理解模型
+    Messages: [
+      {
+        Role: "user",
+        Contents: [
+          {
+            Type: "image_url",
+            ImageUrl: {
               Url: imageURL
-            },
-            {
-              Type: "text",
-              Text: `请分析这张图片的内容类型（从以下类型中选择：portrait人物照、landscape风景照、text文字文档、product产品照片、screenshot截图、other其他），并给出JPEG压缩质量建议（0-100之间的整数）。
+            }
+          },
+          {
+            Type: "text",
+            Text: `请分析这张图片的内容类型（从以下类型中选择：portrait人物照、landscape风景照、text文字文档、product产品照片、screenshot截图、other其他），并给出JPEG压缩质量建议（0-100之间的整数）。
 
 请以JSON格式返回结果，包含以下字段：
 {
@@ -142,89 +147,53 @@ async function callHunyuanAPI(imageURL) {
 - 产品照片：质量75-85%，平衡细节和大小
 - 截图：质量80-85%，保留文字和UI细节
 - 其他：质量80%，默认平衡策略`
-            }
-          ]
-        }
-      ],
-      Stream: false
-    };
-
-    // 调用API
-    const response = await client.ChatCompletions(params);
-
-
-    // 解析返回结果
-    if (response.Response && response.Response.Choices && response.Response.Choices.length > 0) {
-      const content = response.Response.Choices[0].Message.Content;
-
-      // 尝试从返回内容中提取JSON
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const result = JSON.parse(jsonMatch[0]);
-
-        // 验证并补全字段
-        return {
-          imageType: result.imageType || 'unknown',
-          confidence: result.confidence || 0.8,
-          strategy: result.strategy || 'balanced',
-          suggestedQuality: Math.max(0, Math.min(100, parseInt(result.suggestedQuality) || 80)),
-          reason: result.reason || 'AI分析完成',
-          tips: result.tips || ''
-        };
+          }
+        ]
       }
-    }
+    ],
+    Stream: false
+  };
 
-    // 如果解析失败，使用默认值
-    return mockAnalysisResult();
+  // 调用API（失败抛错，由主流程 catch 返回 success:false，不再静默 mock）
+  const response = await client.ChatCompletions(params);
 
-  } catch (err) {
-    console.error('调用混元API失败:', err);
-    // API调用失败时，使用模拟实现
-    return mockAnalysisResult();
+  // 解析返回结果
+  if (!response.Response || !response.Response.Choices || !response.Response.Choices.length) {
+    throw new Error('AI 返回为空');
   }
+  const content = response.Response.Choices[0].Message.Content;
+
+  // 尝试从返回内容中提取JSON
+  const jsonMatch = content && content.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error('AI 返回格式无法解析');
+  }
+
+  const result = JSON.parse(jsonMatch[0]);
+
+  // 验证并补全字段
+  return {
+    imageType: result.imageType || 'unknown',
+    confidence: result.confidence || 0.8,
+    strategy: result.strategy || 'balanced',
+    suggestedQuality: Math.max(0, Math.min(100, parseInt(result.suggestedQuality) || 80)),
+    reason: result.reason || 'AI分析完成',
+    tips: result.tips || '',
+    isMock: false
+  };
 }
 
 /**
- * 模拟分析结果（当API未配置或调用失败时使用）
+ * 固定 mock 分析结果（仅密钥未配置的开发环境使用，前端标注「示例分析」）。
+ * 不再使用 Math.random() 掷骰子——示例内容固定为中性 balanced，避免伪造"AI 看懂了图"。
  */
 function mockAnalysisResult() {
-  const randomFactor = Math.random();
-
-  if (randomFactor < 0.25) {
-    return {
-      imageType: 'portrait',
-      confidence: 0.85,
-      strategy: 'quality-priority',
-      suggestedQuality: 85,
-      reason: '检测到人物照片，保持较高质量以保留面部细节',
-      tips: '建议质量85-90%，避免过度压缩导致面部模糊'
-    };
-  } else if (randomFactor < 0.5) {
-    return {
-      imageType: 'landscape',
-      confidence: 0.78,
-      strategy: 'balanced',
-      suggestedQuality: 75,
-      reason: '检测到风景照片，可以适当压缩以减小文件体积',
-      tips: '建议质量70-80%，风景照片对压缩较为宽容'
-    };
-  } else if (randomFactor < 0.75) {
-    return {
-      imageType: 'text',
-      confidence: 0.92,
-      strategy: 'quality-priority',
-      suggestedQuality: 90,
-      reason: '检测到包含文字的图片，需要保持高质量以保证可读性',
-      tips: '建议质量90-95%，文字边缘需要保持清晰'
-    };
-  } else {
-    return {
-      imageType: 'product',
-      confidence: 0.81,
-      strategy: 'balanced',
-      suggestedQuality: 80,
-      reason: '检测到产品图片，平衡质量和文件大小',
-      tips: '建议质量75-85%，展示产品细节的同时控制文件大小'
-    };
-  }
+  return {
+    imageType: 'other',
+    confidence: 0.8,
+    strategy: 'balanced',
+    suggestedQuality: 80,
+    reason: '示例分析：未配置 AI 密钥，使用默认平衡压缩策略',
+    tips: '配置腾讯云密钥后，可获得针对图片内容的智能压缩建议'
+  };
 }

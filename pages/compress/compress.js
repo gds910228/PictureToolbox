@@ -1,6 +1,15 @@
 // pages/compress/compress.js
+// 图片压缩：纯本地处理。智能压缩用 canvas 分析图像高频细节自适应质量（无 AI/云函数）。
 const imageProcess = require('../../utils/image-process');
 const compareHelper = require('../../utils/compare-helper');
+
+// 本地图像类型 → 中文标签（智能压缩结果展示）
+const IMAGE_TYPE_LABEL = {
+  text: '文字/截图',
+  portrait: '人像',
+  landscape: '风景',
+  other: '通用'
+};
 
 Page({
   data: {
@@ -16,44 +25,13 @@ Page({
     compressing: false,    // 是否正在压缩
     useSmartCompress: false, // 是否使用智能压缩
     targetSizeKB: 0,       // 目标文件大小（KB）
-
-    // AI分析相关
-    aiAnalysis: null,      // AI分析结果
-    analyzing: false,      // 是否正在分析
-    showAIRecommendation: false, // 是否显示AI建议
-    cloudEnabled: false,    // 云开发是否已启用
-    uploadReady: false     // 图片已上传到云存储，fileID可用
+    imageTypeLabel: ''     // 智能压缩检测到的图像类型（本地分析）
   },
 
   onLoad() {
     wx.setNavigationBarTitle({
       title: '图片压缩'
     });
-
-    // 初始化云开发
-    if (wx.cloud) {
-      try {
-        wx.cloud.init({
-          env: 'cloud1-1gk79pjqd5e1ed35', // 你的云环境ID
-          traceUser: true
-        });
-
-        // 检查云开发是否可用
-        this.setData({
-          cloudEnabled: true
-        });
-      } catch (e) {
-        console.error('云开发初始化失败', e);
-        this.setData({
-          cloudEnabled: false
-        });
-      }
-    } else {
-      console.warn('当前微信版本不支持云开发');
-      this.setData({
-        cloudEnabled: false
-      });
-    }
   },
 
   /**
@@ -78,13 +56,11 @@ Page({
       // 图片被清空，重置状态
       this.setData({
         imageSrc: '',
-        uploadReady: false,
         originalSize: 0,
         originalSizeText: '',
         showResult: false,
         compressedSrc: '',
-        aiAnalysis: null,
-        showAIRecommendation: false
+        imageTypeLabel: ''
       });
       return;
     }
@@ -101,21 +77,12 @@ Page({
 
       this.setData({
         imageSrc: filePath,
-        uploadReady: false, // 本地路径已就绪，但云存储fileID需另行上传
         originalSize: size,
         originalSizeText: originalSizeText,
         compressedSrc: '',
         showResult: false,
-        aiAnalysis: null,
-        showAIRecommendation: false
+        imageTypeLabel: ''
       });
-
-      // 仅在云开发已配置时进行AI分析
-      if (this.data.cloudEnabled) {
-        setTimeout(() => {
-          this.analyzeImageWithAI(filePath);
-        }, 100);
-      }
     }).catch((err) => {
       console.error('获取图片信息失败', err);
       wx.showToast({ title: '获取图片信息失败', icon: 'none' });
@@ -147,113 +114,8 @@ Page({
       originalSize: 0,
       originalSizeText: '',
       showResult: false,
-      aiAnalysis: null,
-      showAIRecommendation: false
+      imageTypeLabel: ''
     });
-  },
-
-  /**
-   * 使用AI分析图片
-   */
-  async analyzeImageWithAI(filePath) {
-    if (!this.data.cloudEnabled) {
-      return;
-    }
-
-    this.setData({
-      analyzing: true
-    });
-
-    try {
-      wx.showLoading({
-        title: 'AI分析中...',
-        mask: true
-      });
-
-      // 先上传图片到云存储
-      const cloudPath = `compress/${Date.now()}-${Math.random().toString(36).substr(2)}.jpg`;
-      const uploadRes = await wx.cloud.uploadFile({
-        cloudPath: cloudPath,
-        filePath: filePath
-      });
-
-      const fileID = uploadRes.fileID;
-
-      // 调用云函数分析图片
-      const analysisRes = await wx.cloud.callFunction({
-        name: 'analyzeImage',
-        data: {
-          fileID: fileID
-        }
-      });
-
-      wx.hideLoading();
-
-      if (analysisRes.result && analysisRes.result.success) {
-        const aiResult = analysisRes.result;
-
-        // 自动应用AI推荐的质量
-        this.setData({
-          aiAnalysis: aiResult,
-          showAIRecommendation: true,
-          quality: aiResult.recommendation.suggestedQuality,
-          analyzing: false
-        });
-
-        // 显示AI建议
-        wx.showModal({
-          title: 'AI分析结果',
-          content: `${aiResult.recommendation.reason}\n\n建议质量: ${aiResult.recommendation.suggestedQuality}%\n\n${aiResult.recommendation.tips}`,
-          showCancel: false,
-          confirmText: '应用建议'
-        });
-      } else {
-        // AI分析失败，使用默认策略
-        this.setData({
-          analyzing: false
-        });
-        wx.showToast({
-          title: 'AI分析失败，使用默认策略',
-          icon: 'none',
-          duration: 2000
-        });
-      }
-    } catch (err) {
-      console.error('AI分析失败', err);
-      this.setData({
-        analyzing: false,
-        cloudEnabled: false // 云开发配置有问题，自动禁用
-      });
-      wx.hideLoading();
-
-      // 更友好的错误提示
-      let errorMsg = 'AI分析失败';
-      if (err.errMsg && err.errMsg.includes('INVALID_ENV')) {
-        errorMsg = '云开发环境未配置，已自动切换到普通压缩模式';
-      }
-
-      wx.showToast({
-        title: errorMsg,
-        icon: 'none',
-        duration: 2500
-      });
-    }
-  },
-
-  /**
-   * 应用AI推荐的质量
-   */
-  applyAIRecommendation() {
-    if (this.data.aiAnalysis && this.data.aiAnalysis.recommendation) {
-      this.setData({
-        quality: this.data.aiAnalysis.recommendation.suggestedQuality,
-        useSmartCompress: true
-      });
-      wx.showToast({
-        title: '已应用AI建议',
-        icon: 'success'
-      });
-    }
   },
 
   /**
@@ -299,23 +161,21 @@ Page({
 
     try {
       if (this.data.useSmartCompress) {
-        // 智能压缩模式
+        // 智能压缩模式（本地 canvas 分析自适应质量）
         wx.showLoading({
-          title: '智能压缩中...',
+          title: '智能分析中...',
           mask: true
         });
 
-        // 传入AI分析结果（如果有）
         const result = await imageProcess.smartCompressImage(
           this.data.imageSrc,
           this.data.targetSizeKB,
           (quality, attempt) => {
             wx.showLoading({
-              title: `压缩中 ${attempt}/7...`,
+              title: `压缩中 ${attempt}/10...`,
               mask: true
             });
-          },
-          this.data.aiAnalysis // 传入AI分析结果
+          }
         );
 
         const compressedSizeText = this.formatFileSize(result.size);
@@ -328,26 +188,14 @@ Page({
           compressionRate: compressionRate,
           quality: result.quality,
           showResult: true,
-          compressing: false
+          compressing: false,
+          imageTypeLabel: IMAGE_TYPE_LABEL[result.imageType] || ''
         });
 
         wx.hideLoading();
 
-        // 根据使用的策略显示不同的提示
-        let strategyText = '压缩完成';
-        if (this.data.aiAnalysis && this.data.aiAnalysis.recommendation) {
-          const strategy = this.data.aiAnalysis.recommendation.strategy;
-          if (strategy === 'quality-priority') {
-            strategyText = 'AI质量优先压缩完成';
-          } else if (strategy === 'size-priority') {
-            strategyText = 'AI大小优先压缩完成';
-          } else {
-            strategyText = 'AI平衡压缩完成';
-          }
-        }
-
         wx.showToast({
-          title: `${strategyText} (质量${result.quality}%)`,
+          title: `智能压缩完成 (质量${result.quality}%)`,
           icon: 'success'
         });
       } else {
@@ -371,7 +219,8 @@ Page({
           compressedSizeText: compressedSizeText,
           compressionRate: compressionRate,
           showResult: true,
-          compressing: false
+          compressing: false,
+          imageTypeLabel: ''
         });
 
         wx.hideLoading();

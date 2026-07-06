@@ -50,6 +50,7 @@
       <text class="result-title">AI生成的描述</text>
       <button class="copy-btn" bindtap="copyDescription">复制</button>
     </view>
+    <view class="mock-badge" wx:if="{{isMock}}">示例文案（未配置 AI 密钥）</view>
     <view class="result-content">
       <text class="description-text">{{description}}</text>
     </view>

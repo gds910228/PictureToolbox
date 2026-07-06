@@ -1,5 +1,10 @@
 // pages/aiMatting/aiMatting.js
-// AI智能抠图页面
+// AI智能抠图页面（腾讯云 SegmentPortraitPic，主体清晰即可，人物/动物等均可）
+//
+// 云函数返回约定（见 cloudfunctions/aiMatting/index.js）：
+//   success:true  → fileID（真实抠图后的透明 PNG）
+//   success:false → error（标准化错误：未检测到主体引导 / 通用重试）
+// 旧版"返原图当抠图结果 + 假识别置信度"的兜底已移除——失败即显错误 + 重试，不伪装成功。
 const compareHelper = require('../../utils/compare-helper');
 
 Page({
@@ -8,15 +13,9 @@ Page({
     fileID: '',
     resultSrc: '',
     resultFileID: '',
-    selectedType: 'auto',
-    selectedTypeLabel: '智能识别',
+    selectedType: 'portrait',
+    selectedTypeLabel: '智能抠图',
     selectedBgColorLabel: '透明',
-    types: [
-      { value: 'auto', label: '智能识别', icon: '🤖', desc: '自动识别主体类型' },
-      { value: 'portrait', label: '人像抠图', icon: '👤', desc: '优化人物边缘' },
-      { value: 'product', label: '商品抠图', icon: '📦', desc: '适合电商商品' },
-      { value: 'general', label: '通用抠图', icon: '✂️', desc: '适用于各种场景' }
-    ],
     backgroundColors: [
       { name: '透明', value: 'transparent', color: '#f0f0f0' },
       { name: '白色', value: '#ffffff', color: '#ffffff' },
@@ -27,8 +26,9 @@ Page({
     ],
     selectedBgColor: 'transparent',
     loading: false,
-    isRealMatting: false, // 是否真实抠图
-    debugInfo: '' // 调试信息
+    // 失败态
+    hasError: false,
+    errorMsg: ''
   },
 
   chooseImage() {
@@ -44,8 +44,8 @@ Page({
           fileID: '',
           resultSrc: '',
           resultFileID: '',
-          isRealMatting: false,
-          debugInfo: ''
+          hasError: false,
+          errorMsg: ''
         });
         that.uploadImage(tempFilePath);
       }
@@ -78,18 +78,6 @@ Page({
     });
   },
 
-  selectType(e) {
-    const type = e.currentTarget.dataset.type;
-    const selectedType = this.data.types.find(t => t.value === type);
-    this.setData({
-      selectedType: type,
-      selectedTypeLabel: selectedType.label,
-      resultSrc: '',
-      resultFileID: '',
-      isRealMatting: false
-    });
-  },
-
   selectBgColor(e) {
     const color = e.currentTarget.dataset.color;
     const selectedColor = this.data.backgroundColors.find(c => c.value === color);
@@ -106,7 +94,7 @@ Page({
       return;
     }
 
-    that.setData({ loading: true, debugInfo: '' });
+    that.setData({ loading: true, hasError: false, errorMsg: '' });
     wx.showLoading({ title: 'AI抠图中...', mask: true });
 
     try {
@@ -120,122 +108,45 @@ Page({
 
       wx.hideLoading();
 
-
       if (res.result.success) {
         const fileID = res.result.fileID;
-        const recognition = res.result.recognition;
-        const typeName = res.result.typeName;
-
-        // 判断是否真实抠图
-        const isRealMatting = fileID !== 'original' && fileID;
-
-        that.setData({
-          isRealMatting: isRealMatting,
-          debugInfo: `fileID: ${fileID}, isRealMatting: ${isRealMatting}`
-        });
-
-        if (isRealMatting) {
-          // 真实抠图成功
-          wx.cloud.getTempFileURL({
-            fileList: [fileID]
-          }).then(urlRes => {
-
-            that.setData({
-              resultSrc: urlRes.fileList[0].tempFileURL,
-              resultFileID: fileID
-            });
-
-            wx.showModal({
-              title: '✨ 抠图成功！',
-              content: `真实抠图完成！\n\n已去除背景，生成透明PNG。\n\n当前背景：${that.getBgColorName()}`,
-              showCancel: false,
-              confirmText: '太棒了'
-            });
+        // 真实抠图成功 → 取临时 URL 展示透明 PNG
+        wx.cloud.getTempFileURL({
+          fileList: [fileID]
+        }).then(urlRes => {
+          that.setData({
+            resultSrc: urlRes.fileList[0].tempFileURL,
+            resultFileID: fileID
           });
-        } else {
-          // 只是识别，没有真实抠图
-          if (recognition) {
-            let message = `✨ ${typeName}完成！\n\n`;
-            message += `📷 AI识别结果：\n`;
-            message += `• 主体类型：${that.getSubjectTypeName(recognition.subjectType)}\n`;
-            message += `• 主体描述：${recognition.subjectDescription}\n`;
-            message += `• 背景描述：${recognition.backgroundDescription}\n`;
-            message += `• 置信度：${Math.round(recognition.confidence * 100)}%\n\n`;
-            message += `⚠️ 提示：\n当前为智能识别模式（Beta版）。\n\n`;
-            message += `真实抠图功能需要：\n`;
-            message += `1. 开通腾讯云"人体分析"服务（已开通✓）\n`;
-            message += `2. 查看云函数日志确认错误原因\n`;
-            message += `3. 确保API密钥权限正确\n\n`;
-            message += `是否查看调试信息？`;
-
-            wx.showModal({
-              title: 'AI智能识别成功',
-              content: message,
-              confirmText: '查看调试',
-              cancelText: '我知道了',
-              success(modalRes) {
-                if (modalRes.confirm) {
-                  // 显示调试信息
-                  that.showDebugInfo();
-                } else {
-                  // 显示原图
-                  that.setData({
-                    resultSrc: that.data.imageSrc,
-                    resultFileID: that.data.fileID
-                  });
-                }
-              }
-            });
-          }
-        }
+          wx.showModal({
+            title: '✨ 抠图成功！',
+            content: `已去除背景，生成透明PNG。\n\n当前背景：${that.getBgColorName()}`,
+            showCancel: false,
+            confirmText: '太棒了'
+          });
+        });
       } else {
-        wx.showToast({
-          title: '抠图失败',
-          icon: 'none',
-          duration: 2000
+        // 失败：标准化错误 + 重试态（不再把原图当结果展示）
+        that.setData({
+          hasError: true,
+          errorMsg: res.result.error || 'AI 抠图暂时不可用，请稍后重试'
         });
       }
     } catch (err) {
       console.error('调用失败', err);
       wx.hideLoading();
-
-      // 显示详细错误
-      let errorMsg = '处理失败\n\n';
-      errorMsg += `错误信息：${err.message || err.errMsg || '未知错误'}\n\n`;
-      errorMsg += `可能原因：\n`;
-      errorMsg += `1. 人体分析服务未开通或权限不足\n`;
-      errorMsg += `2. API密钥配置错误\n`;
-      errorMsg += `3. 云函数未部署\n\n`;
-      errorMsg += `建议：查看云函数日志获取详细错误信息`;
-
-      wx.showModal({
-        title: '处理失败',
-        content: errorMsg,
-        showCancel: false,
-        confirmText: '我知道了'
+      that.setData({
+        hasError: true,
+        errorMsg: '网络异常，请稍后重试'
       });
     } finally {
       that.setData({ loading: false });
     }
   },
 
-  showDebugInfo() {
-    const debugInfo = this.data.debugInfo || '无调试信息';
-    const additionalInfo = `
-调试信息：
-${debugInfo}
-
-当前模式：${this.data.isRealMatting ? '真实抠图' : '智能识别'}
-选择的类型：${this.data.selectedType}
-
-请查看云函数日志获取详细信息。
-    `;
-
-    wx.showModal({
-      title: '调试信息',
-      content: additionalInfo.trim(),
-      showCancel: false
-    });
+  /** 失败态重试 */
+  retry() {
+    this.startMatting();
   },
 
   getBgColorName() {
@@ -249,16 +160,6 @@ ${debugInfo}
       '#2ed573': '绿色'
     };
     return colorMap[color] || '透明';
-  },
-
-  getSubjectTypeName(type) {
-    const types = {
-      'person': '人物',
-      'product': '商品',
-      'animal': '动物',
-      'other': '其他'
-    };
-    return types[type] || '未知';
   },
 
   saveResult() {

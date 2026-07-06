@@ -1,7 +1,12 @@
 <view class="container">
   <view class="page-header">
     <text class="page-title">AI智能抠图</text>
-    <text class="page-subtitle">自动识别主体，一键去除背景</text>
+    <text class="page-subtitle">智能抠图，一键去除背景</text>
+  </view>
+
+  <!-- 引导提示（主体清晰即可，人物/动物等均可） -->
+  <view class="hint-card">
+    <text class="hint-text">建议上传主体清晰的照片，人物、动物等均可</text>
   </view>
 
   <!-- 图片对比区域 -->
@@ -30,13 +35,13 @@
       </view>
       <view class="compare-box result-container" wx:else bindtap="previewResultImage" style="background-color: {{selectedBgColor === 'transparent' ? '#f0f0f0' : selectedBgColor}}">
         <image
-          class="compare-image {{isRealMatting ? 'transparent-bg' : ''}}"
+          class="compare-image transparent-bg"
           src="{{resultSrc}}"
           mode="aspectFit"
         />
         <view class="preview-tip">点击查看大图</view>
       </view>
-      <button class="save-btn-small" bindtap="saveResult">保存图片</button>
+      <button class="save-btn-small" wx:if="{{resultSrc}}" bindtap="saveResult">保存图片</button>
       <button wx:if="{{resultSrc}}" class="save-btn-small compare-btn-small" bindtap="onCompare">对比查看</button>
     </view>
   </view>
@@ -55,21 +60,11 @@
     </button>
   </view>
 
-  <!-- 抠图类型选择 -->
-  <view class="type-section">
-    <view class="section-title">选择抠图类型</view>
-    <view class="type-grid">
-      <view
-        class="type-item {{selectedType === item.value ? 'active' : ''}}"
-        wx:for="{{types}}"
-        wx:key="value"
-        data-type="{{item.value}}"
-        bindtap="selectType"
-      >
-        <text class="type-icon">{{item.icon}}</text>
-        <text class="type-label">{{item.label}}</text>
-      </view>
-    </view>
+  <!-- 失败态（标准化错误 + 重试，不再展示原图当结果） -->
+  <view class="error-card" wx:if="{{hasError}}">
+    <view class="error-icon">⚠</view>
+    <view class="error-text">{{errorMsg}}</view>
+    <button class="retry-btn-small" bindtap="retry">重试</button>
   </view>
 
   <!-- 背景颜色选择 -->
