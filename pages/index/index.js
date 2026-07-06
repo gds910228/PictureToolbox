@@ -18,7 +18,8 @@ const LAUNCH_DATES = {
   similarity: '2026-07-03',
   makeGif: '2026-07-03',
   colorAnalysis: '2026-07-03',
-  formatRecommend: '2026-07-03'
+  formatRecommend: '2026-07-03',
+  idPhoto: '2026-07-06'
 };
 
 function isToolNew(toolId) {
@@ -55,6 +56,14 @@ Page({
             name: '文字识别',
             desc: '高精度OCR识别图片中的文字',
             url: '/pages/aiOCR/aiOCR',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'idPhoto',
+            name: '证件照制作',
+            desc: 'AI抠图换底 + 人脸定位自动校正，多规格多底色',
+            url: '/pages/idPhoto/idPhoto',
             available: true,
             isNew: true
           },

@@ -1,0 +1,39 @@
+<!-- 证件照制作：选图 → AI 抠图 + 人脸定位 → roll 校正 → 多规格多底色合成 -->
+<view class="wrap">
+  <view class="title">证件照制作</view>
+  <view class="desc">选图 → AI 抠图 + 人脸定位 → roll 校正 → 多规格多底色合成（端上人脸定位走云端腾讯 IAI）</view>
+
+  <view class="section">
+    <view class="section-title">规格</view>
+    <view class="chips">
+      <view wx:for="{{specs}}" wx:key="key" class="chip {{spec.key===item.key?'chip-on':''}}" bindtap="onSpec" data-key="{{item.key}}">{{item.label}}</view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">背景</view>
+    <view class="chips">
+      <view wx:for="{{bgs}}" wx:key="key" class="chip {{bg.key===item.key?'chip-on':''}}" bindtap="onBg" data-key="{{item.key}}">{{item.label}}</view>
+    </view>
+  </view>
+
+  <button class="btn" bindtap="onPick" loading="{{processing}}" disabled="{{processing}}">选择 / 拍摄图片</button>
+
+  <view wx:if="{{status}}" class="status {{statusType}}">{{status}}</view>
+
+  <view wx:if="{{logs.length}}" class="block">
+    <view class="block-title">处理日志</view>
+    <view class="logs">
+      <view wx:for="{{logs}}" wx:key="index" class="logline">{{item}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{hasResult}}" class="block">
+    <view class="block-title">结果预览（{{spec.label}} {{spec.w}}×{{spec.h}}）</view>
+    <image src="{{resultPath}}" mode="aspectFit" class="result-img" bindtap="previewResult"></image>
+    <button class="btn save-btn" bindtap="onSave">保存到相册</button>
+  </view>
+
+  <!-- 离屏工作画布：合成 + 导出用，不可见 -->
+  <canvas type="2d" id="workCanvas" class="work-canvas"></canvas>
+</view>

@@ -22,7 +22,8 @@
     "pages/similarity/similarity",
     "pages/makeGif/makeGif",
     "pages/colorAnalysis/colorAnalysis",
-    "pages/formatRecommend/formatRecommend"
+    "pages/formatRecommend/formatRecommend",
+    "pages/idPhoto/idPhoto"
   ],
   "window": {
     "backgroundTextStyle": "light",

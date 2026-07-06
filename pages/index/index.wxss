@@ -935,6 +935,51 @@
   }
 }
 
+/* ID Photo Icon - 取景框 + 人像剪影（框呼吸换底色，人像微旋 roll 校正） */
+.icon-idPhoto {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-idPhoto::before {
+  content: '';
+  position: absolute;
+  width: 56rpx;
+  height: 72rpx;
+  border: 2rpx solid var(--color-neon-cyan);
+  border-radius: 6rpx;
+  box-shadow: 0 0 10rpx rgba(0, 240, 255, 0.35), inset 0 0 8rpx rgba(0, 240, 255, 0.12);
+  animation: idPhotoFrameGlow 2.4s ease-in-out infinite;
+}
+.icon-idPhoto::after {
+  content: '';
+  position: absolute;
+  width: 48rpx;
+  height: 56rpx;
+  background:
+    radial-gradient(circle at 50% 24%, var(--color-neon-cyan) 0 10rpx, rgba(0, 240, 255, 0) 11rpx),
+    radial-gradient(ellipse 20rpx 15rpx at 50% 100%, var(--color-neon-cyan) 0 72%, rgba(0, 240, 255, 0) 73%);
+  filter: drop-shadow(0 0 6rpx rgba(255, 0, 128, 0.65));
+  animation: idPhotoTilt 3s ease-in-out infinite;
+}
+@keyframes idPhotoFrameGlow {
+  0%, 100% {
+    border-color: var(--color-neon-cyan);
+    box-shadow: 0 0 10rpx rgba(0, 240, 255, 0.35), inset 0 0 8rpx rgba(0, 240, 255, 0.12);
+  }
+  50% {
+    border-color: var(--color-hot-magenta);
+    box-shadow: 0 0 18rpx rgba(255, 0, 128, 0.55), inset 0 0 10rpx rgba(255, 0, 128, 0.2);
+  }
+}
+@keyframes idPhotoTilt {
+  0%, 100% { transform: rotate(-3deg); }
+  50%      { transform: rotate(3deg); }
+}
+
 /* AI Style Icon - Color Palette */
 .icon-aiStyle {
   width: 96rpx;
