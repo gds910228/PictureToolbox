@@ -1,0 +1,173 @@
+<!-- pages/hiddenWatermark/hiddenWatermark.wxml -->
+<view class="page-container">
+
+  <!-- 页头 -->
+  <view class="page-header">
+    <view class="header-line"></view>
+    <text class="header-title">隐形水印</text>
+    <text class="header-sub">空域信息隐藏 · LSB 嵌入 · 本地零云端</text>
+  </view>
+
+  <!-- 隐藏画布 -->
+  <canvas type="2d" id="workCanvas" class="hidden-canvas"></canvas>
+
+  <!-- 模式切换 -->
+  <view class="tab-bar">
+    <view class="tab {{mode==='embed' ? 'tab-active' : ''}}" data-mode="embed" bindtap="switchMode">嵌入</view>
+    <view class="tab {{mode==='extract' ? 'tab-active' : ''}}" data-mode="extract" bindtap="switchMode">提取</view>
+  </view>
+
+  <!-- ============ 嵌入模式 ============ -->
+  <block wx:if="{{mode==='embed'}}">
+
+    <!-- 选图 -->
+    <view class="card section">
+      <view class="section-title"><text>选择原图</text></view>
+      <block wx:if="{{!embedSrc}}">
+        <button class="btn btn-primary" bindtap="chooseImage">上传图片</button>
+        <view class="hint">支持 JPG / PNG，本地嵌入水印，不上传服务器。最长边将降采样至 2048px</view>
+      </block>
+      <block wx:else>
+        <view class="src-preview" bindtap="preview" data-url="{{embedSrc}}">
+          <image class="src-img" src="{{embedSrc}}" mode="aspectFit"></image>
+        </view>
+        <view class="src-meta" wx:if="{{embedW}}">原图尺寸：{{embedW}} × {{embedH}} px</view>
+        <view class="src-actions">
+          <button class="btn btn-secondary src-btn" bindtap="chooseImage">换一张</button>
+          <button class="btn btn-secondary src-btn danger" bindtap="clearEmbed">清空</button>
+        </view>
+      </block>
+    </view>
+
+    <!-- 水印内容 -->
+    <view class="card section" wx:if="{{embedSrc}}">
+      <view class="section-title"><text>水印内容</text></view>
+      <textarea class="text-input" placeholder="输入要隐藏的文字，如「图个简单 · 用户ID」"
+                value="{{embedText}}" bindinput="onTextInput" maxlength="500"
+                auto-height></textarea>
+      <view class="opt-row key-row">
+        <text class="opt-label">密钥</text>
+        <input class="key-input" type="text" value="{{key}}" bindinput="onKeyInput" placeholder="提取时需一致" />
+      </view>
+      <view class="hint">文字按 UTF-8 编码后分散写入蓝通道最低位，3 次冗余。密钥决定写入位置，提取须用相同密钥</view>
+      <button class="btn btn-primary action-btn" bindtap="doEmbed" loading="{{embedding}}" disabled="{{embedding}}">
+        {{embedding ? '嵌入中...' : '嵌入水印'}}
+      </button>
+    </view>
+
+    <!-- 嵌入中 -->
+    <view class="card section" wx:if="{{embedding}}">
+      <view class="analyzing-row">
+        <view class="loading-dot"></view>
+        <text class="analyzing-text">正在嵌入像素...</text>
+      </view>
+    </view>
+
+    <!-- 结果对比 -->
+    <view class="card section" wx:if="{{embedResult}}">
+      <view class="section-title">
+        <text>对比（左原图 / 右水印图）</text>
+        <text class="section-count">{{embedBitsInfo}}</text>
+      </view>
+
+      <view class="compare-grid">
+        <view class="compare-cell" bindtap="preview" data-url="{{embedOrigPath}}">
+          <image class="compare-img" src="{{embedOrigPath}}" mode="aspectFit"></image>
+          <text class="compare-label">原图{{embedOrigSize ? ' · ' + embedOrigSize : ''}}</text>
+        </view>
+        <view class="compare-cell" bindtap="preview" data-url="{{embedResult}}">
+          <image class="compare-img" src="{{embedResult}}" mode="aspectFit"></image>
+          <text class="compare-label">水印图{{embedWmSize ? ' · ' + embedWmSize : ''}}</text>
+        </view>
+      </view>
+      <view class="hint">肉眼几乎无差异。长按可放大查看</view>
+
+      <!-- 改动位高亮 -->
+      <view class="diff-toggle" bindtap="toggleDiff">
+        <text>{{showDiff ? '▾ 隐藏改动位高亮图' : '▸ 查看改动位高亮图'}}</text>
+      </view>
+      <view class="diff-wrap" wx:if="{{showDiff}}">
+        <image class="diff-img" src="{{embedDiff}}" mode="widthFix"></image>
+        <view class="hint">亮青点 = 实际写入水印的像素（{{embedChangedInfo}}）。稀疏正是隐蔽性的体现；背景为压暗的原图</view>
+      </view>
+
+      <button class="btn btn-primary save-btn" bindtap="saveEmbedResult">保存水印图到相册</button>
+      <view class="hint center">PNG 无损格式，保留全部水印信息</view>
+    </view>
+
+  </block>
+
+  <!-- ============ 提取模式 ============ -->
+  <block wx:if="{{mode==='extract'}}">
+
+    <!-- 选图 -->
+    <view class="card section">
+      <view class="section-title"><text>选择水印图</text></view>
+      <block wx:if="{{!extractSrc}}">
+        <button class="btn btn-primary" bindtap="chooseImage">上传图片</button>
+        <view class="hint">选择已嵌入水印的图片（PNG 最佳）。JPG 重压可能损失水印</view>
+      </block>
+      <block wx:else>
+        <view class="src-preview" bindtap="preview" data-url="{{extractSrc}}">
+          <image class="src-img" src="{{extractSrc}}" mode="aspectFit"></image>
+        </view>
+        <view class="src-meta" wx:if="{{extractW}}">图片尺寸：{{extractW}} × {{extractH}} px</view>
+        <view class="src-actions">
+          <button class="btn btn-secondary src-btn" bindtap="chooseImage">换一张</button>
+          <button class="btn btn-secondary src-btn danger" bindtap="clearExtract">清空</button>
+        </view>
+      </block>
+    </view>
+
+    <!-- 密钥 -->
+    <view class="card section" wx:if="{{extractSrc}}">
+      <view class="section-title"><text>密钥</text></view>
+      <view class="opt-row key-row">
+        <text class="opt-label">密钥</text>
+        <input class="key-input" type="text" value="{{key}}" bindinput="onKeyInput" placeholder="须与嵌入时一致" />
+      </view>
+      <view class="hint">用相同密钥重建位置序列，多数判决还原文字</view>
+      <button class="btn btn-primary action-btn" bindtap="doExtract" loading="{{extracting}}" disabled="{{extracting}}">
+        {{extracting ? '提取中...' : '提取水印'}}
+      </button>
+    </view>
+
+    <!-- 提取中 -->
+    <view class="card section" wx:if="{{extracting}}">
+      <view class="analyzing-row">
+        <view class="loading-dot"></view>
+        <text class="analyzing-text">正在读取像素...</text>
+      </view>
+    </view>
+
+    <!-- 提取结果 -->
+    <view class="card section" wx:if="{{extractStatus}}">
+      <view class="section-title">
+        <text>提取结果</text>
+        <text class="status-badge status-{{extractStatus}}">{{extractStatus==='ok' ? '完整还原' : (extractStatus==='corrupt' ? '已损坏' : '未检出')}}</text>
+      </view>
+
+      <view class="conf-row">
+        <text class="conf-label">置信度</text>
+        <view class="conf-bar"><view class="conf-fill" style="width:{{extractConf}}%"></view></view>
+        <text class="conf-num">{{extractConf}}%</text>
+      </view>
+
+      <view class="extract-text-wrap">
+        <text class="extract-text" wx:if="{{extractText}}">{{extractText}}</text>
+        <text class="extract-text empty" wx:else>（无文字）</text>
+      </view>
+      <view class="extract-note">{{extractNote}}</view>
+
+      <button class="btn btn-secondary action-btn" bindtap="copyExtractText" wx:if="{{extractText}}">复制文字</button>
+    </view>
+
+  </block>
+
+  <!-- 说明 -->
+  <view class="card section disclaimer">
+    <view class="section-title"><text>说明</text></view>
+    <view class="hint">本工具采用空域 LSB 信息隐藏算法，适合受控分发场景下的图片存证与隐藏标注。对重度 JPEG 压缩、截图、社交平台二次转发鲁棒性有限，不建议作为唯一版权保护手段。</view>
+  </view>
+
+</view>

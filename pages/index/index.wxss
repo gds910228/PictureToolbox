@@ -1358,6 +1358,49 @@
   }
 }
 
+/* 隐形水印图标：像素网格中一颗闪烁的隐藏比特 */
+.icon-hiddenWatermark {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+}
+.icon-hiddenWatermark::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 56rpx;
+  height: 56rpx;
+  border: 2rpx solid var(--color-neon-cyan);
+  border-radius: 6rpx;
+  background:
+    linear-gradient(rgba(0, 240, 255, 0.28), rgba(0, 240, 255, 0.28)) center/2rpx 100% no-repeat,
+    linear-gradient(rgba(0, 240, 255, 0.28), rgba(0, 240, 255, 0.28)) center/100% 2rpx no-repeat;
+  box-shadow: 0 0 12rpx rgba(0, 240, 255, 0.3);
+  animation: hwGridGlow 2.6s ease-in-out infinite;
+}
+.icon-hiddenWatermark::after {
+  content: '';
+  position: absolute;
+  top: calc(50% + 14rpx);
+  left: calc(50% + 14rpx);
+  width: 20rpx;
+  height: 20rpx;
+  background: var(--color-hot-magenta);
+  border-radius: 3rpx;
+  box-shadow: 0 0 12rpx rgba(255, 0, 128, 0.8);
+  animation: hwBitBlink 1.8s ease-in-out infinite;
+}
+@keyframes hwGridGlow {
+  0%, 100% { box-shadow: 0 0 12rpx rgba(0, 240, 255, 0.3); border-color: var(--color-neon-cyan); }
+  50% { box-shadow: 0 0 18rpx rgba(0, 240, 255, 0.55); border-color: #66f5ff; }
+}
+@keyframes hwBitBlink {
+  0%, 100% { opacity: 0.2; transform: translate(-50%, -50%) scale(0.85); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+}
+
 /* EXIF 图标：放大镜 */
 .icon-exif {
   width: 96rpx;

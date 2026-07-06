@@ -19,7 +19,8 @@ const LAUNCH_DATES = {
   makeGif: '2026-07-03',
   colorAnalysis: '2026-07-03',
   formatRecommend: '2026-07-03',
-  idPhoto: '2026-07-06'
+  idPhoto: '2026-07-06',
+  hiddenWatermark: '2026-07-06'
 };
 
 function isToolNew(toolId) {
@@ -216,6 +217,14 @@ Page({
             name: 'GIF制作',
             desc: '多图合成动图，本地生成无需联网',
             url: '/pages/makeGif/makeGif',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'hiddenWatermark',
+            name: '隐形水印',
+            desc: '文字隐形嵌入图片像素，可密钥提取还原',
+            url: '/pages/hiddenWatermark/hiddenWatermark',
             available: true,
             isNew: true
           },

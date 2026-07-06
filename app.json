@@ -23,7 +23,8 @@
     "pages/makeGif/makeGif",
     "pages/colorAnalysis/colorAnalysis",
     "pages/formatRecommend/formatRecommend",
-    "pages/idPhoto/idPhoto"
+    "pages/idPhoto/idPhoto",
+    "pages/hiddenWatermark/hiddenWatermark"
   ],
   "window": {
     "backgroundTextStyle": "light",
