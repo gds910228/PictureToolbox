@@ -7,12 +7,15 @@
 // 安全/诚实性约定（对齐 aiCaption）：
 // 1. 密钥未配置 → 返回 mock 示例描述（附 isMock:true，仅供本地开发），前端标注「示例文案」；
 //    密钥已配置但调用/解析失败 → 返回 success:false（不再静默 mock，避免假描述冒充 AI）。
-// 2. 服务端内容安全兜底：下载原图过 assertImageSafe，违规即拒（不暴露原因）。
+// 2. 限流：复用统一模块 rate-limiter，featureKey='describe'，每功能独立计数。
+//    限额走环境变量 RATE_LIMIT_DAILY（缺省 20），控制台可改免重新部署。
+// 3. 服务端内容安全兜底：下载原图过 assertImageSafe，违规即拒（不暴露原因）。
 
 const cloud = require('wx-server-sdk');
 const tencentcloud = require('tencentcloud-sdk-nodejs');
 const secret = require('./cloud-secret');
 const contentCheck = require('./content-check');
+const rateLimiter = require('./rate-limiter');
 
 // 导入混元产品模块
 const HunyuanClient = tencentcloud.hunyuan.v20230901.Client;
@@ -22,12 +25,26 @@ cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV
 });
 
+const FEATURE_KEY = 'describe';
+
 /**
  * 生成图片描述
- * @param {event} Object - { fileID: string, base64Image: string, style: string }
- * @returns {Object} - { success, description, style, isMock | error }
+ * @param {event} Object - { fileID: string, base64Image: string, style: string, action?: 'quota' }
+ * @returns {Object} - { success, description, style, isMock, used?, limit? | error }
  */
 exports.main = async (event, context) => {
+  const action = event.action || 'describe';
+
+  // 轻量查询分支：只读当日描述额度，不计数、不消耗（前端进页面展示额度条用）
+  if (action === 'quota') {
+    const wxCtxQ = cloud.getWXContext();
+    const openidQ = wxCtxQ && wxCtxQ.OPENID;
+    if (!secret.getCredentials().available) {
+      return { success: true, demo: true, used: 0, limit: rateLimiter.resolveLimit() };
+    }
+    return await rateLimiter.queryQuota(openidQ, FEATURE_KEY, cloud);
+  }
+
   const { fileID, base64Image, style = 'professional' } = event;
 
 
@@ -53,6 +70,24 @@ exports.main = async (event, context) => {
       };
     }
 
+    // 密钥可用 → 限流（mock 态不消耗额度，不计数）
+    const cred = secret.getCredentials();
+    let rl = null;
+    if (cred.available) {
+      const wxCtx = cloud.getWXContext();
+      const openid = wxCtx && wxCtx.OPENID;
+      rl = await rateLimiter.checkRateLimit(openid, FEATURE_KEY, cloud);
+      if (!rl.ok) {
+        return {
+          success: false,
+          error: 'rate_limit',
+          limit: rl.limit,
+          used: rl.used,
+          resetAt: '次日0点'
+        };
+      }
+    }
+
     // 调用混元大模型API生成描述（失败抛错，由 catch 返回失败，不再静默 mock）
     const { description, isMock } = await callHunyuanAPI(imageURL, style);
 
@@ -61,7 +96,9 @@ exports.main = async (event, context) => {
       success: true,
       description: description,
       style: style,
-      isMock: isMock
+      isMock: isMock,
+      used: rl ? rl.used : 0,
+      limit: rl ? rl.limit : rateLimiter.resolveLimit()
     };
 
   } catch (err) {

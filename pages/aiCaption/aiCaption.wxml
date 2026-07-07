@@ -4,6 +4,9 @@
     <text class="page-subtitle">看图一键生成社媒文案 · 混元大模型</text>
   </view>
 
+  <!-- 今日额度（顶层常驻，任何状态都可见） -->
+  <view class="quota-tip" wx:if="{{usedText}}">{{usedText}} · 每日 {{limit}} 次，次日 0 点重置</view>
+
   <!-- 图片选择区 -->
   <view class="card image-section" bindtap="chooseImage">
     <image class="preview-image {{imageSrc ? '' : 'placeholder'}}" src="{{imageSrc}}" mode="aspectFit" />
@@ -51,7 +54,6 @@
     </view>
 
     <view class="mock-badge" wx:if="{{isMock}}">示例文案（未配置 AI 密钥）</view>
-    <view class="quota-info" wx:else>今日已用 {{used}}/{{limit}} 次</view>
 
     <view class="result-info" wx:if="{{topic}}">
       <text>平台：{{selectedPlatformLabel}} | 主题：{{topic}}</text>

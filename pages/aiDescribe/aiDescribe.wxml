@@ -6,6 +6,9 @@
     <text class="page-subtitle">智能识别图片内容并生成描述</text>
   </view>
 
+  <!-- 今日额度（顶层常驻，任何状态都可见） -->
+  <view class="quota-tip" wx:if="{{usedText}}">{{usedText}} · 每日 {{limit}} 次，次日 0 点重置</view>
+
   <!-- 图片区域 -->
   <view class="image-section">
     <image
@@ -42,6 +45,12 @@
     >
       {{loading ? '生成中...' : '生成AI描述'}}
     </button>
+  </view>
+
+  <!-- 错误态 -->
+  <view class="error-card" wx:if="{{hasError}}">
+    <text class="error-text">{{errorMsg}}</text>
+    <button class="retry-btn" wx:if="{{!loading}}" bindtap="retry">重试</button>
   </view>
 
   <!-- 描述结果 -->

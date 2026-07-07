@@ -32,7 +32,38 @@ Page({
       { value: 'monet', label: '莫奈花园', icon: '🌸' },
       { value: 'impasto', label: '厚涂手绘', icon: '🖼️' }
     ],
-    loading: false
+    loading: false,
+    usedText: '',
+    used: 0,
+    limit: 20
+  },
+
+  onLoad() {
+    this.loadQuota();
+  },
+
+  /**
+   * 查询今日已用额度（只读，不消耗）。进页面时调一次，让额度条提前可见。
+   * demo 态（未配置密钥）不展示额度条。
+   */
+  async loadQuota() {
+    try {
+      const res = await wx.cloud.callFunction({
+        name: 'aiStyleTransfer',
+        data: { action: 'quota' }
+      });
+      const r = (res && res.result) || {};
+      console.log('[aiStyle] quota 返回', r);
+      if (r.success && !r.demo) {
+        this.setData({
+          usedText: buildUsedText(r.used, r.limit),
+          used: r.used || 0,
+          limit: r.limit || this.data.limit
+        });
+      }
+    } catch (e) {
+      console.warn('[aiStyle] 查询额度失败', e && (e.errMsg || e.message));
+    }
   },
 
   /**
@@ -156,7 +187,10 @@ Page({
 
             that.setData({
               resultSrc: downloadRes.tempFilePath,  // 使用本地临时文件路径
-              resultFileID: resultFileID
+              resultFileID: resultFileID,
+              usedText: buildUsedText(res.result.used, res.result.limit),
+              used: res.result.used || 0,
+              limit: res.result.limit || that.data.limit
             });
 
 
@@ -178,6 +212,17 @@ Page({
               duration: 2000
             });
           }
+        });
+      } else if (res.result.error === 'rate_limit') {
+        that.setData({
+          usedText: buildUsedText(res.result.used, res.result.limit),
+          used: res.result.used || 0,
+          limit: res.result.limit || that.data.limit
+        });
+        wx.showModal({
+          title: '额度已用完',
+          content: `今日风格迁移 ${res.result.limit || that.data.limit} 次额度已用完，次日 0 点重置`,
+          showCancel: false
         });
       } else {
         // 显示错误信息
@@ -306,3 +351,13 @@ Page({
     this.setData({ resultSrc: '', resultFileID: '' });
   }
 });
+
+/**
+ * 构造今日额度文案。仅密钥可用时云函数才返回 used/limit；缺失/demo 则返回空串（不展示）。
+ */
+function buildUsedText(used, limit) {
+  const u = Number(used);
+  const l = Number(limit);
+  if (!isFinite(u) || !isFinite(l) || l <= 0) return '';
+  return `今日已用 ${u}/${l} 次`;
+}

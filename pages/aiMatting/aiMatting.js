@@ -28,7 +28,39 @@ Page({
     loading: false,
     // 失败态
     hasError: false,
-    errorMsg: ''
+    errorMsg: '',
+    // 配额
+    usedText: '',
+    used: 0,
+    limit: 20
+  },
+
+  onLoad() {
+    this.loadQuota();
+  },
+
+  /**
+   * 查询今日已用额度（只读，不消耗）。进页面时调一次，让额度条提前可见。
+   * demo 态（未配置密钥）不展示额度条。
+   */
+  async loadQuota() {
+    try {
+      const res = await wx.cloud.callFunction({
+        name: 'aiMatting',
+        data: { action: 'quota' }
+      });
+      const r = (res && res.result) || {};
+      console.log('[aiMatting] quota 返回', r);
+      if (r.success && !r.demo) {
+        this.setData({
+          usedText: buildUsedText(r.used, r.limit),
+          used: r.used || 0,
+          limit: r.limit || this.data.limit
+        });
+      }
+    } catch (e) {
+      console.warn('[aiMatting] 查询额度失败', e && (e.errMsg || e.message));
+    }
   },
 
   chooseImage() {
@@ -116,7 +148,10 @@ Page({
         }).then(urlRes => {
           that.setData({
             resultSrc: urlRes.fileList[0].tempFileURL,
-            resultFileID: fileID
+            resultFileID: fileID,
+            usedText: buildUsedText(res.result.used, res.result.limit),
+            used: res.result.used || 0,
+            limit: res.result.limit || that.data.limit
           });
           wx.showModal({
             title: '✨ 抠图成功！',
@@ -124,6 +159,14 @@ Page({
             showCancel: false,
             confirmText: '太棒了'
           });
+        });
+      } else if (res.result.error === 'rate_limit') {
+        that.setData({
+          hasError: true,
+          errorMsg: `今日 ${res.result.limit || that.data.limit} 次抠图额度已用完，次日 0 点重置`,
+          usedText: buildUsedText(res.result.used, res.result.limit),
+          used: res.result.used || 0,
+          limit: res.result.limit || that.data.limit
         });
       } else {
         // 失败：标准化错误 + 重试态（不再把原图当结果展示）
@@ -215,3 +258,13 @@ Page({
     });
   }
 });
+
+/**
+ * 构造今日额度文案。仅密钥可用时云函数才返回 used/limit；缺失/demo 则返回空串（不展示）。
+ */
+function buildUsedText(used, limit) {
+  const u = Number(used);
+  const l = Number(limit);
+  if (!isFinite(u) || !isFinite(l) || l <= 0) return '';
+  return `今日已用 ${u}/${l} 次`;
+}

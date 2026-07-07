@@ -30,7 +30,36 @@ Page({
     errorMsg: '',
     // 配额
     used: 0,
-    limit: 20
+    limit: 20,
+    usedText: ''          // 顶层额度条文案 "今日已用 X/20 次"
+  },
+
+  onLoad() {
+    this.loadQuota();
+  },
+
+  /**
+   * 查询今日已用额度（只读，不消耗）。进页面时调一次，让额度条提前可见。
+   * mock 态（未配置密钥）不展示额度条。
+   */
+  async loadQuota() {
+    try {
+      const res = await wx.cloud.callFunction({
+        name: 'aiCaption',
+        data: { action: 'quota' }
+      });
+      const r = (res && res.result) || {};
+      console.log('[aiCaption] quota 返回', r);
+      if (r.success && !r.demo) {
+        this.setData({
+          usedText: buildUsedText(r.used, r.limit),
+          used: r.used || 0,
+          limit: r.limit || this.data.limit
+        });
+      }
+    } catch (e) {
+      console.warn('[aiCaption] 查询额度失败', e && (e.errMsg || e.message));
+    }
   },
 
   chooseImage() {
@@ -135,7 +164,8 @@ Page({
           captions: Array.isArray(r.captions) ? r.captions : [],
           isMock: !!r.mock,
           used: r.used || 0,
-          limit: r.limit || this.data.limit
+          limit: r.limit || this.data.limit,
+          usedText: r.mock ? '' : buildUsedText(r.used, r.limit)
         });
       } else if (r.error === 'rate_limit') {
         this.setData({
@@ -144,6 +174,7 @@ Page({
           errorMsg: `今日 ${r.limit || this.data.limit} 次配额已用完`,
           used: r.used || 0,
           limit: r.limit || this.data.limit,
+          usedText: buildUsedText(r.used, r.limit),
           isMock: false
         });
       } else {
@@ -189,3 +220,13 @@ Page({
     });
   }
 });
+
+/**
+ * 构造今日额度文案。仅密钥可用时云函数才返回 used/limit；缺失/mock 则返回空串（不展示）。
+ */
+function buildUsedText(used, limit) {
+  const u = Number(used);
+  const l = Number(limit);
+  if (!isFinite(u) || !isFinite(l) || l <= 0) return '';
+  return `今日已用 ${u}/${l} 次`;
+}

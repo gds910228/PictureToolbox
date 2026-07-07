@@ -181,10 +181,16 @@
   padding: 6rpx 16rpx;
   margin-bottom: var(--space-sm);
 }
-.quota-info {
+.quota-tip {
+  text-align: center;
   font-size: 22rpx;
   color: var(--color-gray-500);
-  margin-bottom: var(--space-sm);
+  margin: 4rpx 0 24rpx;
+  padding: 12rpx 20rpx;
+  background: rgba(0, 240, 255, 0.04);
+  border: 1rpx solid rgba(0, 240, 255, 0.12);
+  border-radius: var(--radius-sm);
+  line-height: 1.5;
 }
 .result-info {
   font-size: 24rpx;

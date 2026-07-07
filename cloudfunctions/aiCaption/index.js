@@ -34,6 +34,19 @@ cloud.init({
  * @returns {Object} - { success, captions, platform, mock?, used?, limit? | error }
  */
 exports.main = async (event, context) => {
+  const action = event.action || 'generate';
+
+  // 轻量查询分支：只读当日配文额度，不计数、不消耗（前端进页面展示额度条用）
+  if (action === 'quota') {
+    const wxCtxQ = cloud.getWXContext();
+    const openidQ = wxCtxQ && wxCtxQ.OPENID;
+    // 密钥未配置 → mock 态（前端不展示额度条，配文走示例文案）
+    if (!secret.getCredentials().available) {
+      return { success: true, demo: true, used: 0, limit: rateLimiter.resolveLimit() };
+    }
+    return await rateLimiter.queryQuota(openidQ, FEATURE_KEY, cloud);
+  }
+
   const { fileID, base64Image, platform = 'moments', topic = '' } = event;
 
   try {

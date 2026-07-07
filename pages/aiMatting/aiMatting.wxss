@@ -25,6 +25,19 @@
   color: #8b9dc3;
 }
 
+/* 今日额度提示（顶层常驻） */
+.quota-tip {
+  text-align: center;
+  font-size: 22rpx;
+  color: var(--color-gray-500);
+  margin: 4rpx 0 24rpx;
+  padding: 12rpx 20rpx;
+  background: rgba(0, 240, 255, 0.04);
+  border: 1rpx solid rgba(0, 240, 255, 0.12);
+  border-radius: var(--radius-sm);
+  line-height: 1.5;
+}
+
 /* 图片对比区域 */
 .compare-section {
   display: flex;

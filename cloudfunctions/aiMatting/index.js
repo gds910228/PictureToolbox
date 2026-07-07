@@ -12,18 +12,33 @@ const cloud = require('wx-server-sdk');
 const tencentcloud = require('tencentcloud-sdk-nodejs');
 const secret = require('./cloud-secret');
 const contentCheck = require('./content-check');
+const rateLimiter = require('./rate-limiter');
 
 // 初始化云开发环境
 cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV
 });
 
+const FEATURE_KEY = 'matting';
+
 /**
  * AI智能抠图（人像分割）
- * @param {event} Object - { fileID: string, type?: string }
+ * @param {event} Object - { fileID: string, type?: string, action?: 'quota' }
  * @returns {Object} - { success, fileID, type, typeName | error }
  */
 exports.main = async (event, context) => {
+  const action = event.action || 'matting';
+
+  // 轻量查询分支：只读当日抠图额度，不计数、不消耗（前端进页面展示额度条用）
+  if (action === 'quota') {
+    const wxCtxQ = cloud.getWXContext();
+    const openidQ = wxCtxQ && wxCtxQ.OPENID;
+    if (!secret.getCredentials().available) {
+      return { success: true, demo: true, used: 0, limit: rateLimiter.resolveLimit() };
+    }
+    return await rateLimiter.queryQuota(openidQ, FEATURE_KEY, cloud);
+  }
+
   const { fileID, type = 'portrait' } = event;
 
 
@@ -38,6 +53,10 @@ exports.main = async (event, context) => {
     // 入口检查密钥（控制台环境变量优先）；未配置则抛错，外层 catch 返回失败
     const cred = secret.assertCredentials();
 
+    // 取调用者 openid（用于限流）
+    const wxCtx = cloud.getWXContext();
+    const openid = wxCtx && wxCtx.OPENID;
+
     // 下载图片
     const downloadResult = await cloud.downloadFile({
       fileID: fileID
@@ -48,6 +67,18 @@ exports.main = async (event, context) => {
     // 服务端内容安全兜底（违规则抛错，外层 catch 返回失败）
     await contentCheck.assertImageSafe(imageBuffer, cloud);
 
+    // 限流（通过内容安全后再计数，避免无效请求消耗额度）
+    const rl = await rateLimiter.checkRateLimit(openid, FEATURE_KEY, cloud);
+    if (!rl.ok) {
+      return {
+        success: false,
+        error: 'rate_limit',
+        limit: rl.limit,
+        used: rl.used,
+        resetAt: '次日0点'
+      };
+    }
+
     // 真实抠图：SegmentPortraitPic（人像分割接口，实测对动物等主体亦有泛化效果）。
     // 失败抛错，不再回退"返原图+识别"伪装成功。
     const mattingFileID = await callTencentMattingAPI(imageBuffer, cred);
@@ -57,7 +88,9 @@ exports.main = async (event, context) => {
       success: true,
       fileID: mattingFileID,
       type: type,
-      typeName: '智能抠图'
+      typeName: '智能抠图',
+      used: rl.used,
+      limit: rl.limit
     };
 
   } catch (err) {

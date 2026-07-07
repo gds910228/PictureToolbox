@@ -5,18 +5,33 @@ const cloud = require('wx-server-sdk');
 const tencentcloud = require('tencentcloud-sdk-nodejs');
 const secret = require('./cloud-secret');
 const contentCheck = require('./content-check');
+const rateLimiter = require('./rate-limiter');
 
 // 初始化云开发环境
 cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV
 });
 
+const FEATURE_KEY = 'style';
+
 /**
  * AI风格迁移
- * @param {event} Object - { fileID: string, style: string }
+ * @param {event} Object - { fileID: string, style: string, action?: 'quota' }
  * @returns {Object} - 风格迁移结果
  */
 exports.main = async (event, context) => {
+  const action = event.action || 'transfer';
+
+  // 轻量查询分支：只读当日风格迁移额度，不计数、不消耗（前端进页面展示额度条用）
+  if (action === 'quota') {
+    const wxCtxQ = cloud.getWXContext();
+    const openidQ = wxCtxQ && wxCtxQ.OPENID;
+    if (!secret.getCredentials().available) {
+      return { success: true, demo: true, used: 0, limit: rateLimiter.resolveLimit() };
+    }
+    return await rateLimiter.queryQuota(openidQ, FEATURE_KEY, cloud);
+  }
+
   const { fileID, style = 'oil-painting' } = event;
 
 
@@ -34,6 +49,10 @@ exports.main = async (event, context) => {
     const secretKey = cred.secretKey;
     const region = cred.region;
 
+    // 取调用者 openid（用于限流）
+    const wxCtx = cloud.getWXContext();
+    const openid = wxCtx && wxCtx.OPENID;
+
     // 下载图片（用于后续可能的处理）
     const downloadResult = await cloud.downloadFile({
       fileID: fileID
@@ -44,6 +63,18 @@ exports.main = async (event, context) => {
 
     // 服务端内容安全兜底（违规则抛错，外层 catch 返回失败）
     await contentCheck.assertImageSafe(imageBuffer, cloud);
+
+    // 限流（通过内容安全后再计数，避免无效请求消耗额度）
+    const rl = await rateLimiter.checkRateLimit(openid, FEATURE_KEY, cloud);
+    if (!rl.ok) {
+      return {
+        success: false,
+        error: 'rate_limit',
+        limit: rl.limit,
+        used: rl.used,
+        resetAt: '次日0点'
+      };
+    }
 
     // 调用混元文生图API进行风格迁移
     const styleResult = await callHunyuanStyleTransfer(base64Image, style, secretId, secretKey, region, fileID);
@@ -57,7 +88,9 @@ exports.main = async (event, context) => {
       success: true,
       fileID: styleResult.fileID,
       style: style,
-      styleName: styleResult.styleName
+      styleName: styleResult.styleName,
+      used: rl.used,
+      limit: rl.limit
     };
 
   } catch (err) {

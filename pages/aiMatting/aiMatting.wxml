@@ -4,6 +4,9 @@
     <text class="page-subtitle">智能抠图，一键去除背景</text>
   </view>
 
+  <!-- 今日额度（顶层常驻，任何状态都可见） -->
+  <view class="quota-tip" wx:if="{{usedText}}">{{usedText}} · 每日 {{limit}} 次，次日 0 点重置</view>
+
   <!-- 引导提示（主体清晰即可，人物/动物等均可） -->
   <view class="hint-card">
     <text class="hint-text">建议上传主体清晰的照片，人物、动物等均可</text>
