@@ -1,0 +1,113 @@
+<view class="container">
+  <view class="page-header">
+    <text class="page-title">AI 文生图</text>
+    <text class="page-subtitle">腾讯混元 3.0 · 文字描述生成图片</text>
+  </view>
+
+  <!-- 今日额度（顶层常驻） -->
+  <view class="quota-tip" wx:if="{{usedText}}">{{usedText}} · 每日 20 次，次日 0 点重置</view>
+
+  <!-- 输入态 -->
+  <view class="input-section" wx:if="{{!processing && !resultSrc}}">
+    <!-- 提示词 -->
+    <view class="section-title">描述你想要的画面</view>
+    <textarea
+      class="prompt-input"
+      value="{{prompt}}"
+      bindinput="onPromptInput"
+      placeholder="例如：赛博朋克猫咪，霓虹雨夜，电影级光影…"
+      placeholder-class="prompt-ph"
+      maxlength="500"
+      auto-height
+      disabled="{{enhancing}}"
+    />
+    <view class="prompt-tools">
+      <button class="enhance-btn {{enhancing ? 'loading' : ''}}" bindtap="onEnhance" disabled="{{enhancing}}">
+        {{enhancing ? 'AI 构思中…' : '✨ AI 帮写提示词'}}
+      </button>
+      <text class="prompt-count">{{prompt.length}}/500</text>
+    </view>
+    <view class="enhance-demo-tip" wx:if="{{enhanceDemo}}">示例提示词（未配置 AI 密钥）</view>
+
+    <!-- 参考图 -->
+    <view class="section-title">参考图（可选，最多 3 张）</view>
+    <image-uploader
+      id="refUploader"
+      maxCount="3"
+      value="{{refPaths}}"
+      sizeType="{{['original']}}"
+      sourceType="{{['album', 'camera']}}"
+      showCompressTip="{{false}}"
+      tipText="上传参考图"
+      theme="cyan"
+      bind:change="onImageChange"
+    />
+    <text class="ref-hint">上传参考图后，生成结果会结合参考图风格</text>
+
+    <!-- 画面比例 -->
+    <view class="section-title">画面比例</view>
+    <view class="ratio-grid">
+      <view
+        class="ratio-item {{selectedRatio === item.value ? 'active' : ''}}"
+        wx:for="{{ratios}}"
+        wx:key="value"
+        data-ratio="{{item.value}}"
+        bindtap="selectRatio"
+      >
+        <text class="ratio-value">{{item.label}}</text>
+        <text class="ratio-desc">{{item.desc}}</text>
+      </view>
+    </view>
+
+    <!-- 示例态横幅（未配置密钥） -->
+    <view class="demo-banner" wx:if="{{demo}}">示例模式：未配置 AI 绘图密钥，无法生成图片。配置腾讯混元密钥后即可体验真实生成。</view>
+
+    <!-- 错误态 -->
+    <view class="error-card" wx:if="{{errorMsg}}">
+      <text class="error-text">{{errorMsg}}</text>
+      <button class="retry-btn" bindtap="startGenerate">重试</button>
+    </view>
+
+    <!-- 生成按钮 -->
+    <button class="generate-btn" bindtap="startGenerate" disabled="{{!prompt}}">开始生成</button>
+  </view>
+
+  <!-- 生成中 -->
+  <view class="processing-section" wx:if="{{processing}}">
+    <view class="processing-icon">🎨</view>
+    <text class="processing-title">AI 生成中</text>
+    <text class="processing-status">{{statusText}}</text>
+    <view class="progress-bar">
+      <view class="progress-inner" style="width: {{progress}}%;"></view>
+    </view>
+    <text class="processing-hint">混元 3.0 生成约需 20-40 秒，请勿离开…</text>
+  </view>
+
+  <!-- 结果 -->
+  <view class="result-section" wx:if="{{resultSrc}}">
+    <view class="result-label">生成结果</view>
+    <view class="result-box" bindtap="previewResult">
+      <image
+        class="result-image"
+        src="{{resultSrc}}"
+        mode="widthFix"
+        bindload="onImageLoad"
+        binderror="onImageError"
+        lazy-load="true"
+      />
+      <view class="preview-tip">点击查看大图</view>
+    </view>
+
+    <view class="result-actions">
+      <button class="action-btn primary" bindtap="saveResult">保存图片</button>
+      <view class="action-row">
+        <button class="action-btn secondary" open-type="share">分享</button>
+        <button class="action-btn secondary" bindtap="regenerate">再生成</button>
+        <button class="action-btn secondary" bindtap="recreate">再创作</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 合规提示 -->
+  <view class="compliance-tip">结果图由腾讯混元 3.0 生成，带「图片由 AI 生成」水印标识</view>
+</view>

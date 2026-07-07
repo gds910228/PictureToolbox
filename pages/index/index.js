@@ -22,7 +22,8 @@ const LAUNCH_DATES = {
   formatRecommend: '2026-07-03',
   idPhoto: '2026-07-06',
   hiddenWatermark: '2026-07-06',
-  aiOutpaint: '2026-07-06'
+  aiOutpaint: '2026-07-06',
+  aiTextToImage: '2026-07-07'
 };
 
 function isToolNew(toolId) {
@@ -42,7 +43,8 @@ Page({
       { id: 'aiStyle', name: '风格迁移' },
       { id: 'aiUpscale', name: 'AI放大' },
       { id: 'aiColorize', name: '老照片上色' },
-      { id: 'aiOCR', name: '文字识别' }
+      { id: 'aiOCR', name: '文字识别' },
+      { id: 'aiTextToImage', name: 'AI 文生图' }
     ],
     typedName: '',
     currentToolIdx: 0,
@@ -123,6 +125,14 @@ Page({
             name: 'AI 扩图',
             desc: '按比例智能扩展画面，补全背景',
             url: '/pages/aiOutpaint/aiOutpaint',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiTextToImage',
+            name: 'AI 文生图',
+            desc: '腾讯混元3.0文生图，AI帮写提示词',
+            url: '/pages/aiTextToImage/aiTextToImage',
             available: true,
             isNew: true
           },

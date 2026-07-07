@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "AI 文生图",
+  "usingComponents": {
+    "image-uploader": "/components/image-uploader/image-uploader"
+  }
+}

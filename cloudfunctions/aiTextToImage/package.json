@@ -1,0 +1,10 @@
+{
+  "name": "aiTextToImage",
+  "version": "1.0.0",
+  "description": "AI文生图云函数（混元3.0异步 + VLM辅助写prompt）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3",
+    "tencentcloud-sdk-nodejs": "^4.0.0"
+  }
+}

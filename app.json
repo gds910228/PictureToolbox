@@ -25,7 +25,8 @@
     "pages/formatRecommend/formatRecommend",
     "pages/idPhoto/idPhoto",
     "pages/hiddenWatermark/hiddenWatermark",
-    "pages/aiOutpaint/aiOutpaint"
+    "pages/aiOutpaint/aiOutpaint",
+    "pages/aiTextToImage/aiTextToImage"
   ],
   "window": {
     "backgroundTextStyle": "light",

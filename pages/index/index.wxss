@@ -1709,3 +1709,59 @@
   50% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 }
 
+/* AI 文生图：左侧文字行 → 右侧渐变生成框，表达「文字描述生成图片」 */
+.icon-aiTextToImage {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 右侧渐变生成框（生成的图片） */
+.icon-aiTextToImage::before {
+  content: '';
+  position: absolute;
+  width: 44rpx;
+  height: 44rpx;
+  right: 14rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 8rpx;
+  background: linear-gradient(135deg, var(--color-neon-cyan) 0%, var(--color-hot-magenta) 100%);
+  box-shadow: 0 0 16rpx rgba(0, 240, 255, 0.5);
+  animation: text2imgFrame 2.4s ease-in-out infinite;
+}
+
+@keyframes text2imgFrame {
+  0%, 100% { box-shadow: 0 0 16rpx rgba(0, 240, 255, 0.5); }
+  50% { box-shadow: 0 0 24rpx rgba(255, 0, 128, 0.7); }
+}
+
+/* 左侧三行文字（提示词），向生成框方向轻移，暗示「文字流入生成图」 */
+.icon-aiTextToImage::after {
+  content: '';
+  position: absolute;
+  left: 16rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26rpx;
+  height: 22rpx;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--color-neon-cyan) 0,
+    var(--color-neon-cyan) 3rpx,
+    transparent 3rpx,
+    transparent 9rpx
+  );
+  border-radius: 2rpx;
+  opacity: 0.85;
+  animation: text2imgFlow 2.4s ease-in-out infinite;
+}
+
+@keyframes text2imgFlow {
+  0%, 100% { transform: translateY(-50%) translateX(0); opacity: 0.85; }
+  50% { transform: translateY(-50%) translateX(6rpx); opacity: 1; }
+}
+
