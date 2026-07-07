@@ -26,7 +26,8 @@
     "pages/idPhoto/idPhoto",
     "pages/hiddenWatermark/hiddenWatermark",
     "pages/aiOutpaint/aiOutpaint",
-    "pages/aiTextToImage/aiTextToImage"
+    "pages/aiTextToImage/aiTextToImage",
+    "pages/aiAvatar/aiAvatar"
   ],
   "window": {
     "backgroundTextStyle": "light",

@@ -207,11 +207,21 @@ Component({
      * 删除图片
      */
     onDeleteImage(e) {
-      e.stopPropagation();
+      // catchtap 已在 WXML 层阻止冒泡；WeChat 事件对象无 stopPropagation 方法，
+      // 防御性判空避免在删除按钮上抛 TypeError（影响所有使用该组件的页面）。
+      if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
       if (this.data.disabled) return;
 
-      const { index } = e.currentTarget.dataset;
+      // data-index 经 dataset 取出是字符串（如 "0"）；filter 用严格 !== 比较，
+      // 字符串 "0" !== 数字 0 恒为 true → 误判「无匹配」→ 删除静默失效。
+      // 显式转 Number 再过滤，并对非数字下标防御性放行（不删）。
+      const rawIndex = e.currentTarget.dataset.index;
+      const index = Number(rawIndex);
       const currentImages = this.data._images || [];
+      if (!isFinite(index)) {
+        console.warn('[image-uploader] onDeleteImage 非法 index', rawIndex);
+        return;
+      }
       const images = currentImages.filter((_, i) => i !== index);
       this.setData({ _images: images });
       this._emitChange(images);

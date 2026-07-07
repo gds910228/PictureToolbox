@@ -1765,3 +1765,47 @@
   50% { transform: translateY(-50%) translateX(6rpx); opacity: 1; }
 }
 
+/* AI 百变头像：头像剪影（头 + 肩）+ 色相循环，表达「多风格 / 百变」 */
+.icon-aiAvatar {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 头部圆（头像主体），固定霓虹渐变 + hue-rotate 循环 → 平滑「百变」色彩 */
+.icon-aiAvatar::before {
+  content: '';
+  position: absolute;
+  width: 40rpx;
+  height: 40rpx;
+  left: 50%;
+  top: 24rpx;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-neon-cyan) 0%, var(--color-hot-magenta) 100%);
+  box-shadow: 0 0 16rpx rgba(0, 240, 255, 0.5);
+  animation: avatarHue 3s linear infinite;
+}
+
+/* 肩膀弧，呼应头像轮廓 */
+.icon-aiAvatar::after {
+  content: '';
+  position: absolute;
+  width: 60rpx;
+  height: 30rpx;
+  left: 50%;
+  bottom: 18rpx;
+  transform: translateX(-50%);
+  border-radius: 60rpx 60rpx 0 0;
+  background: rgba(0, 240, 255, 0.16);
+  border-top: 2rpx solid var(--color-neon-cyan);
+}
+
+@keyframes avatarHue {
+  0%   { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+

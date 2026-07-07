@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "AI 百变头像",
+  "usingComponents": {
+    "image-uploader": "/components/image-uploader/image-uploader"
+  }
+}

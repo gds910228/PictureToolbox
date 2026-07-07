@@ -1,0 +1,116 @@
+<view class="container">
+  <view class="page-header">
+    <text class="page-title">AI 百变头像</text>
+    <text class="page-subtitle">腾讯混元 · 一键生成多风格头像</text>
+  </view>
+
+  <!-- 今日额度（顶层常驻，任何状态都可见） -->
+  <view class="quota-tip" wx:if="{{usedText}}">{{usedText}} · 每日 20 次，次日 0 点重置</view>
+
+  <!-- 模式切换：人像 / 萌宠 -->
+  <view class="mode-switch">
+    <view
+      class="mode-item {{mode === 'human' ? 'active' : ''}}"
+      data-mode="human"
+      bindtap="onModeChange"
+    >人像头像</view>
+    <view
+      class="mode-item {{mode === 'pet' ? 'active' : ''}}"
+      data-mode="pet"
+      bindtap="onModeChange"
+    >萌宠贴纸</view>
+  </view>
+
+  <!-- 上传阶段：图片选择（无结果时显示） -->
+  <image-uploader
+    wx:if="{{!resultSrc}}"
+    id="mainUploader"
+    maxCount="1"
+    sizeType="{{['original']}}"
+    sourceType="{{['album', 'camera']}}"
+    showCompressTip="{{false}}"
+    tipText="点击上传{{mode === 'human' ? '人像' : '动物'}}照片"
+    theme="cyan"
+    bind:change="onImageChange"
+  />
+
+  <!-- 拍摄建议（有图无结果时） -->
+  <view class="tip-card" wx:if="{{imageSrc && !resultSrc}}">
+    <text wx:if="{{mode === 'human'}}">建议使用正面、单人、人脸占比大的清晰照片（单边 500 像素以上），避免侧脸 / 多人 / 遮挡</text>
+    <text wx:else>建议使用清晰的动物正脸照片，避免多只动物或动物过小</text>
+  </view>
+
+  <!-- 风格选择（仅人像模式） -->
+  <view class="control-section" wx:if="{{mode === 'human' && imageSrc && !resultSrc}}">
+    <view class="section-title">
+      <text>选择风格</text>
+      <text class="random-btn" bindtap="randomStyle">🎲 随机一个</text>
+    </view>
+    <view class="style-desc" wx:if="{{selectedStyleDesc}}">「{{selectedStyleDesc}}」</view>
+    <view class="style-grid">
+      <view
+        class="style-item {{selectedStyle === item.code ? 'active' : ''}}"
+        wx:for="{{styles}}"
+        wx:key="code"
+        data-code="{{item.code}}"
+        bindtap="selectStyle"
+      >
+        <text class="style-emoji">{{item.emoji}}</text>
+        <text class="style-name">{{item.name}}</text>
+        <text class="style-tag" wx:if="{{item.tag}}">{{item.tag}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 生成按钮 -->
+  <view class="control-section" wx:if="{{imageSrc && !resultSrc}}">
+    <button
+      class="generate-btn"
+      bindtap="startGenerate"
+      disabled="{{loading || (mode === 'human' && !selectedStyle)}}"
+    >
+      {{loading ? 'AI 生成中…' : (mode === 'human' ? '开始生成头像' : '开始生成贴纸')}}
+    </button>
+    <view class="loading-tip" wx:if="{{loading}}">AI 生成中，约需 20 秒，请勿离开…</view>
+  </view>
+
+  <!-- 示例态角标（未配置 AI 密钥） -->
+  <view class="demo-badge" wx:if="{{demo && resultSrc}}">示例：头像生成需配置 AI 密钥</view>
+
+  <!-- 错误态 -->
+  <view class="error-card" wx:if="{{errorMsg}}">
+    <text class="error-text">{{errorMsg}}</text>
+    <text class="error-hint" wx:if="{{errorHint}}">{{errorHint}}</text>
+    <button class="retry-btn" bindtap="regenerate">重试</button>
+  </view>
+
+  <!-- 结果阶段 -->
+  <view class="result-section" wx:if="{{resultSrc}}">
+    <view class="result-label">{{mode === 'human' ? resultStyleName : '萌宠贴纸'}}</view>
+    <view class="result-box" bindtap="previewResultImage">
+      <image
+        class="result-image"
+        src="{{resultSrc}}"
+        mode="aspectFit"
+        bindload="onImageLoad"
+        binderror="onImageError"
+        lazy-load="true"
+      />
+      <view class="preview-tip">点击查看大图 · 适合做头像 / 朋友圈</view>
+    </view>
+
+    <!-- 结果操作按钮 -->
+    <view class="result-actions">
+      <button class="action-btn primary" bindtap="saveResult">保存图片</button>
+      <view class="action-row">
+        <button class="action-btn secondary" bindtap="regenerate">再生成</button>
+        <button class="action-btn secondary" bindtap="changeStyle" wx:if="{{mode === 'human'}}">换风格</button>
+        <button class="action-btn secondary" bindtap="onCompare" wx:if="{{imageSrc}}">对比</button>
+        <button class="action-btn secondary" open-type="share">分享</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 合规提示 -->
+  <view class="compliance-tip">结果图由腾讯混元生成，右下角带「图片由 AI 生成」标识</view>
+</view>
