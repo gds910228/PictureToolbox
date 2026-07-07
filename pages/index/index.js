@@ -21,7 +21,8 @@ const LAUNCH_DATES = {
   colorAnalysis: '2026-07-03',
   formatRecommend: '2026-07-03',
   idPhoto: '2026-07-06',
-  hiddenWatermark: '2026-07-06'
+  hiddenWatermark: '2026-07-06',
+  aiOutpaint: '2026-07-06'
 };
 
 function isToolNew(toolId) {
@@ -114,6 +115,14 @@ Page({
             name: '图片描述',
             desc: '7种风格智能描述图片，看懂画面内容',
             url: '/pages/aiDescribe/aiDescribe',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiOutpaint',
+            name: 'AI 扩图',
+            desc: '按比例智能扩展画面，补全背景',
+            url: '/pages/aiOutpaint/aiOutpaint',
             available: true,
             isNew: true
           },

@@ -1,0 +1,100 @@
+<view class="container">
+  <view class="page-header">
+    <text class="page-title">AI 扩图</text>
+    <text class="page-subtitle">按比例智能扩展画面，补全背景</text>
+  </view>
+
+  <!-- 今日额度（顶层常驻，任何状态都可见） -->
+  <view class="quota-tip" wx:if="{{usedText}}">{{usedText}} · 每日 20 次，次日 0 点重置</view>
+
+  <!-- 上传阶段：图片选择（无结果时显示） -->
+  <image-uploader
+    wx:if="{{!resultSrc}}"
+    id="mainUploader"
+    maxCount="1"
+    sizeType="{{['original']}}"
+    sourceType="{{['album', 'camera']}}"
+    showCompressTip="{{false}}"
+    tipText="点击上传图片"
+    theme="cyan"
+    bind:change="onImageChange"
+  />
+
+  <!-- 结果阶段：原图 vs 扩图结果（左右对比） -->
+  <view class="compare-section" wx:if="{{resultSrc && imageSrc}}">
+    <view class="compare-item">
+      <view class="compare-title">原图</view>
+      <view class="compare-box" bindtap="previewOriginalImage">
+        <image class="compare-image" src="{{imageSrc}}" mode="aspectFit" />
+        <view class="preview-tip">点击查看大图</view>
+      </view>
+    </view>
+
+    <view class="compare-item">
+      <view class="compare-title">扩图结果</view>
+      <view class="compare-box" bindtap="previewResultImage">
+        <image
+          class="compare-image"
+          src="{{resultSrc}}"
+          mode="aspectFit"
+          bindload="onImageLoad"
+          binderror="onImageError"
+          lazy-load="true"
+        />
+        <view class="preview-tip">点击查看大图</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 示例态角标（未配置 AI 密钥） -->
+  <view class="demo-badge" wx:if="{{demo && resultSrc}}">示例：扩图需配置 AI 密钥</view>
+
+  <!-- 错误态 -->
+  <view class="error-card" wx:if="{{errorMsg}}">
+    <text class="error-text">{{errorMsg}}</text>
+    <button class="retry-btn" bindtap="startOutpaint">重试</button>
+  </view>
+
+  <!-- 结果操作按钮 -->
+  <view class="result-actions" wx:if="{{resultSrc}}">
+    <button class="action-btn primary" bindtap="saveResult">保存图片</button>
+    <view class="action-row">
+      <button class="action-btn secondary" bindtap="onCompare">对比查看</button>
+      <button class="action-btn secondary" open-type="share">分享好友</button>
+      <button class="action-btn secondary" bindtap="resetAndReselect">重新扩图</button>
+    </view>
+  </view>
+
+  <!-- 比例选择 + 生成（有图无结果时显示） -->
+  <view class="control-section" wx:if="{{imageSrc && !resultSrc}}">
+    <view class="section-title">
+      <text>选择扩图比例</text>
+      <text class="original-size" wx:if="{{originalSizeText}}">原图 {{originalSizeText}}</text>
+    </view>
+    <view class="ratio-grid">
+      <view
+        class="ratio-item {{selectedRatio === item.value ? 'active' : ''}} {{item.disabled ? 'disabled' : ''}}"
+        wx:for="{{ratios}}"
+        wx:key="value"
+        data-ratio="{{item.value}}"
+        bindtap="selectRatio"
+      >
+        <text class="ratio-value">{{item.label}}</text>
+        <text class="ratio-desc">{{item.desc}}</text>
+        <text class="ratio-tag" wx:if="{{item.disabled}}">当前比例</text>
+      </view>
+    </view>
+
+    <button
+      class="generate-btn"
+      bindtap="startOutpaint"
+      disabled="{{loading || !selectedRatio}}"
+    >
+      {{loading ? 'AI 扩图中…' : '开始扩图'}}
+    </button>
+    <view class="loading-tip" wx:if="{{loading}}">AI 扩图中，约需 20 秒，请勿离开…</view>
+  </view>
+
+  <!-- 合规提示 -->
+  <view class="compliance-tip">结果图由腾讯混元生成，右下角带「图片由 AI 生成」标识</view>
+</view>

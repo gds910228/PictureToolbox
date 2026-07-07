@@ -51,10 +51,11 @@ Each cloud function is an **isolated deployment unit** — it cannot `require` a
 - `index.js` — main logic.
 - `cloud-secret.js` — credential reader (identical copy per function).
 - `content-check.js` — server-side `imgSecCheck` (identical copy per function).
+- `rate-limiter.js` — unified per-feature daily rate limiter (identical copy per function that limits; see Rate Limiting below).
 - `package.json` — `wx-server-sdk` + `tencentcloud-sdk-nodejs`.
 - `config.json` — **gitignored**; local placeholder file. Real secrets are env vars (see below).
 
-**Canonical source for the two shared helpers is `cloudfunctionTemplate/`** (`cloud-secret.js`, `content-check.js`). When fixing a bug or changing behavior in either helper, update the canonical template **and** propagate the copy to every cloud function that carries it.
+**Canonical source for the shared helpers is `cloudfunctionTemplate/`** (`cloud-secret.js`, `content-check.js`, `rate-limiter.js`). When fixing a bug or changing behavior in any helper, update the canonical template **and** propagate the copy to every cloud function that carries it.
 
 ## Secret Management (critical)
 
@@ -106,7 +107,7 @@ The homepage `pages/index/index.js` is the **single registry**. To ship a new to
 ## Conventions & Gotchas
 
 - **Cloud functions run UTC.** Anything date-keyed by Beijing day (e.g. `aiCaption`'s daily `rate_limit` counter) must compute the Beijing date manually: `new Date(Date.now() + 8*3600*1000).toISOString().slice(0,10)`.
-- **Rate limiting** (`aiCaption`): `rate_limit` Cloud DB collection, doc `_id = ${openid}_${YYYY-MM-DD}`, atomic `inc(1)`. If the collection is missing, `catch` degrades to **pass** with a `console.error` prompting manual creation — do not let rate-limit failure block the request.
+- **Rate limiting** (unified via `rate-limiter.js`, copied per function): `rate_limit` Cloud DB collection, doc `_id = ${openid}_${featureKey}_${YYYY-MM-DD(北京)}`, atomic `inc(1)`. **Each feature has its own `featureKey`** (e.g. `outpaint`, `caption`) so daily quotas are **independent per feature, not shared** — a user gets 20 outpaints/day AND 20 captions/day. Limit value comes from env var `RATE_LIMIT_DAILY` (parsed int, falls back to `DEFAULT_LIMIT=20` if unset/invalid) — change it in the console env vars, no code redeploy. The limiter exposes `checkRateLimit(openid, featureKey, cloud)` (counts + gates) and `queryQuota(openid, featureKey, cloud)` (read-only, no count — for frontend quota display). If the collection is missing, `catch` degrades to **pass** with a `console.error` and a `reason` field (e.g. `exception:...database collection not exists...`) — do not let rate-limit failure block the request. The `rate_limit` collection must be created manually (see item 4 in Development Workflow).
 - **`wx.compressImage` forces JPG output** and drops alpha — for any downsampling that must preserve transparency, draw the original directly onto a smaller canvas instead. (See memory: `wx-compressimage-lossy-jpg-no-alpha`.)
 - **Blue-channel LSB steganography is destroyed by JPEG 4:2:0** chroma subsampling. JPEG-resistant steganography must live in luma or the DCT domain. (See memory: `stego-blue-lsb-dies-under-jpeg-420`.)
 - **Hand-written binary formats (GIF LZW, etc.)** must be cross-validated against a reputable library before trusting output — the LZW code-width increment rule and NETSCAPE2.0 magic size are easy to get wrong. (See memory: `gif-lzw-width-rule-gotcha`.)

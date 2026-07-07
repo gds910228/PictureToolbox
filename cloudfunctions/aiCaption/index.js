@@ -7,20 +7,21 @@
 // 安全/诚实性约定：
 // 1. 密钥未配置 → 返回 mock 示例文案（附 mock:true，仅供本地开发），前端会标注「示例」；
 //    密钥已配置但调用/解析失败 → 返回 success:false（不再静默 mock，避免假文案冒充 AI）。
-// 2. 限流：密钥可用时，每 openid 每日 DAILY_LIMIT 次（rate_limit 集合计数）。
+// 2. 限流：复用统一模块 rate-limiter，featureKey='caption'，每功能独立计数。
 //    rate_limit 集合需在云开发控制台手动创建；不存在时降级放行并 console.error 提示。
+//    限额走环境变量 RATE_LIMIT_DAILY（缺省 20），控制台可改免重新部署。
 // 3. 服务端内容安全兜底：下载原图过 assertImageSafe，违规即拒（不暴露原因）。
 
 const cloud = require('wx-server-sdk');
 const tencentcloud = require('tencentcloud-sdk-nodejs');
 const secret = require('./cloud-secret');
 const contentCheck = require('./content-check');
+const rateLimiter = require('./rate-limiter');
 
 // 导入混元产品模块
 const HunyuanClient = tencentcloud.hunyuan.v20230901.Client;
 
-// 限流：每用户每日调用次数上限（调用尝试即计数，失败不退还，防恶意重试刷）
-const DAILY_LIMIT = 20;
+const FEATURE_KEY = 'caption';
 
 // 初始化云开发环境
 cloud.init({
@@ -67,7 +68,7 @@ exports.main = async (event, context) => {
     }
 
     // 密钥可用 → 限流检查（调用前计数）
-    const rl = await checkRateLimit(openid);
+    const rl = await rateLimiter.checkRateLimit(openid, FEATURE_KEY, cloud);
     if (!rl.ok) {
       return {
         success: false,
@@ -94,56 +95,6 @@ exports.main = async (event, context) => {
     return { success: false, error: err.message || 'AI 服务暂时不可用，请稍后重试' };
   }
 };
-
-/**
- * 限流检查：每 openid 每日 DAILY_LIMIT 次。
- * 集合 rate_limit，文档 _id = `${openid}_${YYYY-MM-DD}`，字段 {openid, date, count, updatedAt}。
- * 用 inc(1) 原子自增；文档不存在时 add；集合不存在/异常 → 降级放行。
- * @returns {{ok:boolean, used:number, limit:number, degraded?:boolean}}
- */
-async function checkRateLimit(openid) {
-  const PASS = { ok: true, used: 0, limit: DAILY_LIMIT, degraded: true };
-  if (!openid) return PASS;
-
-  const db = cloud.database();
-  const _ = db.command;
-  const dateStr = beijingDateStr();
-  const docId = `${openid}_${dateStr}`;
-  const now = new Date();
-
-  try {
-    // 先尝试自增（文档已存在）
-    const upd = await db.collection('rate_limit').doc(docId).update({
-      data: { count: _.inc(1), updatedAt: now }
-    });
-    if (upd.stats && upd.stats.updated > 0) {
-      const r = await db.collection('rate_limit').doc(docId).get();
-      const used = (r.data && r.data.count) || 0;
-      return { ok: used <= DAILY_LIMIT, used, limit: DAILY_LIMIT };
-    }
-    // updated===0：文档不存在 → 新建计数为 1
-    await db.collection('rate_limit').add({
-      data: { _id: docId, openid, date: dateStr, count: 1, updatedAt: now }
-    });
-    return { ok: true, used: 1, limit: DAILY_LIMIT };
-  } catch (e) {
-    // 集合不存在 / 并发 _id 冲突 → 降级放行
-    console.error(
-      '[aiCaption] 限流检查异常，降级放行。' +
-      '若为集合不存在，请在云开发控制台创建 rate_limit 集合。',
-      e && (e.errMsg || e.message)
-    );
-    return PASS;
-  }
-}
-
-/**
- * 北京时间日期串 YYYY-MM-DD（云函数默认 UTC，手动 +8）。
- */
-function beijingDateStr() {
-  const beijing = new Date(Date.now() + 8 * 3600 * 1000);
-  return beijing.toISOString().slice(0, 10);
-}
 
 /**
  * 调用混元 VLM 生成配文。失败抛错（不 mock）。
