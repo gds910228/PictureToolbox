@@ -94,21 +94,26 @@
 
   <!-- 预设滤镜 -->
   <view class="section" wx:if="{{filterType === 'preset' && imageSrc}}">
-    <view class="section-title">选择滤镜</view>
-    <scroll-view scroll-x class="preset-scroll">
-      <view class="preset-list">
-        <view
-          class="preset-item {{selectedPresetIndex === index ? 'active' : ''}}"
-          wx:for="{{presets}}"
-          wx:key="name"
-          data-index="{{index}}"
-          bindtap="selectPreset"
-        >
-          <view class="preset-icon">{{item.icon}}</view>
-          <view class="preset-name">{{item.name}}</view>
+    <view class="section-title">
+      选择滤镜
+      <text class="section-title-hint" wx:if="{{thumbLoading}}">生成预览中…</text>
+    </view>
+    <view class="filter-grid">
+      <view
+        class="filter-grid-item {{selectedPresetIndex === index ? 'active' : ''}}"
+        wx:for="{{presets}}"
+        wx:key="name"
+        data-index="{{index}}"
+        bindtap="selectPreset"
+      >
+        <view class="filter-grid-thumb">
+          <image wx:if="{{presetThumbs[index]}}" class="thumb-img" src="{{presetThumbs[index]}}" mode="aspectFill" />
+          <text wx:else class="filter-grid-icon">{{item.icon}}</text>
+          <view class="thumb-loading-mask" wx:if="{{thumbLoading && !presetThumbs[index]}}"></view>
         </view>
+        <text class="filter-grid-name">{{item.name}}</text>
       </view>
-    </scroll-view>
+    </view>
   </view>
 
   <!-- 手动调节 -->
@@ -204,22 +209,24 @@
   <!-- AI风格 -->
   <view class="section" wx:if="{{filterType === 'ai' && imageSrc}}">
     <view class="section-title">AI风格迁移</view>
-    <view class="ai-styles">
+    <view class="quota-tip" wx:if="{{aiUsedText}}">{{aiUsedText}} · 每日 {{aiLimit}} 次，次日 0 点重置</view>
+    <view class="filter-grid">
       <view
-        class="ai-style-item {{selectedAIStyle === index ? 'active' : ''}}"
+        class="filter-grid-item {{selectedAIStyle === index ? 'active' : ''}}"
         wx:for="{{aiStyles}}"
-        wx:key="name"
+        wx:key="value"
         data-index="{{index}}"
         bindtap="selectAIStyle"
       >
-        <view class="ai-style-name">{{item.name}}</view>
-        <view class="ai-style-desc">{{item.desc}}</view>
-        <view class="ai-style-badge" wx:if="{{selectedAIStyle === index}}">已选择</view>
+        <view class="filter-grid-thumb">
+          <text class="filter-grid-icon">{{item.icon}}</text>
+        </view>
+        <text class="filter-grid-name">{{item.label}}</text>
       </view>
     </view>
     <view class="ai-tip">
       <text class="tip-icon">💡</text>
-      <text>AI风格迁移需要10-20秒，请耐心等待</text>
+      <text>AI风格迁移由腾讯云图像风格化生成，约需10-20秒</text>
     </view>
   </view>
 

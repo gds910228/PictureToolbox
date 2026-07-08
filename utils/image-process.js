@@ -1252,10 +1252,24 @@ async function applyAdjustments(filePath, adjustments = {}) {
  * @param {string} filter - 滤镜字符串
  * @returns {Promise<string>} 处理后的图片路径
  */
-async function applyPresetFilter(filePath, filter) {
+/**
+ * 应用预设滤镜
+ * @param {string} filePath - 图片路径
+ * @param {string} filter - 滤镜字符串
+ * @param {object} [options]
+ * @param {number} [options.maxWidth] - 最大宽度，超出则等比缩小绘制（用于生成缩略预览）
+ * @returns {Promise<string>} 处理后的图片路径
+ */
+async function applyPresetFilter(filePath, filter, options = {}) {
+  const { maxWidth } = options;
   return new Promise((resolve, reject) => {
     getImageInfo(filePath).then((info) => {
-      const { width, height, path } = info;
+      const { width: origW, height: origH, path } = info;
+
+      // 按 maxWidth 等比缩放（未传或原图更小则用原尺寸）
+      const scale = (maxWidth && origW > maxWidth) ? maxWidth / origW : 1;
+      const width = Math.round(origW * scale);
+      const height = Math.round(origH * scale);
 
       // 创建离屏canvas
       const canvas = wx.createOffscreenCanvas({

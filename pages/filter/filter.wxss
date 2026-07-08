@@ -176,42 +176,109 @@
 }
 
 /* ===================================
-   PRESET SCROLL
+   QUOTA TIP（AI风格额度条）
    =================================== */
 
-.preset-scroll {
-  white-space: nowrap;
+.quota-tip {
+  text-align: center;
+  font-size: 22rpx;
+  color: var(--color-gray-500);
+  margin: 4rpx 0 24rpx;
+  padding: 12rpx 20rpx;
+  background: rgba(176, 38, 255, 0.06);
+  border: 1rpx solid rgba(176, 38, 255, 0.18);
+  border-radius: var(--radius-sm);
+  line-height: 1.5;
 }
 
-.preset-list {
-  display: inline-flex;
-  gap: var(--space-md);
+/* ===================================
+   FILTER GRID（预设滤镜 & AI风格 共用平铺网格）
+   =================================== */
+
+.filter-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16rpx 20rpx;
 }
 
-.preset-item {
-  display: inline-block;
+.filter-grid-item {
+  width: calc((100% - 60rpx) / 4);
+  min-width: 0;
+  box-sizing: border-box;
   background: rgba(0, 0, 0, 0.3);
   border-radius: var(--radius-md);
-  padding: var(--space-sm) var(--space-md);
+  padding: 8rpx 8rpx 14rpx;
   text-align: center;
   border: 2rpx solid transparent;
-  min-width: 120rpx;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
 }
 
-.preset-item.active {
-  background: rgba(176, 38, 255, 0.1);
+.filter-grid-item.active {
+  background: rgba(176, 38, 255, 0.15);
   border-color: var(--color-electric-purple);
+  box-shadow: 0 0 20rpx rgba(176, 38, 255, 0.4);
+  transform: scale(1.04);
 }
 
-.preset-icon {
+/* 缩略图容器：3/4 比例，承载预览图或占位 emoji */
+.filter-grid-thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8rpx;
+}
+
+.thumb-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 生成中的呼吸蒙层 */
+.thumb-loading-mask {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, rgba(176,38,255,0.05) 0%, rgba(176,38,255,0.18) 50%, rgba(176,38,255,0.05) 100%);
+  background-size: 200% 100%;
+  animation: thumbShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes thumbShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* 无预览图时的占位 emoji（AI风格 tab 也复用） */
+.filter-grid-icon {
+  display: block;
   font-size: 40rpx;
-  margin-bottom: 6rpx;
+  line-height: 1;
 }
 
-.preset-name {
-  font-size: 24rpx;
+.section-title-hint {
+  font-size: 22rpx;
+  color: var(--color-electric-purple);
+  font-weight: 400;
+  margin-left: var(--space-sm);
+  letter-spacing: 0;
+}
+
+.filter-grid-name {
+  display: block;
+  font-size: 22rpx;
   color: var(--color-white);
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ===================================
@@ -250,44 +317,8 @@
 }
 
 /* ===================================
-   AI STYLES
+   AI STYLES（复用 .filter-grid-*，见上方 FILTER GRID）
    =================================== */
-
-.ai-style-item {
-  position: relative;
-  background: linear-gradient(135deg, rgba(176, 38, 255, 0.3), rgba(255, 0, 128, 0.3));
-  backdrop-filter: blur(10px);
-  color: #fff;
-  padding: var(--space-md);
-  border-radius: var(--radius-md);
-  border: 3rpx solid transparent;
-}
-
-.ai-style-item.active {
-  border-color: #fff;
-  box-shadow: 0 0 20rpx rgba(176, 38, 255, 0.5);
-}
-
-.ai-style-name {
-  font-size: 32rpx;
-  font-weight: 600;
-  margin-bottom: 6rpx;
-}
-
-.ai-style-desc {
-  font-size: 24rpx;
-  opacity: 0.9;
-}
-
-.ai-style-badge {
-  position: absolute;
-  top: var(--space-sm);
-  right: var(--space-sm);
-  background: rgba(255, 255, 255, 0.3);
-  padding: 6rpx 16rpx;
-  border-radius: 20rpx;
-  font-size: 20rpx;
-}
 
 .ai-tip {
   background: rgba(255, 107, 53, 0.1);

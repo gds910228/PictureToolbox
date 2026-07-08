@@ -60,22 +60,6 @@ Page({
         expanded: true,
         tools: [
           {
-            id: 'aiOCR',
-            name: '文字识别',
-            desc: '高精度OCR识别图片中的文字',
-            url: '/pages/aiOCR/aiOCR',
-            available: true,
-            isNew: true
-          },
-          {
-            id: 'idPhoto',
-            name: '证件照制作',
-            desc: 'AI抠图换底 + 人脸定位自动校正，多规格多底色',
-            url: '/pages/idPhoto/idPhoto',
-            available: true,
-            isNew: true
-          },
-          {
             id: 'aiMatting',
             name: '智能抠图',
             desc: '智能抠图，一键去除背景',
@@ -92,50 +76,10 @@ Page({
             isNew: true
           },
           {
-            id: 'aiColorize',
-            name: '老照片上色',
-            desc: '黑白老照片智能上色，自然/复古风格',
-            url: '/pages/aiColorize/aiColorize',
-            available: true,
-            isNew: true
-          },
-          {
-            id: 'aiChat',
-            name: '图片问答',
-            desc: '上传图片自由提问，多轮对话追问细节',
-            url: '/pages/aiChat/aiChat',
-            available: true,
-            isNew: true
-          },
-          {
-            id: 'aiCaption',
-            name: '智能配文',
-            desc: '一键生成朋友圈、小红书等社媒配文',
-            url: '/pages/aiCaption/aiCaption',
-            available: true,
-            isNew: true
-          },
-          {
-            id: 'aiDescribe',
-            name: '图片描述',
-            desc: '7种风格智能描述图片，看懂画面内容',
-            url: '/pages/aiDescribe/aiDescribe',
-            available: true,
-            isNew: true
-          },
-          {
-            id: 'aiOutpaint',
-            name: 'AI 扩图',
-            desc: '按比例智能扩展画面，补全背景',
-            url: '/pages/aiOutpaint/aiOutpaint',
-            available: true,
-            isNew: true
-          },
-          {
-            id: 'aiTextToImage',
-            name: 'AI 文生图',
-            desc: '腾讯混元3.0文生图，AI帮写提示词',
-            url: '/pages/aiTextToImage/aiTextToImage',
+            id: 'idPhoto',
+            name: '证件照制作',
+            desc: 'AI抠图换底 + 人脸定位自动校正，多规格多底色',
+            url: '/pages/idPhoto/idPhoto',
             available: true,
             isNew: true
           },
@@ -148,6 +92,30 @@ Page({
             isNew: true
           },
           {
+            id: 'aiColorize',
+            name: '老照片上色',
+            desc: '黑白老照片智能上色，自然/复古风格',
+            url: '/pages/aiColorize/aiColorize',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiOCR',
+            name: '文字识别',
+            desc: '高精度OCR识别图片中的文字',
+            url: '/pages/aiOCR/aiOCR',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiCaption',
+            name: '智能配文',
+            desc: '一键生成朋友圈、小红书等社媒配文',
+            url: '/pages/aiCaption/aiCaption',
+            available: true,
+            isNew: true
+          },
+          {
             id: 'aiUpscale',
             name: '图片放大',
             desc: '2x/4x超分辨率放大，可选降噪锐化',
@@ -156,10 +124,34 @@ Page({
             isNew: true
           },
           {
-            id: 'aiStyle',
-            name: '风格迁移',
-            desc: '将照片转换为艺术风格',
-            url: '/pages/aiStyle/aiStyle',
+            id: 'aiTextToImage',
+            name: 'AI 文生图',
+            desc: '腾讯混元3.0文生图，AI帮写提示词',
+            url: '/pages/aiTextToImage/aiTextToImage',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiChat',
+            name: '图片问答',
+            desc: '上传图片自由提问，多轮对话追问细节',
+            url: '/pages/aiChat/aiChat',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiOutpaint',
+            name: 'AI 扩图',
+            desc: '按比例智能扩展画面，补全背景',
+            url: '/pages/aiOutpaint/aiOutpaint',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'aiDescribe',
+            name: '图片描述',
+            desc: '7种风格智能描述图片，看懂画面内容',
+            url: '/pages/aiDescribe/aiDescribe',
             available: true,
             isNew: true
           }
@@ -180,18 +172,42 @@ Page({
             isNew: false
           },
           {
-            id: 'crop',
-            name: '图片裁剪',
-            desc: '支持多种常用比例裁剪，也可自定义任意比例',
-            url: '/pages/crop/crop',
+            id: 'watermark',
+            name: '图片水印',
+            desc: '添加文字水印，AI智能生成文案',
+            url: '/pages/watermark/watermark',
             available: true,
             isNew: false
+          },
+          {
+            id: 'imgToPdf',
+            name: '多图合PDF',
+            desc: '多图按名称排序合成PDF，支持A4/16:9/1:1',
+            url: '/pages/imgToPdf/imgToPdf',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'pdfToImage',
+            name: 'PDF转图片',
+            desc: 'PDF逐页导出为PNG/JPG高清图片',
+            url: '/pages/pdfToImage/pdfToImage',
+            available: true,
+            isNew: true
           },
           {
             id: 'splice',
             name: '图片拼接',
             desc: '智能拼接，AI推荐布局',
             url: '/pages/splice/splice',
+            available: true,
+            isNew: false
+          },
+          {
+            id: 'crop',
+            name: '图片裁剪',
+            desc: '支持多种常用比例裁剪，也可自定义任意比例',
+            url: '/pages/crop/crop',
             available: true,
             isNew: false
           },
@@ -204,34 +220,10 @@ Page({
             isNew: false
           },
           {
-            id: 'watermark',
-            name: '图片水印',
-            desc: '添加文字水印，AI智能生成文案',
-            url: '/pages/watermark/watermark',
-            available: true,
-            isNew: false
-          },
-          {
             id: 'exif',
             name: 'EXIF信息',
             desc: '查看图片元数据，一键抹除GPS等隐私信息',
             url: '/pages/exif/exif',
-            available: true,
-            isNew: true
-          },
-          {
-            id: 'colorAnalysis',
-            name: '颜色分析',
-            desc: '提取图片主色调，生成色卡并导出HEX/RGB/HSL',
-            url: '/pages/colorAnalysis/colorAnalysis',
-            available: true,
-            isNew: true
-          },
-          {
-            id: 'formatRecommend',
-            name: '格式推荐',
-            desc: '分析图片特征，推荐最优格式与压缩参数',
-            url: '/pages/formatRecommend/formatRecommend',
             available: true,
             isNew: true
           },
@@ -244,10 +236,18 @@ Page({
             isNew: true
           },
           {
-            id: 'pdfToImage',
-            name: 'PDF转图片',
-            desc: 'PDF逐页导出为PNG/JPG高清图片',
-            url: '/pages/pdfToImage/pdfToImage',
+            id: 'formatRecommend',
+            name: '格式推荐',
+            desc: '分析图片特征，推荐最优格式与压缩参数',
+            url: '/pages/formatRecommend/formatRecommend',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'colorAnalysis',
+            name: '颜色分析',
+            desc: '提取图片主色调，生成色卡并导出HEX/RGB/HSL',
+            url: '/pages/colorAnalysis/colorAnalysis',
             available: true,
             isNew: true
           }
@@ -268,14 +268,6 @@ Page({
             isNew: true
           },
           {
-            id: 'hiddenWatermark',
-            name: '隐形水印',
-            desc: '文字隐形嵌入图片像素，可密钥提取还原',
-            url: '/pages/hiddenWatermark/hiddenWatermark',
-            available: true,
-            isNew: true
-          },
-          {
             id: 'filter',
             name: '图片滤镜',
             desc: '多种滤镜效果，实时预览',
@@ -284,10 +276,18 @@ Page({
             isNew: false
           },
           {
-            id: 'imgToPdf',
-            name: '多图合PDF',
-            desc: '多图按名称排序合成PDF，支持A4/16:9/1:1',
-            url: '/pages/imgToPdf/imgToPdf',
+            id: 'aiStyle',
+            name: '风格迁移',
+            desc: '将照片转换为艺术风格',
+            url: '/pages/aiStyle/aiStyle',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'hiddenWatermark',
+            name: '隐形水印',
+            desc: '文字隐形嵌入图片像素，可密钥提取还原',
+            url: '/pages/hiddenWatermark/hiddenWatermark',
             available: true,
             isNew: true
           }

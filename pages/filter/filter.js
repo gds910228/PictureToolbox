@@ -30,32 +30,53 @@ Page({
       { name: '暖色', filter: 'sepia(0.3) saturate(1.5)', icon: '☀️' },
       { name: '模糊', filter: 'blur(3px)', icon: '🌫️' },
       { name: '日系', filter: 'brightness(1.1) contrast(0.9) saturate(0.8)', icon: '🌸' },
-      { name: '美式', filter: 'contrast(1.2) sepia(0.2)', icon: '🇺🇸' }
+      { name: '美式', filter: 'contrast(1.2) sepia(0.2)', icon: '🇺🇸' },
+      { name: '反色', filter: 'invert(1)', icon: '🔄' },
+      { name: '胶片', filter: 'contrast(1.1) saturate(1.2) sepia(0.15)', icon: '🎞️' },
+      { name: '黄昏', filter: 'sepia(0.4) saturate(1.4) hue-rotate(-15deg)', icon: '🌇' },
+      { name: '青冷', filter: 'hue-rotate(200deg) saturate(1.2)', icon: '💎' },
+      { name: '褪色', filter: 'saturate(0.55) contrast(0.95)', icon: '🍂' },
+      { name: '明亮', filter: 'brightness(1.15) saturate(1.2) contrast(1.05)', icon: '💡' },
+      { name: '怀旧', filter: 'sepia(0.5) contrast(0.9) saturate(0.85)', icon: '🕰️' },
+      { name: '暗调', filter: 'contrast(1.4) brightness(0.85) saturate(1.1)', icon: '🌑' },
+      { name: 'Lomo', filter: 'contrast(1.3) saturate(1.5) brightness(0.9)', icon: '📸' },
+      { name: '银盐', filter: 'grayscale(0.3) contrast(1.2) sepia(0.2) brightness(1.05)', icon: '🪙' }
     ],
     selectedPresetIndex: 0,
 
-    // AI风格
+    // 预设滤镜缩略预览：index -> tempFilePath；thumbLoading 生成中标志
+    presetThumbs: {},
+    thumbLoading: false,
+
+    // AI风格（复用 aiStyleTransfer 云函数的 21 个官方风格，value 传给云函数）
     aiStyles: [
-      { name: '梵高星空', desc: '印象派油画风格', prompt: '梵高星空风格', filter: 'saturate(1.5) contrast(1.2) hue-rotate(20deg)' },
-      { name: '赛博朋克', desc: '未来科技感', prompt: '赛博朋克风格', filter: 'saturate(2) contrast(1.5) hue-rotate(180deg) brightness(1.1)' },
-      { name: '中国水墨', desc: '传统水墨画', prompt: '中国水墨画风格', filter: 'grayscale(0.8) contrast(1.3) brightness(1.1)' },
-      { name: '卡通动漫', desc: '二次元风格', prompt: '日式动漫风格', filter: 'saturate(1.3) contrast(1.2) brightness(1.05)' },
-      { name: '油画', desc: '经典油画', prompt: '经典油画风格', filter: 'contrast(1.3) sepia(0.3) saturate(1.2)' },
-      { name: '素描', desc: '铅笔素描效果', prompt: '铅笔素描风格', filter: 'grayscale(1) contrast(1.5) brightness(1.1)' },
-      { name: '水彩', desc: '水彩画风', prompt: '水彩画风格', filter: 'saturate(0.9) brightness(1.1) contrast(0.9)' },
-      { name: '波普艺术', desc: '波普艺术风格', prompt: '波普艺术风格', filter: 'saturate(2.5) contrast(1.8) brightness(1.1)' },
-      { name: '复古照片', desc: '老照片质感', prompt: '复古照片风格', filter: 'sepia(0.6) contrast(0.9) brightness(0.9)' },
-      { name: '霓虹灯', desc: '霓虹灯光效', prompt: '霓虹灯风格', filter: 'saturate(2.2) contrast(1.6) brightness(1.2)' },
-      { name: '浮雕', desc: '立体浮雕效果', prompt: '浮雕风格', filter: 'grayscale(1) contrast(2) brightness(1.2)' },
-      { name: '像素艺术', desc: '8-bit像素风', prompt: '像素艺术风格', filter: 'saturate(1.2) contrast(1.5)' },
-      { name: '印象派', desc: '莫奈印象派', prompt: '印象派风格', filter: 'saturate(1.4) brightness(1.1) contrast(1.1) hue-rotate(10deg)' },
-      { name: '超现实主义', desc: '达利风格', prompt: '超现实主义风格', filter: 'hue-rotate(45deg) saturate(1.6) contrast(1.3)' },
-      { name: '油画棒', desc: '油画棒质感', prompt: '油画棒风格', filter: 'saturate(1.3) contrast(1.1) sepia(0.2)' },
-      { name: '版画', desc: '木刻版画效果', prompt: '版画风格', filter: 'grayscale(1) contrast(2.5) brightness(1.1)' },
-      { name: '抽象艺术', desc: '抽象表现主义', prompt: '抽象艺术风格', filter: 'hue-rotate(90deg) saturate(1.8) contrast(1.4)' },
-      { name: '粉彩', desc: '粉彩画风格', prompt: '粉彩画风格', filter: 'saturate(0.7) brightness(1.15) contrast(0.85)' }
+      { value: 'watercolor', label: '水彩画', icon: '💧' },
+      { value: 'cartoon', label: '卡通插画', icon: '🎨' },
+      { value: '3d-cartoon', label: '3D卡通', icon: '🎭' },
+      { value: 'anime', label: '日系动漫', icon: '🎌' },
+      { value: 'ancient', label: '唯美古风', icon: '🏮' },
+      { value: '2.5d', label: '2.5D动画', icon: '🎬' },
+      { value: 'wood-carving', label: '木雕', icon: '🪵' },
+      { value: 'clay', label: '黏土', icon: '🟤' },
+      { value: 'fresh-anime', label: '清新日漫', icon: '✨' },
+      { value: 'comic', label: '小人书插画', icon: '📚' },
+      { value: 'gongbi', label: '国风工笔', icon: '🖌️' },
+      { value: 'jade', label: '玉石', icon: '💎' },
+      { value: 'porcelain', label: '瓷器', icon: '🏺' },
+      { value: 'felt-asia', label: '毛毡(亚洲版)', icon: '🧶' },
+      { value: 'felt-west', label: '毛毡(欧美版)', icon: '🧵' },
+      { value: 'vintage-us', label: '美式复古', icon: '🎞️' },
+      { value: 'steampunk', label: '蒸汽朋克', icon: '⚙️' },
+      { value: 'cyberpunk', label: '赛博朋克', icon: '🌃' },
+      { value: 'sketch', label: '素描', icon: '✏️' },
+      { value: 'monet', label: '莫奈花园', icon: '🌸' },
+      { value: 'impasto', label: '厚涂手绘', icon: '🖼️' }
     ],
     selectedAIStyle: -1,
+    aiFileID: '',        // 选定图上传到云存储的 fileID（AI风格用，复用避免重复上传）
+    aiUsed: 0,
+    aiLimit: 20,
+    aiUsedText: '',
 
     // AI智能增强
     useAISmart: false,
@@ -71,6 +92,7 @@ Page({
     wx.setNavigationBarTitle({
       title: '图片滤镜'
     });
+    this.loadAIQuota();
   },
 
   /**
@@ -93,8 +115,14 @@ Page({
           blur: 0,
           hueRotate: 0,
           selectedPresetIndex: 0,
-          selectedAIStyle: -1
+          selectedAIStyle: -1,
+          aiFileID: '',
+          presetThumbs: {},
+          thumbLoading: false
         });
+
+        // 生成预设滤镜缩略预览（纯本地 canvas，无 API/无 token）
+        this.generatePresetThumbs(filePath);
 
         // 自动分析图片并推荐滤镜
         this.analyzeImageAndRecommend();
@@ -105,6 +133,41 @@ Page({
         title: '选择图片失败',
         icon: 'none'
       });
+    }
+  },
+
+  /**
+   * 批量生成预设滤镜缩略预览（纯本地 canvas，无 API/无 token）。
+   * 策略：选图后用 4-6 并发对每个滤镜跑一遍 maxWidth=200 的缩略图，逐张回填 presetThumbs。
+   * 所见即所得——预览与"应用滤镜"走同一 ctx.filter 路径，效果完全一致。
+   */
+  async generatePresetThumbs(filePath) {
+    const presets = this.data.presets;
+    const concurrency = Math.min(5, presets.length);
+    this.setData({ thumbLoading: true, presetThumbs: {} });
+
+    // 任务队列：每个滤镜一项
+    const queue = presets.map((p, i) => ({ index: i, filter: p.filter }));
+    const worker = async () => {
+      while (queue.length) {
+        const task = queue.shift();
+        if (!task) return;
+        try {
+          const thumb = await imageProcess.applyPresetFilter(filePath, task.filter, { maxWidth: 200 });
+          // 仅当仍是当前图时回填（防用户快速换图导致旧预览覆盖新图）
+          if (this.data.imageSrc === filePath) {
+            this.setData({ [`presetThumbs.${task.index}`]: thumb });
+          }
+        } catch (err) {
+          console.error('[filter] 缩略预览生成失败', task.index, err);
+          // 单个失败不影响其他，该项保持空（回退显示 emoji）
+        }
+      }
+    };
+
+    await Promise.all(Array.from({ length: concurrency }, () => worker()));
+    if (this.data.imageSrc === filePath) {
+      this.setData({ thumbLoading: false });
     }
   },
 
@@ -192,6 +255,141 @@ Page({
       processedSrc: '',
       showResult: false
     });
+  },
+
+  /**
+   * 查询今日AI风格额度（只读，不消耗）。进页面调一次，让额度条提前可见。
+   * demo 态（未配置密钥）不展示额度条。
+   */
+  async loadAIQuota() {
+    try {
+      const res = await wx.cloud.callFunction({
+        name: 'aiStyleTransfer',
+        data: { action: 'quota' }
+      });
+      const r = (res && res.result) || {};
+      if (r.success && !r.demo) {
+        this.setData({
+          aiUsed: r.used || 0,
+          aiLimit: r.limit || this.data.aiLimit,
+          aiUsedText: buildAIUsedText(r.used, r.limit)
+        });
+      }
+    } catch (e) {
+      console.warn('[filter] 查询AI风格额度失败', e && (e.errMsg || e.message));
+    }
+  },
+
+  /**
+   * 上传图片到云存储拿 fileID（AI风格用）。含前端内容安全 guardImage。
+   * @returns {Promise<string>} fileID；失败/拦截返回 ''
+   */
+  async uploadForAI(filePath) {
+    const { guardImage } = require('../../utils/content-check');
+    if (!(await guardImage(filePath))) {
+      return '';  // 内容安全拦截，guardImage 已 toast
+    }
+    return new Promise((resolve) => {
+      wx.cloud.uploadFile({
+        cloudPath: `filterAI/${Date.now()}.jpg`,
+        filePath: filePath,
+        success: (res) => resolve(res.fileID),
+        fail: () => {
+          wx.showToast({ title: '上传失败', icon: 'none' });
+          resolve('');
+        }
+      });
+    });
+  },
+
+  /**
+   * AI风格迁移（独立流程：确保 fileID → 调 aiStyleTransfer → 下载展示）
+   * 复用创意玩法「风格迁移」的 aiStyleTransfer 云函数（混元图像风格化 ImageToImage）。
+   */
+  async applyAIStyle() {
+    if (this.data.selectedAIStyle === -1) {
+      wx.showToast({ title: '请选择AI风格', icon: 'none' });
+      return;
+    }
+
+    this.setData({ processing: true });
+
+    try {
+      // 1. 确保图片已上传到云存储（复用 fileID，换风格不重传）
+      let fileID = this.data.aiFileID;
+      if (!fileID) {
+        wx.showLoading({ title: '上传中...', mask: true });
+        fileID = await this.uploadForAI(this.data.imageSrc);
+        wx.hideLoading();
+        if (!fileID) {
+          this.setData({ processing: false });
+          return;  // 上传失败或内容安全拦截，uploadForAI 已提示
+        }
+        this.setData({ aiFileID: fileID });
+      }
+
+      // 2. 调用风格迁移云函数
+      wx.showLoading({ title: 'AI生成中...', mask: true });
+      const styleValue = this.data.aiStyles[this.data.selectedAIStyle].value;
+      const res = await wx.cloud.callFunction({
+        name: 'aiStyleTransfer',
+        data: { fileID: fileID, style: styleValue }
+      });
+      wx.hideLoading();
+
+      const r = (res && res.result) || {};
+
+      // 更新额度展示（成功/限流都会返回 used/limit）
+      if (r.used != null && r.limit != null) {
+        this.setData({
+          aiUsed: r.used,
+          aiLimit: r.limit,
+          aiUsedText: buildAIUsedText(r.used, r.limit)
+        });
+      }
+
+      if (r.success) {
+        // 3. 下载结果图到本地展示
+        wx.showLoading({ title: '加载结果中...', mask: true });
+        try {
+          const dl = await wx.cloud.downloadFile({ fileID: r.fileID });
+          this.setData({
+            processedSrc: dl.tempFilePath,
+            showResult: true,
+            processing: false
+          });
+          wx.hideLoading();
+          wx.showToast({ title: '处理完成', icon: 'success' });
+        } catch (e) {
+          wx.hideLoading();
+          this.setData({ processing: false });
+          wx.showToast({ title: '结果加载失败', icon: 'none' });
+        }
+      } else if (r.error === 'rate_limit') {
+        this.setData({ processing: false });
+        wx.showModal({
+          title: '额度已用完',
+          content: `今日AI风格迁移 ${r.limit || this.data.aiLimit} 次额度已用完，次日 0 点重置`,
+          showCancel: false
+        });
+      } else {
+        this.setData({ processing: false });
+        wx.showModal({
+          title: 'AI生成失败',
+          content: r.error || '未知错误，请稍后重试',
+          showCancel: false
+        });
+      }
+    } catch (err) {
+      console.error('AI风格迁移失败', err);
+      wx.hideLoading();
+      this.setData({ processing: false });
+      wx.showModal({
+        title: '处理失败',
+        content: err.message || err.errMsg || '未知错误',
+        showCancel: false
+      });
+    }
   },
 
   /**
@@ -337,6 +535,12 @@ Page({
       return;
     }
 
+    // AI风格走独立云函数流程（上传 → 调 aiStyleTransfer → 下载）
+    if (this.data.filterType === 'ai') {
+      this.applyAIStyle();
+      return;
+    }
+
     this.setData({ processing: true });
 
     try {
@@ -366,33 +570,6 @@ Page({
           this.data.imageSrc,
           selectedPreset.filter
         );
-      } else if (this.data.filterType === 'ai') {
-        // AI风格迁移
-        if (this.data.selectedAIStyle === -1) {
-          wx.showToast({
-            title: '请选择AI风格',
-            icon: 'none'
-          });
-          this.setData({ processing: false });
-          wx.hideLoading();
-          return;
-        }
-
-        const selectedStyle = this.data.aiStyles[this.data.selectedAIStyle];
-
-        wx.showLoading({
-          title: 'AI生成中...',
-          mask: true
-        });
-
-        // 使用滤镜模拟AI风格效果
-        processedPath = await imageProcess.applyPresetFilter(
-          this.data.imageSrc,
-          selectedStyle.filter
-        );
-
-        // 模拟AI处理时间，增加真实感
-        await new Promise(resolve => setTimeout(resolve, 1500));
       }
 
       this.setData({
@@ -486,3 +663,13 @@ Page({
     };
   }
 });
+
+/**
+ * 构造今日AI风格额度文案。仅密钥可用时云函数才返回 used/limit；缺失/demo 则返回空串（不展示）。
+ */
+function buildAIUsedText(used, limit) {
+  const u = Number(used);
+  const l = Number(limit);
+  if (!isFinite(u) || !isFinite(l) || l <= 0) return '';
+  return `今日已用 ${u}/${l} 次`;
+}
