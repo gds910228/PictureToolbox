@@ -1,0 +1,284 @@
+/* pages/pdfToImage/pdfToImage.wxss */
+
+.container {
+  min-height: 100vh;
+  padding: 24rpx;
+  background: transparent;
+  box-sizing: border-box;
+}
+
+/* 头部 */
+.hero {
+  padding: 32rpx 16rpx 16rpx;
+  margin-bottom: 24rpx;
+}
+.hero-title {
+  font-size: 44rpx;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+}
+.hero-sub {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 12rpx;
+}
+
+/* 选择 PDF 卡片 */
+.upload-card {
+  background: rgba(0, 240, 255, 0.03);
+  border: 2rpx dashed rgba(0, 240, 255, 0.35);
+  border-radius: 24rpx;
+  padding: 80rpx 32rpx;
+  text-align: center;
+  margin-bottom: 24rpx;
+}
+.upload-icon {
+  font-size: 88rpx;
+  color: #00f0ff;
+  line-height: 1;
+}
+.upload-text {
+  font-size: 30rpx;
+  color: #fff;
+  margin-top: 20rpx;
+  font-weight: 600;
+}
+.upload-sub {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 10rpx;
+}
+
+/* 已选文件卡片 */
+.file-card {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 240, 255, 0.05);
+  border: 2rpx solid rgba(0, 240, 255, 0.18);
+  border-radius: 20rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+.file-icon {
+  font-size: 56rpx;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+.file-info {
+  flex: 1;
+  min-width: 0;
+}
+.file-name {
+  display: block;
+  font-size: 28rpx;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.file-size {
+  display: block;
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 6rpx;
+}
+.link {
+  font-size: 26rpx;
+  color: #00f0ff;
+  flex-shrink: 0;
+  padding: 8rpx 16rpx;
+}
+
+/* 设置 */
+.settings {
+  background: rgba(255, 255, 255, 0.03);
+  border: 2rpx solid rgba(255, 255, 255, 0.08);
+  border-radius: 24rpx;
+  padding: 28rpx;
+  margin-bottom: 24rpx;
+}
+.setting-row {
+  margin-bottom: 24rpx;
+}
+.setting-row:last-child {
+  margin-bottom: 0;
+}
+.setting-label {
+  display: block;
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 14rpx;
+}
+.seg-options {
+  display: flex;
+  gap: 16rpx;
+}
+.seg-item {
+  flex: 1;
+  text-align: center;
+  padding: 18rpx 0;
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.04);
+  border: 2rpx solid rgba(255, 255, 255, 0.08);
+  border-radius: 14rpx;
+  transition: all 0.2s;
+}
+.seg-item.active {
+  color: #0a0e27;
+  background: linear-gradient(135deg, #00f0ff 0%, #4a90e2 100%);
+  border-color: #00f0ff;
+  font-weight: 600;
+  box-shadow: 0 0 20rpx rgba(0, 240, 255, 0.3);
+}
+
+/* 额度提示 */
+.quota-tip {
+  font-size: 24rpx;
+  color: rgba(0, 240, 255, 0.8);
+  text-align: center;
+  margin-bottom: 16rpx;
+}
+
+/* 按钮 */
+.btn-primary {
+  margin-top: 16rpx;
+  background: linear-gradient(135deg, #00f0ff 0%, #4a90e2 100%);
+  color: #0a0e27;
+  font-size: 30rpx;
+  font-weight: 700;
+  border-radius: 16rpx;
+  padding: 22rpx 0;
+  letter-spacing: 2rpx;
+}
+.btn-secondary {
+  margin-top: 16rpx;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 28rpx;
+  border-radius: 16rpx;
+  padding: 22rpx 0;
+  border: 2rpx solid rgba(255, 255, 255, 0.12);
+}
+
+/* 示例 / 错误角标 */
+.demo-badge {
+  margin-top: 20rpx;
+  padding: 16rpx 20rpx;
+  background: rgba(255, 107, 53, 0.12);
+  border: 2rpx solid rgba(255, 107, 53, 0.4);
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  color: #ff6b35;
+  text-align: center;
+}
+.error-card {
+  margin-top: 20rpx;
+  padding: 20rpx;
+  background: rgba(255, 0, 128, 0.1);
+  border: 2rpx solid rgba(255, 0, 128, 0.4);
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  color: #ff5a9a;
+  text-align: center;
+}
+
+/* 进度 */
+.progress {
+  margin-top: 24rpx;
+}
+.progress-text {
+  font-size: 24rpx;
+  color: rgba(0, 240, 255, 0.85);
+  text-align: center;
+  margin-bottom: 12rpx;
+}
+.progress-bar {
+  width: 100%;
+  height: 10rpx;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6rpx;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00f0ff, #4a90e2);
+  border-radius: 6rpx;
+  transition: width 0.3s;
+}
+
+/* 页面网格 */
+.pages-grid {
+  margin-top: 32rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
+}
+.pages-note {
+  width: 100%;
+  font-size: 24rpx;
+  color: rgba(255, 107, 53, 0.85);
+  margin-bottom: 8rpx;
+}
+.page-cell {
+  width: calc((100% - 40rpx) / 3);
+  background: rgba(255, 255, 255, 0.03);
+  border: 2rpx solid rgba(0, 240, 255, 0.15);
+  border-radius: 14rpx;
+  padding: 12rpx;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.page-thumb-wrap {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  background: rgba(0, 240, 255, 0.04);
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.page-thumb {
+  width: 100%;
+  height: 100%;
+}
+.page-placeholder {
+  font-size: 40rpx;
+  color: rgba(0, 240, 255, 0.6);
+}
+.page-placeholder.err {
+  color: #ff5a9a;
+}
+.page-no {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 10rpx;
+}
+.page-save {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #00f0ff;
+  padding: 4rpx 16rpx;
+  border: 2rpx solid rgba(0, 240, 255, 0.4);
+  border-radius: 20rpx;
+}
+
+/* 结果操作区 */
+.actions {
+  margin-top: 32rpx;
+}
+
+/* 提示 */
+.tip {
+  margin-top: 32rpx;
+  padding: 20rpx;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.6;
+}

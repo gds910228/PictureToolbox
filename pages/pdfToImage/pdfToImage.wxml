@@ -1,0 +1,83 @@
+<!--pages/pdfToImage/pdfToImage.wxml-->
+<view class="container">
+  <view class="hero">
+    <view class="hero-title">📄 PDF 转图片</view>
+    <view class="hero-sub">逐页高清导出 PNG / JPG，腾讯数据万象引擎</view>
+  </view>
+
+  <!-- 选择 PDF -->
+  <view class="upload-card" wx:if="{{!fileID}}" bindtap="choosePdf">
+    <view class="upload-icon">＋</view>
+    <view class="upload-text">选择 PDF 文件</view>
+    <view class="upload-sub">从微信聊天中选取 · 限 50MB · 前 50 页</view>
+  </view>
+
+  <!-- 已选 PDF + 设置 + 转换 -->
+  <block wx:if="{{fileID}}">
+    <view class="file-card">
+      <view class="file-icon">📄</view>
+      <view class="file-info">
+        <text class="file-name">{{pdfName}}</text>
+        <text class="file-size">{{pdfSizeText}}</text>
+      </view>
+      <view class="link" catchtap="choosePdf">更换</view>
+    </view>
+
+    <view class="settings">
+      <view class="setting-row">
+        <text class="setting-label">输出格式</text>
+        <view class="seg-options">
+          <view class="seg-item {{format==='png'?'active':''}}" data-fmt="png" bindtap="onFormatChange">PNG 无损</view>
+          <view class="seg-item {{format==='jpg'?'active':''}}" data-fmt="jpg" bindtap="onFormatChange">JPG 体积小</view>
+        </view>
+      </view>
+      <view class="setting-row">
+        <text class="setting-label">清晰度</text>
+        <view class="seg-options">
+          <view class="seg-item {{scale===100?'active':''}}" data-sc="100" bindtap="onScaleChange">标准</view>
+          <view class="seg-item {{scale===150?'active':''}}" data-sc="150" bindtap="onScaleChange">高清</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="quota-tip" wx:if="{{usedText}}">{{usedText}}</view>
+
+    <button class="btn-primary" bindtap="startConvert" loading="{{converting}}" disabled="{{converting}}">
+      {{converting ? '转换中…' : '开始转换'}}
+    </button>
+
+    <view class="demo-badge" wx:if="{{demo}}">示例：未配置 CI 服务，仅展示功能形态</view>
+    <view class="error-card" wx:if="{{errorMsg}}">{{errorMsg}}</view>
+
+    <view class="progress" wx:if="{{converting}}">
+      <view class="progress-text">{{convertProgress}}</view>
+      <view class="progress-bar"><view class="progress-fill" style="width:{{progressPct}}%"></view></view>
+    </view>
+  </block>
+
+  <!-- 页面网格 -->
+  <view class="pages-grid" wx:if="{{pages.length}}">
+    <view class="pages-note" wx:if="{{actualTotalPage > totalPage}}">
+      原文档共 {{actualTotalPage}} 页，仅转换前 {{totalPage}} 页
+    </view>
+    <view class="page-cell" wx:for="{{pages}}" wx:key="page" data-index="{{index}}" bindtap="onPageTap">
+      <view class="page-thumb-wrap">
+        <image wx:if="{{item.status==='done'}}" class="page-thumb" src="{{item.tempPath}}" mode="aspectFit" />
+        <view wx:elif="{{item.status==='loading'}}" class="page-placeholder">…</view>
+        <view wx:else class="page-placeholder err">!</view>
+      </view>
+      <view class="page-no">第 {{item.page}} 页</view>
+      <view class="page-save" wx:if="{{item.status==='done'}}" catchtap="saveOne" data-index="{{index}}">保存</view>
+    </view>
+  </view>
+
+  <!-- 结果操作 -->
+  <view class="actions" wx:if="{{pages.length && !converting}}">
+    <button class="btn-primary" bindtap="saveAll">全部保存到相册</button>
+    <button class="btn-secondary" bindtap="reset">重新选择</button>
+  </view>
+
+  <view class="tip">
+    💡 PDF 需从微信聊天中选取：先把文件发到任意聊天，再点"选择 PDF 文件"。请确保文档内容合规，勿转换违规文档。
+  </view>
+</view>

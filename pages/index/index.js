@@ -24,7 +24,8 @@ const LAUNCH_DATES = {
   hiddenWatermark: '2026-07-06',
   aiOutpaint: '2026-07-06',
   aiTextToImage: '2026-07-07',
-  aiAvatar: '2026-07-07'
+  aiAvatar: '2026-07-07',
+  pdfToImage: '2026-07-07'
 };
 
 function isToolNew(toolId) {
@@ -239,6 +240,14 @@ Page({
             name: '找重复图',
             desc: '双图相似度对比，多图批量查重',
             url: '/pages/similarity/similarity',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'pdfToImage',
+            name: 'PDF转图片',
+            desc: 'PDF逐页导出为PNG/JPG高清图片',
+            url: '/pages/pdfToImage/pdfToImage',
             available: true,
             isNew: true
           }

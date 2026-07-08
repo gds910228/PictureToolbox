@@ -1809,3 +1809,46 @@
   100% { filter: hue-rotate(360deg); }
 }
 
+/* PDF 转图片：左侧文档（PDF）+ 右侧抽出的图片页，表达「逐页转图片」 */
+.icon-pdfToImage {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 文档主体（PDF） */
+.icon-pdfToImage::before {
+  content: '';
+  position: absolute;
+  width: 38rpx;
+  height: 50rpx;
+  left: 22rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 2rpx solid rgba(0, 240, 255, 0.6);
+  border-radius: 4rpx;
+  background: rgba(0, 240, 255, 0.06);
+}
+
+/* 抽出的图片页（渐变 = 输出图），轻微外滑暗示「逐页导出」 */
+.icon-pdfToImage::after {
+  content: '';
+  position: absolute;
+  width: 30rpx;
+  height: 38rpx;
+  right: 16rpx;
+  top: 50%;
+  border-radius: 4rpx;
+  background: linear-gradient(135deg, var(--color-neon-cyan) 0%, var(--color-hot-magenta) 100%);
+  box-shadow: 0 0 16rpx rgba(0, 240, 255, 0.5);
+  animation: pdfPeel 2.2s ease-in-out infinite;
+}
+
+@keyframes pdfPeel {
+  0%, 100% { transform: translateY(-50%) translateX(0); opacity: 0.9; }
+  50% { transform: translateY(-50%) translateX(6rpx); opacity: 1; }
+}
+

@@ -27,7 +27,8 @@
     "pages/hiddenWatermark/hiddenWatermark",
     "pages/aiOutpaint/aiOutpaint",
     "pages/aiTextToImage/aiTextToImage",
-    "pages/aiAvatar/aiAvatar"
+    "pages/aiAvatar/aiAvatar",
+    "pages/pdfToImage/pdfToImage"
   ],
   "window": {
     "backgroundTextStyle": "light",

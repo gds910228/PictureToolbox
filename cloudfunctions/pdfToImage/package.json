@@ -1,0 +1,10 @@
+{
+  "name": "pdfToImage",
+  "version": "1.0.0",
+  "description": "PDF转图片云函数（腾讯云数据万象 CI doc-preview）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3",
+    "cos-nodejs-sdk-v5": "^2.12.0"
+  }
+}
