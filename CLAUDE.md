@@ -114,6 +114,23 @@ The homepage `pages/index/index.js` is the **single registry**. To ship a new to
 - **`rebase` can silently drop large block swaps** — exit 0 does not mean structural changes landed. After any rebase, `grep`-verify that moved/renamed blocks actually exist where expected. (See memory: `rebase-silent-block-swap-loss`.)
 - **Replicate** (if used for any model): old models 404 on `/models/{owner}/{name}/predictions` — use `/v1/predictions` + pinned `version`. A deployed model version is a code snapshot; trust the actual prediction output over `predict.py`. (See memory.)
 
+## Harness Engineering System (.harness/)
+
+This project has a Harness engineering system landed per `docs/Harness 落地设计 SOP.md` (goal: raise the AI-coding rate). It is **loaded at session start** alongside this file - treat it as active process, not reference docs.
+
+**Before starting any requirement**, read `.harness/agents/application-owner.md` (the dispatch brain) and follow its ten-stage flow. Stages 1-4 (analysis -> review -> coding -> code review) are the front half you'll touch most.
+
+**Context layering:**
+- **L1 always-on:** `.harness/rules/` three files (工程结构 / 项目编码规范 / 开发流程规范) + `.harness/skills/verification-before-completion/SKILL.md` (the iron law: no completion claim without fresh verification evidence) + this CLAUDE.md.
+- **L2 stage-triggered:** the skill for the current stage under `.harness/skills/` (request-analysis, coding-skill, expert-reviewer, code-review, deploy-verify, systematic-debugging).
+- **L3 on-demand:** `~/.claude/.../memory/MEMORY.md` and (future) `wiki/`.
+
+**Stage adaptation (critical):** this project has **no test framework and no CI**. The SOP's stages 5/6 (unit-test write/review) are adapted to *manual verification-case design/review*, stage 7 (push) to *build-npm + upload cloud function*, stage 8 (CI) to *real-device preview + log check*. The ten-stage skeleton is kept; only the form is adapted to what actually runs here. Because there's no automation backstop, **manual verification evidence is non-negotiable** - "should pass" / "looks right" is not completion.
+
+**Per-requirement change record:** create `.harness/changes/{type}-{name}-{YYYYMMDD}/` with `summary.md` as the single source of truth (template in `.harness/changes/README.md`). HITL confirmation points (5) must pause for the human.
+
+`.harness/` is committed (team-shared); `docs/` and `.claude/` are gitignored.
+
 ## Gitignore notes
 
 `cloudfunctions/*/config.json`, `cloudfunctions/**/local-config.json`, `node_modules/`, `miniprogram_npm/`, `package-lock.json`, `.claude/`, and `project.private.config.json` are gitignored. The `config.json` files exist locally with placeholders only — they are not the source of truth for secrets (env vars are).
