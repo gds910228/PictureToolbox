@@ -5,6 +5,7 @@
 const compareHelper = require('../../utils/compare-helper');
 const { ensureBounded } = require('../../utils/upscale-local'); // 通用最长边限制工具
 const { detectGrayscale } = require('../../utils/colorize-detect');
+const analytics = require('../../utils/analytics');
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024; // 入口文件大小上限 20MB
 const POLL_INTERVAL = 3000;               // 轮询间隔 3s
@@ -38,6 +39,7 @@ Page({
   },
 
   onLoad() {
+    analytics.track('tool_view', { toolId: 'aiColorize' });
     this._pollTimer = null;
     this._pollCount = 0;
     this._workPath = ''; // 限边后的工作图本地路径
@@ -258,6 +260,7 @@ Page({
           engine: r.engine || 'replicate-deoldify',
           engineText: 'AI 上色'
         });
+        analytics.track('tool_complete', { toolId: 'aiColorize' });
         return;
       }
 
@@ -376,6 +379,12 @@ Page({
   },
 
   onShareAppMessage() {
-    return { title: 'AI 老照片上色 - 让黑白老照片重焕色彩', path: '/pages/aiColorize/aiColorize' };
+    analytics.trackShare('aiColorize', 'friend');
+    return { title: 'AI 老照片上色 - 让黑白老照片重焕色彩', path: '/pages/aiColorize/aiColorize', imageUrl: this.data.resultSrc || '' };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('aiColorize', 'timeline');
+    return { title: '黑白老照片一键上色，AI 修复回忆' };
   }
 });

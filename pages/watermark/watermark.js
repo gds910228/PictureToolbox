@@ -1,6 +1,7 @@
 // pages/watermark/watermark.js
 const imageProcess = require('../../utils/image-process');
 const compareHelper = require('../../utils/compare-helper');
+const analytics = require('../../utils/analytics');
 
 Page({
   data: {
@@ -58,9 +59,7 @@ Page({
   },
 
   onLoad() {
-    wx.setNavigationBarTitle({
-      title: '图片水印'
-    });
+    analytics.track('tool_view', { toolId: 'watermark' });
   },
 
   /**
@@ -433,6 +432,7 @@ Page({
         showResult: true,
         processing: false
       });
+      analytics.track('tool_complete', { toolId: 'watermark' });
 
       wx.hideLoading();
       wx.showToast({
@@ -497,9 +497,15 @@ Page({
    * 分享
    */
   onShareAppMessage() {
+    analytics.trackShare('watermark', 'friend');
     return {
-      title: '图片水印 - 图片工具箱',
+      title: '给图片加专属水印，防盗图防搬运',
       path: '/pages/watermark/watermark'
     };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('watermark', 'timeline');
+    return { title: '给图片加专属文字水印，防盗图' };
   }
 });

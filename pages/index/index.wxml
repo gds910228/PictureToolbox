@@ -23,6 +23,23 @@
     </view>
   </view>
 
+  <!-- 热门场景：高频搜索词直达，提升新用户首屏转化 -->
+  <view class="hot-scenes">
+    <view class="hot-scenes-title">🔥 热门场景</view>
+    <view class="hot-scenes-grid">
+      <view
+        class="hot-scene-card"
+        wx:for="{{hotScenes}}"
+        wx:key="id"
+        data-url="{{item.url}}"
+        bindtap="onSceneTap"
+      >
+        <view class="hot-scene-icon">{{item.icon}}</view>
+        <view class="hot-scene-name">{{item.name}}</view>
+      </view>
+    </view>
+  </view>
+
   <!-- 工具分组（折叠面板） -->
   <view class="groups">
     <view

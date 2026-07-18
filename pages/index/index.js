@@ -1,5 +1,7 @@
 // pages/index/index.js
 
+const analytics = require('../../utils/analytics');
+
 // NEW 标签依据：上线日期距今 < NEW_WINDOW_DAYS 才显示，到期自动摘标。
 // 新增功能只需在 LAUNCH_DATES 填上线日期（YYYY-MM-DD），无需手动清理 isNew。
 // 未登记的功能默认不挂 NEW。
@@ -51,6 +53,15 @@ Page({
     ],
     typedName: '',
     currentToolIdx: 0,
+    // 热门场景直达（高频搜索词既是入口又强化首页主题相关性）
+    hotScenes: [
+      { id: 'matting', name: '抠图换背景', icon: '✂️', url: '/pages/aiMatting/aiMatting' },
+      { id: 'eraser', name: '去水印/消除', icon: '🩹', url: '/pages/aiEraser/aiEraser' },
+      { id: 'idphoto', name: '证件照制作', icon: '🪪', url: '/pages/idPhoto/idPhoto' },
+      { id: 'colorize', name: '老照片上色', icon: '🌈', url: '/pages/aiColorize/aiColorize' },
+      { id: 'pdf2img', name: 'PDF转图片', icon: '📄', url: '/pages/pdfToImage/pdfToImage' },
+      { id: 't2i', name: 'AI 画画', icon: '🎨', url: '/pages/aiTextToImage/aiTextToImage' }
+    ],
     // 分组
     groups: [
       {
@@ -297,9 +308,10 @@ Page({
   },
 
   onLoad() {
-    wx.setNavigationBarTitle({
-      title: '图个简单'
-    });
+
+    // P0 埋点：首页访问 + 来源场景
+    analytics.track('tool_view', { toolId: 'index' });
+    analytics.track('enter_source', { scene: analytics.getScene() });
 
     // 将每个工具的 available 转换为布尔值
     const groups = this.data.groups.map(group => ({
@@ -430,11 +442,22 @@ Page({
   },
 
   /**
+   * 点击热门场景卡片直达
+   */
+  onSceneTap(e) {
+    const { url } = e.currentTarget.dataset;
+    if (!url) return;
+    analytics.track('hot_scene_click', { url });
+    wx.navigateTo({ url });
+  },
+
+  /**
    * 分享功能
    */
   onShareAppMessage() {
+    analytics.trackShare('index', 'friend');
     return {
-      title: '图片工具箱 - 简单高效的图片处理工具',
+      title: '免费抠图/去水印/证件照/文生图，25+图片工具一次搞定',
       path: '/pages/index/index',
       imageUrl: ''
     };
@@ -444,8 +467,9 @@ Page({
    * 分享到朋友圈
    */
   onShareTimeline() {
+    analytics.trackShare('index', 'timeline');
     return {
-      title: '图片工具箱 - 简单高效的图片处理工具',
+      title: '免费抠图/去水印/证件照/文生图，25+图片工具一次搞定',
       imageUrl: ''
     };
   }

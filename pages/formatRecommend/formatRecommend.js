@@ -3,6 +3,7 @@
 // 全程前端本地，不依赖云函数与外部 API。引擎见 utils/format-recommend.js（已 53 例交叉验证）。
 const imageProcess = require('../../utils/image-process');
 const { extractFeatures, recommend, estimateSize } = require('../../utils/format-recommend');
+const analytics = require('../../utils/analytics');
 
 const ANALYZE_MAX_EDGE = 240; // 分析画布最长边（控像素量，特征为尺度不变比率）
 const EXPORT_MAX_EDGE = 2048; // 转换画布最长边（保高质、控内存）
@@ -53,7 +54,7 @@ Page({
   },
 
   onLoad() {
-    wx.setNavigationBarTitle({ title: '格式推荐' });
+    analytics.track('tool_view', { toolId: 'formatRecommend' });
   },
 
   onUnload() {
@@ -187,6 +188,7 @@ Page({
       convertPath: '',
       convertSizeText: ''
     });
+    analytics.track('tool_complete', { toolId: 'formatRecommend' });
     this._updateConvertEstimate();
   },
 
@@ -285,6 +287,7 @@ Page({
       } catch (e) { /* 忽略 */ }
 
       this.setData({ convertPath: tempPath, convertSizeText: sizeText });
+      analytics.track('tool_complete', { toolId: 'formatRecommend' });
       wx.showToast({ title: '转换完成', icon: 'success' });
     } catch (err) {
       console.error('格式转换失败', err);
@@ -389,6 +392,12 @@ Page({
   },
 
   onShareAppMessage() {
-    return { title: '格式推荐 - 图个简单', path: '/pages/formatRecommend/formatRecommend' };
+    analytics.trackShare('formatRecommend', 'friend');
+    return { title: '图片格式推荐：分析特征给最优格式与压缩参数', path: '/pages/formatRecommend/formatRecommend' };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('formatRecommend', 'timeline');
+    return { title: '不知道图片存什么格式？AI 帮你推荐' };
   }
 });

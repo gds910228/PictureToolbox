@@ -6,6 +6,7 @@
 //   success:false → error（标准化错误：未检测到主体引导 / 通用重试）
 // 旧版"返原图当抠图结果 + 假识别置信度"的兜底已移除——失败即显错误 + 重试，不伪装成功。
 const compareHelper = require('../../utils/compare-helper');
+const analytics = require('../../utils/analytics');
 
 Page({
   data: {
@@ -36,6 +37,7 @@ Page({
   },
 
   onLoad() {
+    analytics.track('tool_view', { toolId: 'aiMatting' });
     this.loadQuota();
   },
 
@@ -153,6 +155,7 @@ Page({
             used: res.result.used || 0,
             limit: res.result.limit || that.data.limit
           });
+          analytics.track('tool_complete', { toolId: 'aiMatting' });
           wx.showModal({
             title: '✨ 抠图成功！',
             content: `已去除背景，生成透明PNG。\n\n当前背景：${that.getBgColorName()}`,
@@ -256,6 +259,20 @@ Page({
       current: this.data.resultSrc,
       urls: [this.data.resultSrc]
     });
+  },
+
+  onShareAppMessage() {
+    analytics.trackShare('aiMatting', 'friend');
+    return {
+      title: 'AI 一键抠图：去背景换底色，透明 PNG 秒出',
+      path: '/pages/aiMatting/aiMatting',
+      imageUrl: this.data.resultSrc || ''
+    };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('aiMatting', 'timeline');
+    return { title: 'AI 一键抠图去背景，换底色透明 PNG' };
   }
 });
 

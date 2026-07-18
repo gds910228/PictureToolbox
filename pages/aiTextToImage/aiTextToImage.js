@@ -23,6 +23,8 @@ const POLL_INTERVAL = 3000; // 轮询间隔 3s
 const POLL_MAX = 40;        // 最多轮询 40 次（约 2 分钟）
 const MAX_PROMPT = 500;     // 前端输入框上限（云函数侧另有上限校验）
 
+const analytics = require('../../utils/analytics');
+
 Page({
   data: {
     prompt: '',
@@ -47,6 +49,7 @@ Page({
   },
 
   onLoad() {
+    analytics.track('tool_view', { toolId: 'aiTextToImage' });
     this._pollTimer = null;
     this._pollCount = 0;
     this.loadQuota();
@@ -332,6 +335,7 @@ Page({
             processing: false,
             statusText: ''
           });
+          analytics.track('tool_complete', { toolId: 'aiTextToImage' });
         } catch (e) {
           wx.hideLoading();
           console.error('[aiTextToImage] 下载结果失败', e);
@@ -479,9 +483,18 @@ Page({
   },
 
   onShareAppMessage() {
+    analytics.trackShare('aiTextToImage', 'friend');
     return {
       title: '用腾讯混元 3.0 一键文生图，AI 帮你写提示词',
       path: '/pages/aiTextToImage/aiTextToImage',
+      imageUrl: this.data.resultSrc || ''
+    };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('aiTextToImage', 'timeline');
+    return {
+      title: '输入文字就能AI画图，还能自动写提示词',
       imageUrl: this.data.resultSrc || ''
     };
   }

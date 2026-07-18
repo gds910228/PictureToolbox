@@ -11,6 +11,8 @@ const MAX_PAGES = 50;
 const MAX_PDF_BYTES = 50 * 1024 * 1024;
 const CONCURRENCY = 3;
 
+const analytics = require('../../utils/analytics');
+
 Page({
   data: {
     pdfPath: '',          // 本地临时路径
@@ -32,6 +34,7 @@ Page({
   },
 
   onLoad() {
+    analytics.track('tool_view', { toolId: 'pdfToImage' });
     this.loadQuota();
   },
 
@@ -189,6 +192,9 @@ Page({
     const done = this.data.pages.filter((p) => p.status === 'done').length;
     const total = this.data.totalPage;
     this.setData({ converting: false, convertProgress: '' });
+    if (done > 0) {
+      analytics.track('tool_complete', { toolId: 'pdfToImage', pages: done });
+    }
     if (done === total) {
       wx.showToast({ title: `已转换 ${total} 页`, icon: 'success' });
     } else if (done > 0) {
@@ -399,6 +405,7 @@ Page({
   },
 
   onShareAppMessage() {
+    analytics.trackShare('pdfToImage', 'friend');
     return {
       title: 'PDF 一键转图片，逐页高清导出 PNG/JPG',
       path: '/pages/pdfToImage/pdfToImage'
@@ -406,6 +413,7 @@ Page({
   },
 
   onShareTimeline() {
+    analytics.trackShare('pdfToImage', 'timeline');
     return {
       title: 'PDF 一键转图片，逐页高清导出 PNG/JPG'
     };

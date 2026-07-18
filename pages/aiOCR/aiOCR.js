@@ -1,6 +1,8 @@
 // pages/aiOCR/aiOCR.js
 // AI文字识别页面 - 选择图片、识别、查看结果、复制导出
 
+const analytics = require('../../utils/analytics');
+
 Page({
   data: {
     // 图片相关
@@ -28,6 +30,7 @@ Page({
   },
 
   onLoad() {
+    analytics.track('tool_view', { toolId: 'aiOCR' });
     // 计算显示区域宽度（屏幕宽度 - 左右padding）
     const sysInfo = wx.getSystemInfoSync();
     this.screenWidth = sysInfo.windowWidth;
@@ -244,6 +247,7 @@ Page({
           imageHeight: result.imageHeight || that.data.imageHeight,
           isMock: result.isMock || false
         });
+        analytics.track('tool_complete', { toolId: 'aiOCR' });
 
         // 延迟绘制canvas，确保DOM已渲染
         setTimeout(() => {
@@ -637,6 +641,7 @@ Page({
       const preview = this.data.fullText.substring(0, 30);
       title = `识别结果: ${preview}...`;
     }
+    analytics.trackShare('aiOCR', 'friend');
     return {
       title: title,
       path: '/pages/aiOCR/aiOCR',
@@ -648,6 +653,7 @@ Page({
    * 分享到朋友圈
    */
   onShareTimeline() {
+    analytics.trackShare('aiOCR', 'timeline');
     return {
       title: 'AI文字识别 - 图片转文字神器',
       imageUrl: this.data.imageSrc || ''

@@ -4,6 +4,7 @@
 
 const compareHelper = require('../../utils/compare-helper');
 const { ensureBounded, enhanceImage, localUpscale } = require('../../utils/upscale-local');
+const analytics = require('../../utils/analytics');
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024; // 入口文件大小上限 20MB
 const POLL_INTERVAL = 3000;             // 轮询间隔 3s
@@ -36,6 +37,7 @@ Page({
   },
 
   onLoad() {
+    analytics.track('tool_view', { toolId: 'aiUpscale' });
     this._pollTimer = null;
     this._pollCount = 0;
     this._workPath = ''; // 缩放/增强后的工作图本地路径
@@ -271,6 +273,7 @@ Page({
           engine: r.engine || 'replicate-real-esrgan',
           engineText: 'AI 超分'
         });
+        analytics.track('tool_complete', { toolId: 'aiUpscale', engine: 'replicate' });
         return;
       }
 
@@ -314,6 +317,7 @@ Page({
         progress: 100,
         processing: false
       });
+      analytics.track('tool_complete', { toolId: 'aiUpscale', engine: 'local' });
     } catch (e) {
       console.error('[aiUpscale] 本地放大失败', e);
       this.setData({ processing: false, progress: 0 });
@@ -417,6 +421,12 @@ Page({
   },
 
   onShareAppMessage() {
-    return { title: 'AI 图片放大 - 2x/4x 超分辨率增强', path: '/pages/aiUpscale/aiUpscale' };
+    analytics.trackShare('aiUpscale', 'friend');
+    return { title: 'AI 图片放大 - 2x/4x 超分辨率增强', path: '/pages/aiUpscale/aiUpscale', imageUrl: this.data.resultSrc || '' };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('aiUpscale', 'timeline');
+    return { title: 'AI 无损放大图片，2x/4x 提清晰度' };
   }
 });

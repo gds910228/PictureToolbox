@@ -11,6 +11,8 @@ const PAGE_SIZE_OPTIONS = [
   { key: '1:1',  label: '1:1',    desc: '正方形' }
 ];
 
+const analytics = require('../../utils/analytics');
+
 Page({
   data: {
     images: [],              // [{ path, name, size }]
@@ -31,7 +33,7 @@ Page({
   },
 
   onLoad() {
-    wx.setNavigationBarTitle({ title: '多图合成PDF' });
+    analytics.track('tool_view', { toolId: 'imgToPdf' });
     // 复用 app.js 中已初始化的云开发实例
     if (wx.cloud) {
       this.setData({ cloudEnabled: true });
@@ -224,6 +226,7 @@ Page({
         generating: false,
         progressText: ''
       });
+      analytics.track('tool_complete', { toolId: 'imgToPdf' });
 
       wx.showToast({
         title: `已生成 ${result.pageCount} 页`,
@@ -355,9 +358,15 @@ Page({
   },
 
   onShareAppMessage() {
+    analytics.trackShare('imgToPdf', 'friend');
     return {
-      title: '多图合成 PDF - 图片工具箱',
+      title: '多图合成 PDF：照片按序拼成 A4 文档',
       path: '/pages/imgToPdf/imgToPdf'
     };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('imgToPdf', 'timeline');
+    return { title: '多张照片一键合成 PDF 文档' };
   }
 });

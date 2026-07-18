@@ -13,6 +13,7 @@
 const imageProcess = require('../../utils/image-process');
 const { guardImage } = require('../../utils/content-check');
 const { computeCompositeTransform, computeCenterCrop } = require('../../utils/id-photo-geometry');
+const analytics = require('../../utils/analytics');
 
 // 证件照规格（@300dpi 近似像素）。标准中国证件照尺寸。
 const SPECS = [
@@ -55,7 +56,7 @@ Page({
   // this._composeChain 合成串行链，避免快速切换规格时 canvas 绘制交错
 
   onLoad() {
-    wx.setNavigationBarTitle({ title: '证件照制作' });
+    analytics.track('tool_view', { toolId: 'idPhoto' });
     this._composeChain = Promise.resolve();
   },
 
@@ -212,6 +213,7 @@ Page({
       // 导出 temp 文件
       const tempPath = await this._exportCanvas(canvas, spec.w, spec.h);
       this.setData({ hasResult: true, resultPath: tempPath });
+      analytics.track('tool_complete', { toolId: 'idPhoto' });
       this._setStatus('完成：可换规格/底色快速重览，或保存到相册', 'ok');
     } catch (err) {
       console.error('[idPhoto] 合成失败', err);
@@ -341,6 +343,12 @@ Page({
   },
 
   onShareAppMessage() {
-    return { title: '证件照制作 - 图个简单', path: '/pages/idPhoto/idPhoto' };
+    analytics.trackShare('idPhoto', 'friend');
+    return { title: '证件照制作：AI 抠图换底色，一寸二寸多规格', path: '/pages/idPhoto/idPhoto', imageUrl: this.data.resultPath || '' };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('idPhoto', 'timeline');
+    return { title: '免费做证件照：AI 抠图换底色，一键多规格' };
   }
 });

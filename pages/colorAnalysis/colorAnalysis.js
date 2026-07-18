@@ -3,6 +3,7 @@
 // 全程前端本地，不依赖云函数与外部 API。算法见 utils/color-quantize.js（已交叉验证）。
 const imageProcess = require('../../utils/image-process');
 const { buildPalette } = require('../../utils/color-quantize');
+const analytics = require('../../utils/analytics');
 
 const MIN_COUNT = 3;
 const MAX_COUNT = 10;
@@ -32,7 +33,7 @@ Page({
   },
 
   onLoad() {
-    wx.setNavigationBarTitle({ title: '颜色分析' });
+    analytics.track('tool_view', { toolId: 'colorAnalysis' });
   },
 
   onUnload() {
@@ -100,6 +101,7 @@ Page({
       if (this._cancelled) return;
       const palette = buildPalette(rgba, this.data.colorCount);
       this.setData({ palette });
+      analytics.track('tool_complete', { toolId: 'colorAnalysis' });
     } catch (err) {
       console.error('颜色分析失败', err);
       wx.showModal({
@@ -201,6 +203,7 @@ Page({
       } catch (e) { /* 忽略 */ }
 
       this.setData({ exportPath: tempPath, exportSizeText: sizeText });
+      analytics.track('tool_complete', { toolId: 'colorAnalysis' });
       wx.showToast({ title: '色卡已生成', icon: 'success' });
     } catch (err) {
       console.error('导出色卡失败', err);
@@ -333,6 +336,12 @@ Page({
   },
 
   onShareAppMessage() {
-    return { title: '颜色分析 - 图个简单', path: '/pages/colorAnalysis/colorAnalysis' };
+    analytics.trackShare('colorAnalysis', 'friend');
+    return { title: '图片取色：提取主色调生成色卡，导出 HEX/RGB', path: '/pages/colorAnalysis/colorAnalysis' };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('colorAnalysis', 'timeline');
+    return { title: '提取图片主色调，生成配色色卡' };
   }
 });

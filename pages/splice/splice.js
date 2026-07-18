@@ -1,5 +1,6 @@
 // pages/splice/splice.js
 const imageProcess = require('../../utils/image-process');
+const analytics = require('../../utils/analytics');
 
 Page({
   data: {
@@ -31,9 +32,7 @@ Page({
   },
 
   onLoad() {
-    wx.setNavigationBarTitle({
-      title: '图片拼接'
-    });
+    analytics.track('tool_view', { toolId: 'splice' });
   },
 
   /**
@@ -312,6 +311,7 @@ Page({
         showResult: true,
         processing: false
       });
+      analytics.track('tool_complete', { toolId: 'splice' });
 
       wx.hideLoading();
       wx.showToast({
@@ -395,9 +395,15 @@ Page({
    * 分享
    */
   onShareAppMessage() {
+    analytics.trackShare('splice', 'friend');
     return {
-      title: '图片拼接 - 图片工具箱',
+      title: '多张图拼成一张长图，发朋友圈更方便',
       path: '/pages/splice/splice'
     };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('splice', 'timeline');
+    return { title: '多图拼接长图，朋友圈九宫格神器' };
   }
 });

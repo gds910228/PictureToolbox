@@ -10,6 +10,7 @@ const { ensureBounded } = require('../../utils/upscale-local');
 const { detectSubject } = require('../../utils/saliency-detect');
 const { getImageInfo } = require('../../utils/image-process');
 const { RATIO_PRESETS, PLATFORM_PRESETS } = require('./presets');
+const analytics = require('../../utils/analytics');
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024; // 入口文件大小上限 20MB
 const WORK_EDGE = 2048;                  // 工作图最长边（显示+导出，控内存，社交平台足够）
@@ -39,7 +40,7 @@ Page({
   },
 
   onLoad() {
-    wx.setNavigationBarTitle({ title: '图片裁剪' });
+    analytics.track('tool_view', { toolId: 'crop' });
     const sys = wx.getSystemInfoSync();
     this._screenW = sys.windowWidth;
     this._screenH = sys.windowHeight;
@@ -312,6 +313,7 @@ Page({
             resultInfo: `${name || ''} · ${outW} × ${outH} px`,
             showResult: true
           });
+          analytics.track('tool_complete', { toolId: 'crop' });
         },
         fail: (err) => {
           wx.hideLoading();
@@ -366,7 +368,13 @@ Page({
   },
 
   onShareAppMessage() {
+    analytics.trackShare('crop', 'friend');
     return { title: '图片裁剪 - 智能构图，多比例/平台尺寸', path: '/pages/crop/crop' };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('crop', 'timeline');
+    return { title: '图片裁剪：自定义任意比例，一键切图' };
   }
 });
 

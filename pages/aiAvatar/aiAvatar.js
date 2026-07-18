@@ -9,6 +9,7 @@
 // 流量：onShareAppMessage + onShareTimeline 双分享入口；结果图即分享图。
 
 const compareHelper = require('../../utils/compare-helper');
+const analytics = require('../../utils/analytics');
 
 // 官方「百变头像风格列表」15 个风格（仅人像模式生效；编号不臆造）。
 // 来源：https://cloud.tencent.com/document/product/1668/107741
@@ -55,6 +56,7 @@ Page({
   },
 
   onLoad() {
+    analytics.track('tool_view', { toolId: 'aiAvatar' });
     this.loadQuota();
   },
 
@@ -257,6 +259,7 @@ Page({
           loading: false,
           usedText: buildUsedText(r.used, r.limit)
         });
+        analytics.track('tool_complete', { toolId: 'aiAvatar' });
       } else {
         this.setData({
           loading: false,
@@ -408,6 +411,7 @@ Page({
   },
 
   onShareAppMessage() {
+    analytics.trackShare('aiAvatar', 'friend');
     return {
       title: '用 AI 一键生成多风格头像：复古繁花 / 暴富 / 多巴胺…',
       path: '/pages/aiAvatar/aiAvatar',
@@ -416,6 +420,7 @@ Page({
   },
 
   onShareTimeline() {
+    analytics.trackShare('aiAvatar', 'timeline');
     return {
       title: '用 AI 一键生成多风格头像：复古繁花 / 暴富 / 多巴胺…',
       imageUrl: this.data.resultSrc || this.data.imageSrc || ''

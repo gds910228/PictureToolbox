@@ -46,6 +46,7 @@
       </view>
       <button class="save-btn-small" wx:if="{{resultSrc}}" bindtap="saveResult">保存图片</button>
       <button wx:if="{{resultSrc}}" class="save-btn-small compare-btn-small" bindtap="onCompare">对比查看</button>
+      <button wx:if="{{resultSrc}}" class="save-btn-small compare-btn-small" open-type="share">分享给朋友</button>
     </view>
   </view>
 

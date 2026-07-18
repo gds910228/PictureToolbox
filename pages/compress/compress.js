@@ -2,6 +2,7 @@
 // 图片压缩：纯本地处理。智能压缩用 canvas 分析图像高频细节自适应质量（无 AI/云函数）。
 const imageProcess = require('../../utils/image-process');
 const compareHelper = require('../../utils/compare-helper');
+const analytics = require('../../utils/analytics');
 
 // 本地图像类型 → 中文标签（智能压缩结果展示）
 const IMAGE_TYPE_LABEL = {
@@ -29,9 +30,7 @@ Page({
   },
 
   onLoad() {
-    wx.setNavigationBarTitle({
-      title: '图片压缩'
-    });
+    analytics.track('tool_view', { toolId: 'compress' });
   },
 
   /**
@@ -191,6 +190,7 @@ Page({
           compressing: false,
           imageTypeLabel: IMAGE_TYPE_LABEL[result.imageType] || ''
         });
+        analytics.track('tool_complete', { toolId: 'compress' });
 
         wx.hideLoading();
 
@@ -222,6 +222,7 @@ Page({
           compressing: false,
           imageTypeLabel: ''
         });
+        analytics.track('tool_complete', { toolId: 'compress' });
 
         wx.hideLoading();
 
@@ -289,9 +290,15 @@ Page({
    * 分享
    */
   onShareAppMessage() {
+    analytics.trackShare('compress', 'friend');
     return {
-      title: '图片压缩 - 图片工具箱',
+      title: '图片压缩：缩小体积不失真，发圈传输更快',
       path: '/pages/compress/compress'
     };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('compress', 'timeline');
+    return { title: '一键压缩图片，缩小体积不失真' };
   }
 });

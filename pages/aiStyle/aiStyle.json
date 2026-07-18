@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "AI风格迁移",
+  "navigationBarTitleText": "照片转风格·油画/动漫风格迁移",
   "usingComponents": {
     "image-uploader": "/components/image-uploader/image-uploader"
   }

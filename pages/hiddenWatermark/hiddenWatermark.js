@@ -4,6 +4,7 @@
 // 像素读写走 Canvas 2D，含 getImageData 兼容守卫（参照 colorAnalysis）。
 const imageProcess = require('../../utils/image-process');
 const hw = require('../../utils/hidden-watermark');
+const analytics = require('../../utils/analytics');
 
 const MAX_EDGE = 2048;      // 嵌入工作分辨率上限（控制 getImageData 内存 ≤16MB）
 const DEFAULT_KEY = 'tuGeJianDan';
@@ -39,7 +40,7 @@ Page({
   },
 
   onLoad() {
-    wx.setNavigationBarTitle({ title: '隐形水印' });
+    analytics.track('tool_view', { toolId: 'hiddenWatermark' });
   },
 
   onUnload() {
@@ -200,6 +201,7 @@ Page({
         embedW: W,
         embedH: H
       });
+      analytics.track('tool_complete', { toolId: 'hiddenWatermark' });
       wx.showToast({ title: '嵌入完成', icon: 'success' });
     } catch (err) {
       console.error('嵌入失败', err);
@@ -283,6 +285,7 @@ Page({
         extractW: W,
         extractH: H
       });
+      analytics.track('tool_complete', { toolId: 'hiddenWatermark' });
     } catch (err) {
       console.error('提取失败', err);
       wx.showModal({
@@ -374,6 +377,12 @@ Page({
   },
 
   onShareAppMessage() {
-    return { title: '隐形水印 - 图个简单', path: '/pages/hiddenWatermark/hiddenWatermark' };
+    analytics.trackShare('hiddenWatermark', 'friend');
+    return { title: '隐形水印：文字藏进图片像素，可密钥提取还原', path: '/pages/hiddenWatermark/hiddenWatermark' };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('hiddenWatermark', 'timeline');
+    return { title: '给图片加隐形水印防盗图，可提取验证' };
   }
 });

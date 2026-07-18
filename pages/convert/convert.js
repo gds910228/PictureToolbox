@@ -1,5 +1,6 @@
 // pages/convert/convert.js
 const imageProcess = require('../../utils/image-process');
+const analytics = require('../../utils/analytics');
 
 Page({
   data: {
@@ -19,9 +20,7 @@ Page({
   },
 
   onLoad() {
-    wx.setNavigationBarTitle({
-      title: '格式转换'
-    });
+    analytics.track('tool_view', { toolId: 'convert' });
   },
 
   /**
@@ -114,6 +113,7 @@ Page({
         actualFormat: actualFormat,
         actualFormatUpper: actualFormatUpper
       });
+      analytics.track('tool_complete', { toolId: 'convert' });
 
       wx.hideLoading();
 
@@ -169,9 +169,15 @@ Page({
    * 分享
    */
   onShareAppMessage() {
+    analytics.trackShare('convert', 'friend');
     return {
-      title: '格式转换 - 图片工具箱',
+      title: '图片格式转换：JPG/PNG/WebP 互转',
       path: '/pages/convert/convert'
     };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('convert', 'timeline');
+    return { title: 'JPG/PNG/WebP 图片格式一键互转' };
   }
 });

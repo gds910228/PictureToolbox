@@ -1,6 +1,11 @@
 // app.js
+const analytics = require('./utils/analytics');
+
 App({
   onLaunch() {
+    // P0 埋点：注入启动场景码（各页 track() 自动带上 scene 来源）
+    analytics.initScene();
+
     // 初始化云开发
     this.initCloud();
 

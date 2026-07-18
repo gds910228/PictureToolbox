@@ -5,6 +5,8 @@
 // 区别于 aiCaption = 帮这张图配句话发出去（可发布文案，按平台口吻 + 话题）。
 // 本页 social 风格已移除（与 aiCaption 配文重叠）；社媒发布文案请用 aiCaption。
 
+const analytics = require('../../utils/analytics');
+
 Page({
   data: {
     imageSrc: '',
@@ -32,6 +34,7 @@ Page({
   },
 
   onLoad() {
+    analytics.track('tool_view', { toolId: 'aiDescribe' });
     this.loadQuota();
   },
 
@@ -179,6 +182,7 @@ Page({
           used: res.result.used || 0,
           limit: res.result.limit || that.data.limit
         });
+        analytics.track('tool_complete', { toolId: 'aiDescribe' });
       } else if (res.result.error === 'rate_limit') {
         that.setData({
           hasError: true,
@@ -229,6 +233,19 @@ Page({
   /** 失败态重试 */
   retry() {
     this.generateDescription();
+  },
+
+  onShareAppMessage() {
+    analytics.trackShare('aiDescribe', 'friend');
+    return {
+      title: 'AI 图片描述：7 种风格看懂画面内容',
+      path: '/pages/aiDescribe/aiDescribe'
+    };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('aiDescribe', 'timeline');
+    return { title: '让 AI 帮你看懂一张图，7 种风格描述' };
   }
 });
 

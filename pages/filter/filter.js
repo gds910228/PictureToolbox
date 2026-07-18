@@ -1,6 +1,7 @@
 // pages/filter/filter.js
 const imageProcess = require('../../utils/image-process');
 const compareHelper = require('../../utils/compare-helper');
+const analytics = require('../../utils/analytics');
 
 Page({
   data: {
@@ -89,9 +90,7 @@ Page({
   },
 
   onLoad() {
-    wx.setNavigationBarTitle({
-      title: '图片滤镜'
-    });
+    analytics.track('tool_view', { toolId: 'filter' });
     this.loadAIQuota();
   },
 
@@ -358,6 +357,7 @@ Page({
             showResult: true,
             processing: false
           });
+          analytics.track('tool_complete', { toolId: 'filter', type: 'ai' });
           wx.hideLoading();
           wx.showToast({ title: '处理完成', icon: 'success' });
         } catch (e) {
@@ -577,6 +577,7 @@ Page({
         showResult: true,
         processing: false
       });
+      analytics.track('tool_complete', { toolId: 'filter', type: this.data.filterType });
 
       wx.hideLoading();
       wx.showToast({
@@ -657,10 +658,16 @@ Page({
    * 分享
    */
   onShareAppMessage() {
+    analytics.trackShare('filter', 'friend');
     return {
-      title: '图片滤镜 - 图片工具箱',
+      title: '图片滤镜：20+ 预设一键调色 + AI 风格化',
       path: '/pages/filter/filter'
     };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('filter', 'timeline');
+    return { title: '一键给图片加滤镜，20+ 风格可选' };
   }
 });
 

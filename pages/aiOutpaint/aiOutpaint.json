@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "AI 扩图",
+  "navigationBarTitleText": "AI扩图·智能补全画面背景",
   "usingComponents": {
     "image-uploader": "/components/image-uploader/image-uploader"
   }

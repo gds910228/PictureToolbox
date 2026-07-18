@@ -1,7 +1,16 @@
 {
-  "desc": "关于本文件的更多信息，请参考文档 https://developers.weixin.qq.com/miniprogram/dev/framework/sitemap.html",
-  "rules": [{
-    "action": "allow",
-    "page": "*"
-  }]
+  "desc": "聚焦核心功能页提升搜索收录权重；非核心页不主动推荐但不禁止。",
+  "rules": [
+    { "action": "allow", "page": "pages/index/index" },
+    { "action": "allow", "page": "pages/idPhoto/idPhoto" },
+    { "action": "allow", "page": "pages/aiEraser/aiEraser" },
+    { "action": "allow", "page": "pages/aiMatting/aiMatting" },
+    { "action": "allow", "page": "pages/pdfToImage/pdfToImage" },
+    { "action": "allow", "page": "pages/imgToPdf/imgToPdf" },
+    { "action": "allow", "page": "pages/aiColorize/aiColorize" },
+    { "action": "allow", "page": "pages/aiUpscale/aiUpscale" },
+    { "action": "allow", "page": "pages/aiOCR/aiOCR" },
+    { "action": "allow", "page": "pages/aiTextToImage/aiTextToImage" },
+    { "action": "allow", "page": "pages/compress/compress" }
+  ]
 }

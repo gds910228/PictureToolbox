@@ -1852,3 +1852,61 @@
   50% { transform: translateY(-50%) translateX(6rpx); opacity: 1; }
 }
 
+/* ===================================
+   热门场景直达（高频搜索词入口）
+   =================================== */
+.hot-scenes {
+  position: relative;
+  z-index: 1;
+  margin: 0 var(--space-md) var(--space-md);
+}
+
+.hot-scenes-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-sm);
+  letter-spacing: 1rpx;
+}
+
+.hot-scenes-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-sm);
+}
+
+.hot-scene-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md) var(--space-xs);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20rpx);
+  -webkit-backdrop-filter: blur(20rpx);
+  border: 1rpx solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6rpx 24rpx rgba(0, 0, 0, 0.22);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.hot-scene-card:active {
+  transform: scale(0.96);
+  border-color: var(--color-neon-cyan);
+  box-shadow: 0 0 24rpx rgba(0, 240, 255, 0.35);
+}
+
+.hot-scene-icon {
+  font-size: 48rpx;
+  line-height: 1;
+  margin-bottom: var(--space-xs);
+}
+
+.hot-scene-name {
+  font-size: 24rpx;
+  color: var(--text-primary);
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+

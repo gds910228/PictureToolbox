@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "图片拼接",
+  "navigationBarTitleText": "图片拼接·多图拼长图",
   "enablePullDownRefresh": false,
   "usingComponents": {
     "image-uploader": "/components/image-uploader/image-uploader"

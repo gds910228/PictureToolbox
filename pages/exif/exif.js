@@ -9,6 +9,7 @@
 
 const piexif = require('../../utils/piexif.js');
 const TAGS = require('../../utils/exif-tags.js');
+const analytics = require('../../utils/analytics');
 
 Page({
   data: {
@@ -37,7 +38,7 @@ Page({
   },
 
   onLoad() {
-    wx.setNavigationBarTitle({ title: 'EXIF 信息' });
+    analytics.track('tool_view', { toolId: 'exif' });
   },
 
   // ============ 选图 ============
@@ -142,6 +143,7 @@ Page({
         exifGroups: groups,
         rawTagCount: tagCount
       });
+      analytics.track('tool_complete', { toolId: 'exif' });
 
       if (tagCount === 0) {
         wx.showToast({ title: '该图片不含 EXIF', icon: 'none' });
@@ -325,6 +327,7 @@ Page({
         processing: false,
         processStep: ''
       });
+      analytics.track('tool_complete', { toolId: 'exif' });
 
       wx.hideLoading();
       wx.showToast({
@@ -431,9 +434,15 @@ Page({
   },
 
   onShareAppMessage() {
+    analytics.trackShare('exif', 'friend');
     return {
-      title: 'EXIF 查看与抹除 - 图片工具箱',
+      title: '查看/抹除图片 EXIF，一键清除 GPS 定位防隐私泄露',
       path: '/pages/exif/exif'
     };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('exif', 'timeline');
+    return { title: '一键抹除图片 GPS 等隐私信息' };
   }
 });

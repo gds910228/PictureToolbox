@@ -5,6 +5,8 @@
 
 const MAX_ROUNDS = 10;
 
+const analytics = require('../../utils/analytics');
+
 Page({
   data: {
     imageSrc: '',
@@ -20,6 +22,10 @@ Page({
       '能用来当头像吗？',
       '帮我配一段朋友圈文案'
     ]
+  },
+
+  onLoad() {
+    analytics.track('tool_view', { toolId: 'aiChat' });
   },
 
   onInput(e) {
@@ -239,5 +245,18 @@ Page({
 
   onUnload() {
     if (this._timer) clearTimeout(this._timer);
+  },
+
+  onShareAppMessage() {
+    analytics.trackShare('aiChat', 'friend');
+    return {
+      title: 'AI 图片问答：上传图片自由提问，多轮追问',
+      path: '/pages/aiChat/aiChat'
+    };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('aiChat', 'timeline');
+    return { title: '拍张照问 AI，看图问答多轮追问' };
   }
 });

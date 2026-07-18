@@ -74,6 +74,7 @@
        ================================ -->
   <view class="result-actions" wx:if="{{resultSrc}}">
     <button class="action-btn primary" bindtap="saveResult">保存图片</button>
+    <button class="action-btn secondary" open-type="share">分享给朋友</button>
     <button class="action-btn secondary" bindtap="onCompare">对比查看</button>
     <button class="action-btn secondary" bindtap="resetAndReselect">重新选择</button>
   </view>

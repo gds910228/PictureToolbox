@@ -6,6 +6,7 @@
 
 const imageProcess = require('../../utils/image-process');
 const imageHash = require('../../utils/image-hash');
+const analytics = require('../../utils/analytics');
 
 // 阈值档位（pHash 汉明距离 0-64，越小越严格）
 const THRESHOLDS = [
@@ -33,6 +34,10 @@ Page({
     batchLoading: false,
     progress: { done: 0, total: 0, show: false },
     batchResult: null // { groups, duplicateGroupCount, duplicateCount, uniqueCount, errorCount }
+  },
+
+  onLoad() {
+    analytics.track('tool_view', { toolId: 'similarity' });
   },
 
   // ============== 模式切换 ==============
@@ -73,6 +78,7 @@ Page({
     this.setData({ pairLoading: true, pairResult: null });
     imageHash.comparePair(imageA, imageB).then((res) => {
       this.setData({ pairLoading: false, pairResult: res });
+      analytics.track('tool_complete', { toolId: 'similarity' });
     }).catch((err) => {
       console.error('[similarity] 对比失败', err);
       this.setData({ pairLoading: false });
@@ -133,6 +139,7 @@ Page({
     }).then((hashes) => {
       const result = imageHash.buildGroups(hashes, threshold);
       this.setData({ batchLoading: false, progress: { done: paths.length, total: paths.length, show: false }, batchResult: result });
+      analytics.track('tool_complete', { toolId: 'similarity' });
       if (result.errorCount > 0) {
         wx.showToast({ title: `${result.errorCount} 张处理失败已跳过`, icon: 'none' });
       }
@@ -158,9 +165,15 @@ Page({
   },
 
   onShareAppMessage() {
+    analytics.trackShare('similarity', 'friend');
     return {
-      title: '找重复图 - 图片相似度/查重工具',
+      title: '找重复图：双图相似度对比，多图批量查重',
       path: '/pages/similarity/similarity'
     };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('similarity', 'timeline');
+    return { title: '图片查重：找出相册里的重复图' };
   }
 });

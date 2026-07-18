@@ -88,6 +88,7 @@
     <view class="result-actions">
       <button class="btn-compare" bindtap="onCompare">对比查看</button>
       <button class="btn-save" bindtap="saveResult">保存到相册</button>
+      <button class="btn-save" open-type="share">分享给朋友</button>
       <button class="btn-retry" bindtap="resetAll">重新处理</button>
     </view>
   </view>

@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "AI 文生图",
+  "navigationBarTitleText": "AI绘画·文生图输入文字生成图片",
   "usingComponents": {
     "image-uploader": "/components/image-uploader/image-uploader"
   }

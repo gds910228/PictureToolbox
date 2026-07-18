@@ -1,5 +1,6 @@
 // pages/aiStyle/aiStyle.js
 const compareHelper = require('../../utils/compare-helper');
+const analytics = require('../../utils/analytics');
 
 Page({
   data: {
@@ -39,6 +40,7 @@ Page({
   },
 
   onLoad() {
+    analytics.track('tool_view', { toolId: 'aiStyle' });
     this.loadQuota();
   },
 
@@ -192,6 +194,7 @@ Page({
               used: res.result.used || 0,
               limit: res.result.limit || that.data.limit
             });
+            analytics.track('tool_complete', { toolId: 'aiStyle' });
 
 
             wx.hideLoading();
@@ -349,6 +352,20 @@ Page({
    */
   resetAndReselect() {
     this.setData({ resultSrc: '', resultFileID: '' });
+  },
+
+  onShareAppMessage() {
+    analytics.trackShare('aiStyle', 'friend');
+    return {
+      title: 'AI 风格迁移：照片秒变油画/动漫/古风',
+      path: '/pages/aiStyle/aiStyle',
+      imageUrl: this.data.resultSrc || ''
+    };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('aiStyle', 'timeline');
+    return { title: '把照片变成油画/动漫/古风，AI 风格迁移' };
   }
 });
 

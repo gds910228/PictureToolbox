@@ -32,6 +32,7 @@
     <view class="block-title">结果预览（{{spec.label}} {{spec.w}}×{{spec.h}}）</view>
     <image src="{{resultPath}}" mode="aspectFit" class="result-img" bindtap="previewResult"></image>
     <button class="btn save-btn" bindtap="onSave">保存到相册</button>
+    <button class="btn save-btn" open-type="share">分享给朋友</button>
   </view>
 
   <!-- 离屏工作画布：合成 + 导出用，不可见 -->

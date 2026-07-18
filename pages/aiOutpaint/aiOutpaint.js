@@ -7,6 +7,7 @@
 // 诚信：demo 态（未配置密钥）结果=原图 + 示例角标；失败态显错误+重试；限流/排队/违规各自友好提示。
 
 const compareHelper = require('../../utils/compare-helper');
+const analytics = require('../../utils/analytics');
 
 // 可选扩图比例（与云函数 SUPPORTED_RATIOS 一致）
 const RATIOS = [
@@ -36,6 +37,7 @@ Page({
   },
 
   onLoad() {
+    analytics.track('tool_view', { toolId: 'aiOutpaint' });
     this.loadQuota();
   },
 
@@ -206,6 +208,7 @@ Page({
           loading: false,
           usedText: buildUsedText(r.used, r.limit)
         });
+        analytics.track('tool_complete', { toolId: 'aiOutpaint' });
       } else {
         this.setData({
           loading: false,
@@ -320,9 +323,18 @@ Page({
   },
 
   onShareAppMessage() {
+    analytics.trackShare('aiOutpaint', 'friend');
     return {
       title: '用 AI 一键扩图，智能补全画面背景',
       path: '/pages/aiOutpaint/aiOutpaint',
+      imageUrl: this.data.resultSrc || this.data.imageSrc || ''
+    };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('aiOutpaint', 'timeline');
+    return {
+      title: 'AI 扩图：按比例智能补全背景',
       imageUrl: this.data.resultSrc || this.data.imageSrc || ''
     };
   }

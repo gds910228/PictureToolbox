@@ -3,6 +3,7 @@
 // 全程前端本地实现，不依赖外部 API。编码逻辑见 utils/gif-encoder.js（已用 omggif 交叉验证）。
 const imageProcess = require('../../utils/image-process');
 const { buildGIF } = require('../../utils/gif-encoder');
+const analytics = require('../../utils/analytics');
 
 const MAX_IMAGES = 20;
 const MIN_IMAGES = 2;
@@ -52,7 +53,7 @@ Page({
   },
 
   onLoad() {
-    wx.setNavigationBarTitle({ title: 'GIF制作' });
+    analytics.track('tool_view', { toolId: 'makeGif' });
   },
   onUnload() {
     this._cancelled = true;
@@ -284,6 +285,7 @@ Page({
         resultSize: gifBytes.length,
         resultSizeText: this._formatSize(gifBytes.length)
       });
+      analytics.track('tool_complete', { toolId: 'makeGif' });
       wx.showToast({ title: '生成成功', icon: 'success' });
     } catch (err) {
       console.error('GIF 生成失败', err);
@@ -389,6 +391,12 @@ Page({
   },
 
   onShareAppMessage() {
-    return { title: 'GIF制作 - 图个简单', path: '/pages/makeGif/makeGif' };
+    analytics.trackShare('makeGif', 'friend');
+    return { title: 'GIF制作：多张图合成动图，本地生成免联网', path: '/pages/makeGif/makeGif' };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('makeGif', 'timeline');
+    return { title: '多图合成 GIF 动图，表情包神器' };
   }
 });

@@ -8,6 +8,8 @@
 //   success:true  → captions[]，mock=true 表示示例文案（密钥未配置），另带 used/limit
 //   success:false → error='rate_limit'（配额用完）或 error=服务异常文案
 
+const analytics = require('../../utils/analytics');
+
 Page({
   data: {
     imageSrc: '',
@@ -35,6 +37,7 @@ Page({
   },
 
   onLoad() {
+    analytics.track('tool_view', { toolId: 'aiCaption' });
     this.loadQuota();
   },
 
@@ -167,6 +170,7 @@ Page({
           limit: r.limit || this.data.limit,
           usedText: r.mock ? '' : buildUsedText(r.used, r.limit)
         });
+        analytics.track('tool_complete', { toolId: 'aiCaption' });
       } else if (r.error === 'rate_limit') {
         this.setData({
           hasError: true,
@@ -218,6 +222,19 @@ Page({
         wx.showToast({ title: '已复制', icon: 'success' });
       }
     });
+  },
+
+  onShareAppMessage() {
+    analytics.trackShare('aiCaption', 'friend');
+    return {
+      title: 'AI 智能配文：看图一键生成朋友圈/小红书文案',
+      path: '/pages/aiCaption/aiCaption'
+    };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('aiCaption', 'timeline');
+    return { title: '发圈没文案？AI 看图帮你写配文' };
   }
 });
 

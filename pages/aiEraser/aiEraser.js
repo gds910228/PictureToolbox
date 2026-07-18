@@ -2,6 +2,7 @@
 // AI 智能去水印页面 —— Canvas 涂抹 + 云端 AI + 本地模糊兜底
 
 const compareHelper = require('../../utils/compare-helper');
+const analytics = require('../../utils/analytics');
 
 Page({
   data: {
@@ -36,6 +37,7 @@ Page({
   // 生命周期
   // ============================================================
   onLoad() {
+    analytics.track('tool_view', { toolId: 'aiEraser' });
     this._canvas = null;
     this._ctx = null;
     this._dpr = wx.getSystemInfoSync().pixelRatio;
@@ -438,6 +440,7 @@ Page({
             engine: result.engine || '',
             engineText: this._getEngineLabel(result.engine, result.level)
           });
+          analytics.track('tool_complete', { toolId: 'aiEraser', engine: result.engine || '' });
         } else {
           // 云端失败，走本地模糊兜底
           console.warn('[aiEraser] 云端失败，走本地模糊:', result.reason);
@@ -694,6 +697,7 @@ Page({
                     progress: 100,
                     processing: false
                   });
+                  analytics.track('tool_complete', { toolId: 'aiEraser', engine: 'local' });
                   resolve();
                 },
                 fail: (err) => {
@@ -854,9 +858,17 @@ Page({
   },
 
   onShareAppMessage() {
+    analytics.trackShare('aiEraser', 'friend');
     return {
       title: 'AI 智能去水印 - 一键去除图片水印',
       path: '/pages/aiEraser/aiEraser'
+    };
+  },
+
+  onShareTimeline() {
+    analytics.trackShare('aiEraser', 'timeline');
+    return {
+      title: 'AI 智能去水印 - 涂抹消除路人/水印'
     };
   }
 });
