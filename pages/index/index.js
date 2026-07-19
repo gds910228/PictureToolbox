@@ -423,10 +423,12 @@ Page({
    * 点击工具卡片
    */
   onToolTap(e) {
-    const { id, name, url, available } = e.currentTarget.dataset;
+    const { available } = e.currentTarget.dataset;
 
     const isAvailable = available === 'true' || available === true;
 
+    // available=false 时 <navigator url> 为空串不会跳转，这里只负责拦截提示；
+    // available=true 时跳转交由 <navigator url> 处理（便于搜索爬虫发现页面 URL）。
     if (!isAvailable) {
       wx.showToast({
         title: '功能开发中',
@@ -435,10 +437,6 @@ Page({
       });
       return;
     }
-
-    wx.navigateTo({
-      url: url
-    });
   },
 
   /**
@@ -448,7 +446,7 @@ Page({
     const { url } = e.currentTarget.dataset;
     if (!url) return;
     analytics.track('hot_scene_click', { url });
-    wx.navigateTo({ url });
+    // 跳转交由 <navigator url> 处理（便于搜索爬虫发现页面 URL）。
   },
 
   /**

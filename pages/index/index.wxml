@@ -27,16 +27,18 @@
   <view class="hot-scenes">
     <view class="hot-scenes-title">🔥 热门场景</view>
     <view class="hot-scenes-grid">
-      <view
+      <navigator
         class="hot-scene-card"
         wx:for="{{hotScenes}}"
         wx:key="id"
+        url="{{item.url}}"
         data-url="{{item.url}}"
+        hover-class="none"
         bindtap="onSceneTap"
       >
         <view class="hot-scene-icon">{{item.icon}}</view>
         <view class="hot-scene-name">{{item.name}}</view>
-      </view>
+      </navigator>
     </view>
   </view>
 
@@ -65,11 +67,13 @@
 
       <view class="group-body {{group.expanded ? 'is-expanded' : ''}}">
         <view class="tools-grid">
-          <view
+          <navigator
             class="tool-card glass-card {{item.available ? '' : 'disabled'}} {{item.isNew ? 'new-feature' : ''}}"
             wx:for="{{group.tools}}"
             wx:key="id"
             wx:for-item="item"
+            url="{{item.available ? item.url : ''}}"
+            hover-class="none"
             data-id="{{item.id}}"
             data-name="{{item.name}}"
             data-url="{{item.url}}"
@@ -81,7 +85,7 @@
             <view class="tool-name">{{item.name}}</view>
             <view class="tool-desc">{{item.desc}}</view>
             <view class="tool-status" wx:if="{{item.available === false}}">敬请期待</view>
-          </view>
+          </navigator>
         </view>
       </view>
     </view>
