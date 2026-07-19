@@ -47,3 +47,9 @@
 - request_analysis/spec.md
 - request_analysis/tasks.md
 - unit_test/test_report.md
+
+## 流程约定更新（本需求附带）
+- 用户指示:此项目直接在 main 分支开发,不开功能分支/worktree。
+- 已更新 Harness 文档:`开发流程规范.md`(分支策略段+红线)、`application-owner.md`(决策树/阶段3前置/质量把关/Must-not-do)、`coding-skill/SKILL.md`(红线)。
+- 本需求 commit `0cc854d` 已从 `tune/seo-crawler-optimize` 分支 fast-forward 转移至 main,分支已删。
+- memory 新增 `work-on-main-no-feature-branch`。

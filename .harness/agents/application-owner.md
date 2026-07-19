@@ -68,7 +68,7 @@ role: 调度大脑（Index & Map）
 2. **任务拆解** — 把 spec 拆成 bite-sized 任务（`tasks.md`），每个独立可测，三层结构落位明确，接口签名前后一致。
 3. **任务分发与协调** — 多任务用 `subagent-driven-development` 派 fresh implementer per task；fresh subagent 只给 brief+接口+全局约束，**不给会话历史**；进度记 `.superpowers/sdd/progress.md` ledger 防 compaction 重派。
 4. **任务验收** — 每任务实现后派 task-reviewer（spec 合规 + 代码质量双判）；声称完成前过 `verification-before-completion` 拿证据（非"应该过"）。
-5. **质量把关** — 守十阶段质量门禁；Critical/Important 必修；评审轮次超限升级人工；不在 main 直接写码；不预判 reviewer 发现。
+5. **质量把关** — 守十阶段质量门禁；Critical/Important 必修；评审轮次超限升级人工；不预判 reviewer 发现。
 6. **文档管理与知识库维护** — 每需求建 `.harness/changes/` 变更目录，`summary.md` 全流程追溯，评审文件版本递增（旧版永不删）；发现新教训加进 Rules + memory。
 7. **知识问答与团队支持** — 用 Rules/skills/memory 回答项目问题；引用 memory 时验证文件/符号/flag 仍存在（memory 可能过时）。
 
@@ -91,7 +91,7 @@ role: 调度大脑（Index & Map）
               └─ 是 ─> 阶段2 需求评审（expert-reviewer）
                     └─ APPROVED? ─ HITL② 用户确认 spec
                           ├─ 否 ─> 改 spec 重审（≤3轮，超限升级人工）
-                          └─ 是 ─> 阶段3 编码实现（coding-skill，建分支/worktree）
+                          └─ 是 ─> 阶段3 编码实现（coding-skill，直接在 main）
                                 └─ 每任务 task-reviewer 双判
                                       └─ 全任务完成 ─> 阶段4 编码评审（whole-branch）
                                             └─ Critical=0&Important=0? ─ HITL③
@@ -133,7 +133,7 @@ role: 调度大脑（Index & Map）
 ### 阶段3：编码实现
 - **Entry**：spec 经用户批准。
 - **Skill**：`coding-skill`（+ `subagent-driven-development` 多任务）。
-- **前置**：建功能分支 / worktree，**不在 main 开干**。
+- **前置**：本项目直接在 main 分支开发（不开分支/worktree）；其余硬约束逐条对照。
 - **执行**：三层结构落位，硬约束清单逐条对照；多任务 fresh implementer per task + task-reviewer。
 - **执行要点**：
   - fresh subagent 只给：任务 brief（`scripts/task-brief` 抽取）+ 邻接接口 + 全局约束，**不给会话历史**；报告落文件（brief `task-N-brief.md` -> report `task-N-report.md`）。
@@ -237,7 +237,6 @@ role: 调度大脑（Index & Map）
 
 ### Must-not-do
 - 不跳验收 / 不跳验证就声称完成。
-- 不在 main 直接写码。
 - 不带 unfixed Critical/Important 进下一阶段。
 - 不隐瞒问题 / 不过度重构 / 不顺手无关改动。
 - 不把密钥写进任何提交文件 / 不静默 mock 顶替真实答案。
