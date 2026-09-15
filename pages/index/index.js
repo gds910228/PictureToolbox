@@ -27,7 +27,9 @@ const LAUNCH_DATES = {
   aiOutpaint: '2026-07-06',
   aiTextToImage: '2026-07-07',
   aiAvatar: '2026-07-07',
-  pdfToImage: '2026-07-07'
+  pdfToImage: '2026-07-07',
+  gifEditor: '2026-09-06',
+  gifBatch: '2026-09-06'
 };
 
 function isToolNew(toolId) {
@@ -278,6 +280,23 @@ Page({
             available: true,
             isNew: true
           },
+          {
+            id: 'gifEditor',
+            name: 'GIF编辑器',
+            desc: '拆解GIF逐帧编辑，裁剪/字幕/擦除/压缩',
+            url: '/pages/gifEditor/gifEditor',
+            available: true,
+            isNew: true
+          },
+          {
+            id: 'gifBatch',
+            name: 'GIF批量处理',
+            desc: '多选GIF批量调速/倒放/压缩/裁剪',
+            url: '/pages/gifBatch/gifBatch',
+            available: true,
+            isNew: true
+          },
+          // gifReport / gifDrafts 是辅助页，不作为首页工具入口（入口在 gifEditor 导出结果面板）
           {
             id: 'filter',
             name: '图片滤镜',

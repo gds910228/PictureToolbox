@@ -28,7 +28,11 @@
     "pages/aiOutpaint/aiOutpaint",
     "pages/aiTextToImage/aiTextToImage",
     "pages/aiAvatar/aiAvatar",
-    "pages/pdfToImage/pdfToImage"
+    "pages/pdfToImage/pdfToImage",
+    "pages/gifEditor/gifEditor",
+    "pages/gifBatch/gifBatch",
+    "pages/gifReport/gifReport",
+    "pages/gifDrafts/gifDrafts"
   ],
   "window": {
     "backgroundTextStyle": "light",

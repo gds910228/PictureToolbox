@@ -139,4 +139,9 @@
     <view class="hint">注：部分机型相册不播放动图预览，但 GIF 文件已正确保存，转发/收藏可正常播放。</view>
   </view>
 
+  <!-- 交叉引流 -->
+  <navigator url="/pages/gifEditor/gifEditor" class="cross-link" hover-class="none">
+    <text>💡 需要拆解/编辑已有 GIF？前往 GIF编辑器 →</text>
+  </navigator>
+
 </view>

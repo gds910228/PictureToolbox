@@ -1,0 +1,420 @@
+<!-- pages/gifEditor/gifEditor.wxml -->
+<view class="page-container">
+
+  <!-- 页头 -->
+  <view class="page-header">
+    <view class="header-line"></view>
+    <text class="header-title">GIF 编辑器</text>
+    <text class="header-sub">裁剪 · 文字 · 擦除 · 删除/截取/倒放/调速 · 差量压缩本地生成</text>
+  </view>
+
+  <!-- 隐藏画布（缩略图已改用 wx.createOffscreenCanvas，见 _makeThumbnail） -->
+  <canvas type="2d" id="exportCanvas" class="hidden-canvas"></canvas>
+
+  <!-- 草稿恢复提示 -->
+  <view class="card section draft-banner" wx:if="{{hasDraft && frames.length === 0 && !decoding}}">
+    <view class="draft-row">
+      <text class="draft-text">检测到未完成的编辑草稿</text>
+      <view class="draft-actions">
+        <text class="link" bindtap="restoreDraft">恢复</text>
+        <text class="link danger" bindtap="_discardDraft">丢弃</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 解码进度 -->
+  <view class="card section" wx:if="{{decoding}}">
+    <view class="section-title"><text>解码中</text></view>
+    <view class="progress-wrap">
+      <view class="progress-bar"><view class="progress-fill" style="width: {{decodeProgress}}%"></view></view>
+      <text class="progress-text">{{decodeProgress}}%</text>
+    </view>
+    <view class="hint">{{decodeText}}</view>
+  </view>
+
+  <!-- 未加载：选择文件 -->
+  <view class="card section" wx:if="{{!decoding && frames.length === 0}}">
+    <view class="section-title"><text>选择 GIF</text></view>
+    <view class="empty-state" bindtap="chooseGif">
+      <text class="empty-icon">🎞</text>
+      <text class="empty-text">从聊天文件中选择 .gif</text>
+      <text class="empty-hint">支持 GIF89a/87a，最大 {{maxDimension}}px / {{maxFrames}} 帧</text>
+    </view>
+    <view class="hint">提示：请从微信聊天记录中选择原始 GIF 文件。从相册选择可能被转码为 JPG 导致无法解析。</view>
+  </view>
+
+  <!-- 已加载 -->
+  <block wx:if="{{!decoding && frames.length > 0}}">
+
+    <!-- 文件信息 + 模式切换 -->
+    <view class="card section">
+      <view class="section-title">
+        <text>当前 GIF</text>
+        <text class="section-count" bindtap="resetAll">重新选择</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">尺寸</text>
+        <text class="info-value">{{gifWidth}}×{{gifHeight}} · {{frames.length}} 帧 · {{fileSizeText}}</text>
+      </view>
+      <!-- 模式切换 -->
+      <view class="mode-tabs">
+        <view class="mode-tab {{mode === 'edit' ? 'active' : ''}}" data-mode="edit" bindtap="setMode">编辑</view>
+        <view class="mode-tab {{mode === 'crop' ? 'active' : ''}}" data-mode="crop" bindtap="setMode">裁剪</view>
+        <view class="mode-tab {{mode === 'text' ? 'active' : ''}}" data-mode="text" bindtap="setMode">文字</view>
+        <view class="mode-tab {{mode === 'erase' ? 'active' : ''}}" data-mode="erase" bindtap="setMode">擦除</view>
+      </view>
+    </view>
+
+    <!-- 预览区 -->
+    <view class="card section">
+      <view class="section-title">
+        <text>预览</text>
+        <text class="section-count" bindtap="togglePreview" wx:if="{{mode === 'edit'}}">{{previewPlaying ? '停止' : '播放'}}</text>
+      </view>
+
+      <view class="preview-stage" id="previewStage">
+        <view class="canvas-wrap" id="canvasWrap">
+          <canvas type="2d" id="previewCanvas" class="preview-canvas"
+                  style="width: {{canvasDisplayW > 0 ? canvasDisplayW + 'px' : gifWidth + 'px'}}; height: {{canvasDisplayH > 0 ? canvasDisplayH + 'px' : gifHeight + 'px'}};"
+                  catchtouchstart="{{mode === 'erase' ? 'onEraseTouchStart' : ''}}"
+                  catchtouchmove="{{mode === 'erase' ? 'onEraseTouchMove' : ''}}"
+                  catchtouchend="{{mode === 'erase' ? 'onEraseTouchEnd' : ''}}"
+                  catchtouchcancel="{{mode === 'erase' ? 'onEraseTouchEnd' : ''}}"></canvas>
+
+          <!-- 裁剪覆盖层 -->
+          <view class="crop-overlay" wx:if="{{cropActive && cropBox}}">
+            <view class="crop-box" style="left:{{cropBox.x * canvasScale}}px;top:{{cropBox.y * canvasScale}}px;width:{{cropBox.w * canvasScale}}px;height:{{cropBox.h * canvasScale}}px;">
+              <view class="crop-handle tl" data-handle="tl" catchtouchstart="onCropTouchStart" catchtouchmove="onCropTouchMove" catchtouchend="onCropTouchEnd"></view>
+              <view class="crop-handle tr" data-handle="tr" catchtouchstart="onCropTouchStart" catchtouchmove="onCropTouchMove" catchtouchend="onCropTouchEnd"></view>
+              <view class="crop-handle bl" data-handle="bl" catchtouchstart="onCropTouchStart" catchtouchmove="onCropTouchMove" catchtouchend="onCropTouchEnd"></view>
+              <view class="crop-handle br" data-handle="br" catchtouchstart="onCropTouchStart" catchtouchmove="onCropTouchMove" catchtouchend="onCropTouchEnd"></view>
+              <view class="crop-move" data-handle="move" catchtouchstart="onCropTouchStart" catchtouchmove="onCropTouchMove" catchtouchend="onCropTouchEnd"></view>
+            </view>
+          </view>
+
+          <!-- 文字覆盖层（可拖拽） -->
+          <block wx:if="{{mode === 'text'}}">
+            <view wx:for="{{texts}}" wx:key="id"
+                  class="text-overlay {{editingTextId === item.id ? 'editing' : ''}}"
+                  style="left:{{item.x * canvasScale}}px;top:{{item.y * canvasScale}}px;font-size:{{item.fontSize * canvasScale}}px;color:{{item.color}};opacity:{{item.opacity}};"
+                  data-id="{{item.id}}"
+                  catchtouchstart="onTextTouchStart" catchtouchmove="onTextTouchMove" catchtouchend="onTextTouchEnd"
+                  bindtap="selectText">
+              <text>{{item.text}}</text>
+            </view>
+          </block>
+        </view>
+
+        <!-- 播放按钮 -->
+        <view class="preview-play" wx:if="{{!previewPlaying && mode === 'edit'}}" bindtap="togglePreview">
+          <text class="play-icon">▶</text>
+        </view>
+      </view>
+
+      <!-- 裁剪控制 -->
+      <view wx:if="{{cropActive}}" class="crop-controls">
+        <view class="chip-row">
+          <view wx:for="{{cropRatios}}" wx:key="label"
+                class="tool-chip {{cropRatioIndex === index ? 'active' : ''}}"
+                data-index="{{index}}" bindtap="setCropRatio">{{item.label}}</view>
+        </view>
+        <view class="btn-row">
+          <button class="btn btn-secondary btn-sm" bindtap="cancelCrop">取消</button>
+          <button class="btn btn-primary btn-sm" bindtap="confirmCrop">确认裁剪</button>
+        </view>
+        <view class="hint" wx:if="{{canUndoCrop}}">
+          <text class="link" bindtap="undoCrop">↩ 撤销裁剪</text>
+        </view>
+      </view>
+
+      <!-- 擦除控制 -->
+      <view wx:if="{{eraserActive}}" class="erase-controls">
+        <view class="chip-row">
+          <text class="ctrl-label">作用范围</text>
+          <view class="tool-chip {{eraseScope === 'current' ? 'active' : ''}}"
+                data-scope="current" bindtap="setEraseScope">当前帧</view>
+          <view class="tool-chip {{eraseScope === 'all' ? 'active' : ''}}"
+                data-scope="all" bindtap="setEraseScope">全部帧</view>
+        </view>
+        <view class="chip-row">
+          <text class="ctrl-label">画笔</text>
+          <view wx:for="{{eraserSizes}}" wx:key="*this"
+                class="tool-chip {{eraserSizeIndex === index ? 'active' : ''}}"
+                data-index="{{index}}" bindtap="setEraserSize">{{item}}px</view>
+        </view>
+        <view class="btn-row">
+          <button class="btn btn-secondary btn-sm {{canUndoErase ? '' : 'disabled'}}" bindtap="undoErase">↩ 撤销</button>
+          <button class="btn btn-secondary btn-sm {{canRedoErase ? '' : 'disabled'}}" bindtap="redoErase">↦ 重做</button>
+        </view>
+        <view class="hint" wx:if="{{eraseScope === 'all'}}">在画布上涂抹擦除（变为透明），将应用到全部 {{frames.length}} 帧；撤销/重做会联动所有帧的同一笔。</view>
+        <view class="hint" wx:else>在画布上涂抹擦除（变为透明），仅影响第 {{currentFrame + 1}} 帧。每帧独立撤销栈（{{undoLimit}}步）。</view>
+      </view>
+
+      <view class="hint" wx:if="{{previewPlaying && mode === 'edit'}}">
+        播放中：第 {{currentFrame + 1}} / {{frames.length}} 帧 · {{speed}}x
+      </view>
+    </view>
+
+    <!-- 文字编辑面板 -->
+    <view class="card section" wx:if="{{mode === 'text'}}">
+      <view class="section-title">
+        <text>文字覆盖</text>
+        <text class="section-count">{{texts.length}} 条</text>
+      </view>
+
+      <!-- 文字列表 -->
+      <scroll-view scroll-y class="text-list" wx:if="{{texts.length > 0}}">
+        <view wx:for="{{texts}}" wx:key="id"
+              class="text-item {{editingTextId === item.id ? 'editing' : ''}}"
+              data-id="{{item.id}}" bindtap="selectText">
+          <text class="text-item-content" style="color:{{item.color}};opacity:{{item.opacity}};">{{item.text}}</text>
+          <text class="text-item-meta">{{item.fontSize}}px · {{item.frameScope === 'all' ? '全部帧' : (item.rangeStart+1)+'~'+(item.rangeEnd+1)+'帧'}}</text>
+          <text class="text-item-del" data-id="{{item.id}}" catchtap="deleteText">×</text>
+        </view>
+      </scroll-view>
+
+      <!-- 文字编辑表单 -->
+      <view class="text-form">
+        <input class="text-input" value="{{textInput}}" placeholder="输入文字（支持多行）"
+               bindinput="onTextInput" maxlength="50" auto-height/>
+        <view class="form-row">
+          <text class="ctrl-label">字号</text>
+          <view class="chip-group">
+            <view class="tool-chip {{textFontSize === 16 ? 'active' : ''}}" data-size="16" bindtap="setTextFontSize">16</view>
+            <view class="tool-chip {{textFontSize === 24 ? 'active' : ''}}" data-size="24" bindtap="setTextFontSize">24</view>
+            <view class="tool-chip {{textFontSize === 36 ? 'active' : ''}}" data-size="36" bindtap="setTextFontSize">36</view>
+            <view class="tool-chip {{textFontSize === 48 ? 'active' : ''}}" data-size="48" bindtap="setTextFontSize">48</view>
+          </view>
+        </view>
+        <view class="form-row">
+          <text class="ctrl-label">颜色</text>
+          <view class="chip-group">
+            <view wx:for="{{textColors}}" wx:key="value"
+                  class="color-chip {{textColorIndex === index ? 'active' : ''}}"
+                  style="background:{{item.value}};" data-index="{{index}}" bindtap="setTextColor"></view>
+          </view>
+        </view>
+        <view class="form-row">
+          <text class="ctrl-label">不透明度</text>
+          <slider class="opacity-slider" min="20" max="100" value="{{textOpacity * 100}}" block-size="16"
+                  block-color="#00F0FF" activeColor="#00F0FF" backgroundColor="rgba(255,255,255,0.12)"
+                  bindchanging="onOpacityChanging" bindchange="onOpacityChange"/>
+          <text class="ctrl-value">{{textOpacity * 100}}%</text>
+        </view>
+        <view class="form-row">
+          <text class="ctrl-label">描边</text>
+          <switch checked="{{textStroke}}" bindchange="toggleTextStroke" color="#00F0FF"/>
+        </view>
+        <view class="form-row">
+          <text class="ctrl-label">位置</text>
+          <view class="grid-picker">
+            <view wx:for="{{gridPositions}}" wx:key="value"
+                  class="grid-pos {{textGridPos === item.value ? 'active' : ''}}"
+                  data-pos="{{item.value}}" bindtap="setTextGridPos">{{item.label}}</view>
+          </view>
+        </view>
+        <view class="form-row">
+          <text class="ctrl-label">作用帧</text>
+          <view class="chip-group">
+            <view class="tool-chip {{textFrameScope === 'all' ? 'active' : ''}}" data-scope="all" bindtap="setTextScope">全部</view>
+            <view class="tool-chip {{textFrameScope === 'range' ? 'active' : ''}}" data-scope="range" bindtap="setTextScope">区间</view>
+          </view>
+          <view class="range-fields" wx:if="{{textFrameScope === 'range'}}">
+            <picker mode="selector" range="{{frameLabels}}" value="{{textRangeStart}}" bindchange="onTextRangeStart">
+              <view class="range-value-sm">{{textRangeStartText}}</view>
+            </picker>
+            <text class="range-sep">~</text>
+            <picker mode="selector" range="{{frameLabels}}" value="{{textRangeEnd}}" bindchange="onTextRangeEnd">
+              <view class="range-value-sm">{{textRangeEndText}}</view>
+            </picker>
+          </view>
+        </view>
+        <view class="btn-row">
+          <button class="btn btn-secondary btn-sm" wx:if="{{editingTextId}}" bindtap="cancelEditText">取消编辑</button>
+          <button class="btn btn-primary btn-sm" wx:if="{{editingTextId}}" bindtap="updateText">更新文字</button>
+          <button class="btn btn-primary btn-sm" wx:else bindtap="addText">添加文字</button>
+        </view>
+      </view>
+    </view>
+
+    <!-- 帧选择器（擦除模式用） -->
+    <view class="card section" wx:if="{{mode === 'erase'}}">
+      <view class="section-title"><text>选择帧</text></view>
+      <scroll-view scroll-x class="thumb-strip" enhanced show-scrollbar="{{false}}" bindscroll="onThumbScroll">
+        <view class="thumb-list">
+          <block wx:for="{{frames}}" wx:key="index">
+            <view class="thumb {{currentFrame === index ? 'selected' : ''}}"
+                  data-index="{{index}}" bindtap="switchEraseFrame">
+              <image wx:if="{{item.thumbPath}}" class="thumb-img" src="{{item.thumbPath}}" mode="aspectFit"></image>
+              <view wx:else class="thumb-placeholder">...</view>
+              <view class="thumb-order">{{index + 1}}</view>
+            </view>
+          </block>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 基础编辑工具（编辑模式） -->
+    <view class="card section" wx:if="{{mode === 'edit'}}">
+      <view class="section-title"><text>编辑工具</text></view>
+
+      <view class="tool-row">
+        <view class="tool-label">多选删除</view>
+        <view class="tool-actions">
+          <view class="tool-chip {{selectMode ? 'active' : ''}}" bindtap="toggleSelectMode">{{selectMode ? '退出多选' : '多选'}}</view>
+          <block wx:if="{{selectMode}}">
+            <view class="tool-chip" bindtap="selectAllFrames">全选</view>
+            <view class="tool-chip danger {{selectedCount === 0 ? 'disabled' : ''}}" bindtap="deleteSelected">删除{{selectedCount > 0 ? '(' + selectedCount + ')' : ''}}</view>
+          </block>
+        </view>
+      </view>
+
+      <view class="tool-row">
+        <view class="tool-label">区间截取</view>
+        <view class="tool-range">
+          <picker mode="selector" range="{{frameLabels}}" value="{{rangeStart}}" bindchange="onRangeStartChange">
+            <view class="range-value">{{rangeStartText}}</view>
+          </picker>
+          <text class="range-sep">~</text>
+          <picker mode="selector" range="{{frameLabels}}" value="{{rangeEnd}}" bindchange="onRangeEndChange">
+            <view class="range-value">{{rangeEndText}}</view>
+          </picker>
+          <view class="tool-chip" bindtap="trimRange">截取</view>
+        </view>
+      </view>
+
+      <view class="tool-row">
+        <view class="tool-label">倒放</view>
+        <view class="tool-actions"><view class="tool-chip" bindtap="reverseFrames">反转帧序</view></view>
+      </view>
+
+      <view class="tool-row">
+        <view class="tool-label">调速</view>
+        <view class="tool-actions">
+          <view wx:for="{{speedOptions}}" wx:key="value"
+                class="tool-chip {{speedIndex === index ? 'active' : ''}}"
+                data-index="{{index}}" bindtap="setSpeed">{{item.label}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 帧列表（编辑模式） -->
+    <view class="card section" wx:if="{{mode === 'edit'}}">
+      <view class="section-title">
+        <text>帧列表</text>
+        <text class="section-count">{{frames.length}} 帧{{thumbLoadedCount < frames.length ? ' · 缩略图加载中' : ''}}</text>
+      </view>
+      <scroll-view scroll-x class="thumb-strip" enhanced show-scrollbar="{{false}}" bindscroll="onThumbScroll">
+        <view class="thumb-list">
+          <block wx:for="{{frames}}" wx:key="index">
+            <view class="thumb {{selectMode && item.selected ? 'selected' : ''}}"
+                  data-index="{{index}}" bindtap="toggleFrameSelect">
+              <image wx:if="{{item.thumbPath}}" class="thumb-img" src="{{item.thumbPath}}" mode="aspectFit"></image>
+              <view wx:else class="thumb-placeholder">...</view>
+              <view class="thumb-order">{{index + 1}}</view>
+              <view class="thumb-delay">{{item.delayMs}}ms</view>
+              <view class="thumb-check" wx:if="{{selectMode && item.selected}}">✓</view>
+            </view>
+          </block>
+        </view>
+      </scroll-view>
+      <view class="hint">滚动时自动加载缩略图；点击帧切换当前帧。</view>
+    </view>
+
+    <!-- 导出 -->
+    <view class="card section">
+      <view class="section-title">
+        <text>导出</text>
+        <text class="section-count" bindtap="toggleInfoPanel">信息</text>
+      </view>
+
+      <!-- 自适应调色板开关 -->
+      <view class="tool-row">
+        <view class="tool-label">画质增强</view>
+        <view class="tool-actions">
+          <view class="tool-chip {{useAdaptive ? 'active' : ''}}" bindtap="toggleAdaptive">
+            {{useAdaptive ? '自适应调色板' : '固定色板'}}
+          </view>
+        </view>
+      </view>
+
+      <view class="tool-row">
+        <view class="tool-label">目标压缩</view>
+        <view class="tool-actions compress-row">
+          <switch checked="{{compressEnabled}}" bindchange="toggleCompress" color="#00F0FF"/>
+          <input class="size-input" type="digit" value="{{targetSize}}"
+                 bindinput="onTargetSize" disabled="{{!compressEnabled}}"/>
+          <view class="unit-chip {{sizeUnit === 'KB' ? 'active' : ''}}"
+                data-unit="KB" bindtap="setSizeUnit">KB</view>
+          <view class="unit-chip {{sizeUnit === 'MB' ? 'active' : ''}}"
+                data-unit="MB" bindtap="setSizeUnit">MB</view>
+        </view>
+      </view>
+
+      <button class="btn btn-primary generate-btn {{exporting ? 'loading' : ''}}"
+              disabled="{{exporting || frames.length === 0}}" bindtap="exportGif">
+        {{exporting ? progressText : '导出 GIF'}}
+      </button>
+      <view class="progress-wrap" wx:if="{{exporting}}">
+        <view class="progress-bar"><view class="progress-fill" style="width: {{progress}}%"></view></view>
+        <text class="progress-text">{{progress}}%</text>
+      </view>
+
+      <view class="btn-row export-row">
+        <button class="btn btn-secondary btn-sm {{exportingFrames ? 'loading' : ''}}"
+                disabled="{{exportingFrames || frames.length === 0}}" bindtap="exportFrames">
+          {{exportingFrames ? exportFrameText : '拆帧导出 PNG'}}
+        </button>
+      </view>
+      <view class="progress-wrap" wx:if="{{exportingFrames}}">
+        <view class="progress-bar"><view class="progress-fill" style="width: {{exportFrameProgress}}%"></view></view>
+        <text class="progress-text">{{exportFrameProgress}}%</text>
+      </view>
+
+      <navigator url="/pages/makeGif/makeGif" class="cross-link" hover-class="none">
+        <text>💡 需要图片合成 GIF？前往 GIF制作 →</text>
+      </navigator>
+
+      <!-- 报告/草稿入口常驻（不依赖导出成功） -->
+      <view class="result-links">
+        <navigator url="/pages/gifReport/gifReport" class="result-link" hover-class="none">📊 导出报告</navigator>
+        <navigator url="/pages/gifDrafts/gifDrafts" class="result-link" hover-class="none">📝 草稿管理</navigator>
+      </view>
+    </view>
+
+    <!-- GIF 信息面板 -->
+    <view class="card section info-panel" wx:if="{{showInfoPanel && infoData}}">
+      <view class="section-title">
+        <text>GIF 信息</text>
+        <text class="section-count" bindtap="closeInfoPanel">关闭</text>
+      </view>
+      <view class="info-grid">
+        <view class="info-cell"><text class="info-cell-label">版本</text><text class="info-cell-value">{{infoData.version}}</text></view>
+        <view class="info-cell"><text class="info-cell-label">尺寸</text><text class="info-cell-value">{{infoData.width}}×{{infoData.height}}</text></view>
+        <view class="info-cell"><text class="info-cell-label">帧数</text><text class="info-cell-value">{{infoData.frameCount}}</text></view>
+        <view class="info-cell"><text class="info-cell-label">循环</text><text class="info-cell-value">{{infoData.loopCount === 0 ? '无限' : infoData.loopCount + '次'}}</text></view>
+        <view class="info-cell"><text class="info-cell-label">最短延时</text><text class="info-cell-value">{{infoData.minDelay}}ms</text></view>
+        <view class="info-cell"><text class="info-cell-label">最长延时</text><text class="info-cell-value">{{infoData.maxDelay}}ms</text></view>
+        <view class="info-cell"><text class="info-cell-label">平均延时</text><text class="info-cell-value">{{infoData.avgDelay}}ms</text></view>
+        <view class="info-cell"><text class="info-cell-label">总时长</text><text class="info-cell-value">{{infoData.totalDuration}}</text></view>
+        <view class="info-cell"><text class="info-cell-label">源大小</text><text class="info-cell-value">{{infoData.fileSize}}</text></view>
+        <view class="info-cell"><text class="info-cell-label">量化</text><text class="info-cell-value">{{infoData.quantization}}</text></view>
+      </view>
+    </view>
+
+    <!-- 结果 -->
+    <view class="card section result-section" wx:if="{{resultPath}}">
+      <view class="section-title"><text>导出结果</text></view>
+      <view class="preview-wrap" bindtap="previewResult">
+        <image class="preview-img" src="{{resultPath}}" mode="aspectFit"></image>
+      </view>
+      <view class="result-meta"><text>文件大小：{{resultSizeText}}</text></view>
+      <view class="result-actions">
+        <button class="btn btn-secondary btn-sm" bindtap="saveGif">保存到相册</button>
+        <button class="btn btn-primary btn-sm" bindtap="shareResult" open-type="share">转发文件</button>
+      </view>
+      <view class="hint">注：部分机型相册不播放动图预览，但 GIF 文件已正确保存，转发/收藏可正常播放。</view>
+    </view>
+
+  </block>
+</view>

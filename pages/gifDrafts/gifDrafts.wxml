@@ -1,0 +1,51 @@
+<!-- pages/gifDrafts/gifDrafts.wxml -->
+<view class="page-container">
+  <view class="page-header">
+    <view class="header-line"></view>
+    <text class="header-title">草稿管理</text>
+    <text class="header-sub">编辑中途退出不丢失</text>
+  </view>
+
+  <!-- 存储统计 -->
+  <view class="card section">
+    <view class="section-title"><text>存储占用</text></view>
+    <view class="storage-row">
+      <text class="storage-value">{{storageUsed}}</text>
+      <text class="storage-limit">/ {{storageLimit}}</text>
+    </view>
+    <view class="btn-row">
+      <button class="btn btn-secondary btn-sm" bindtap="freeSpace">释放空间</button>
+      <button class="btn btn-secondary btn-sm danger" bindtap="clearAll" wx:if="{{drafts.length > 0}}">清理全部</button>
+    </view>
+  </view>
+
+  <!-- 草稿列表 -->
+  <view class="card section" wx:if="{{drafts.length > 0}}">
+    <view class="section-title"><text>草稿 ({{drafts.length}})</text></view>
+    <view class="draft-list">
+      <view wx:for="{{drafts}}" wx:key="id" class="draft-card {{!item.canRestore ? 'stale' : ''}}">
+        <view class="draft-info" data-id="{{item.id}}" bindtap="restoreDraft">
+          <text class="draft-name">{{item.name}}</text>
+          <text class="draft-time">{{item.savedAt}}</text>
+          <view class="draft-meta">
+            <text>{{item.opCount}} 项编辑</text>
+            <text wx:if="{{item.hasTexts}}"> · {{item.hasTexts}} 文字</text>
+            <text wx:if="{{item.hasErase}}"> · 擦除</text>
+            <text wx:if="{{item.hasCrop}}"> · 裁剪</text>
+            <text> · {{item.size}}</text>
+          </view>
+          <text class="stale-tag" wx:if="{{!item.canRestore}}">源文件已失效</text>
+        </view>
+        <view class="draft-actions">
+          <text class="action-btn" data-id="{{item.id}}" catchtap="renameDraft">重命名</text>
+          <text class="action-btn danger" data-id="{{item.id}}" catchtap="deleteDraft">删除</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card section empty" wx:else>
+    <text class="empty-text">暂无草稿</text>
+    <text class="empty-hint">在 GIF 编辑器中退出时会自动保存草稿</text>
+  </view>
+</view>

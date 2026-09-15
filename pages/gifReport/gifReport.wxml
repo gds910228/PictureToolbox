@@ -1,0 +1,96 @@
+<!-- pages/gifReport/gifReport.wxml -->
+<view class="page-container">
+  <view class="page-header">
+    <view class="header-line"></view>
+    <text class="header-title">导出报告</text>
+    <text class="header-sub">历史导出 · 趋势 · 对比</text>
+  </view>
+
+  <!-- 概览 -->
+  <view class="card section" wx:if="{{agg}}">
+    <view class="section-title">
+      <text>趋势概览</text>
+      <text class="section-count" bindtap="clearHistory" wx:if="{{records.length > 0}}">清空</text>
+    </view>
+    <view class="stats-grid" wx:if="{{records.length > 0}}">
+      <view class="stat-cell">
+        <text class="stat-value">{{agg.totalExports}}</text>
+        <text class="stat-label">总导出</text>
+      </view>
+      <view class="stat-cell">
+        <text class="stat-value highlight">{{agg.totalSavedText}}</text>
+        <text class="stat-label">累计节省</text>
+      </view>
+      <view class="stat-cell">
+        <text class="stat-value">{{agg.avgRatioText}}</text>
+        <text class="stat-label">平均压缩比</text>
+      </view>
+      <view class="stat-cell">
+        <text class="stat-value">{{agg.avgMatchText}}</text>
+        <text class="stat-label">平均画质</text>
+      </view>
+    </view>
+    <view class="empty-hint" wx:else>暂无导出记录</view>
+
+    <!-- 趋势图 -->
+    <view class="chart-wrap" wx:if="{{records.length >= 2}}">
+      <canvas type="2d" id="trendCanvas" class="trend-canvas"
+              style="width:{{canvasWidth}}px;height:{{canvasHeight}}px;"></canvas>
+    </view>
+
+    <view class="trend-text" bindtap="copyTrend" wx:if="{{records.length > 0}}">
+      <text>{{trendText}}</text>
+      <text class="copy-hint">点击复制</text>
+    </view>
+  </view>
+
+  <!-- 对比区 -->
+  <view class="card section" wx:if="{{records.length >= 2}}">
+    <view class="section-title"><text>对比（选 2 条）</text></view>
+    <view class="hint">点击记录选择对比，再次点击取消</view>
+    <view class="compare-result" wx:if="{{compareResult}}">
+      <text class="compare-text" user-select>{{compareResult}}</text>
+      <button class="btn btn-secondary btn-sm" bindtap="copyCompare">复制对比</button>
+    </view>
+  </view>
+
+  <!-- 历史列表 -->
+  <view class="card section" wx:if="{{records.length > 0}}">
+    <view class="section-title"><text>历史记录</text></view>
+    <view class="record-list">
+      <view wx:for="{{records}}" wx:key="id"
+            class="record-card {{item.isComparing ? 'comparing' : ''}}"
+            data-id="{{item.id}}" bindtap="viewDetail">
+        <view class="record-main">
+          <text class="record-tool">{{item.tool}}</text>
+          <text class="record-time">{{item.timeText}}</text>
+        </view>
+        <view class="record-meta">
+          <text wx:if="{{item.outputWidth > 0}}">{{item.outputWidth}}×{{item.outputHeight}} · {{item.outputFrameCount}}帧 · </text>
+          <text class="size-text">{{item.outputSizeText}}</text>
+          <text wx:if="{{item.ratioText}}" class="ratio-text"> ({{item.ratioText}})</text>
+        </view>
+        <view class="record-ops" wx:if="{{item.operations.length > 0}}">
+          <text class="op-tag" wx:for="{{item.operations}}" wx:for-item="op" wx:key="*this">{{op}}</text>
+        </view>
+        <view class="record-compare" catchtap="toggleCompare" data-id="{{item.id}}">
+          <text>{{item.isComparing ? '✓ 已选' : '对比'}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 详情弹窗 -->
+  <view class="modal-mask" wx:if="{{selectedRecord}}" bindtap="closeDetail">
+    <view class="modal-content" catchtap="">
+      <view class="modal-title">导出详情</view>
+      <scroll-view scroll-y class="modal-body">
+        <text class="detail-text" user-select>{{selectedText}}</text>
+      </scroll-view>
+      <view class="modal-actions">
+        <button class="btn btn-secondary btn-sm" bindtap="closeDetail">关闭</button>
+        <button class="btn btn-primary btn-sm" bindtap="copySummary">复制</button>
+      </view>
+    </view>
+  </view>
+</view>

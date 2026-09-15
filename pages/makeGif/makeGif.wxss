@@ -289,3 +289,11 @@
   margin-bottom: var(--space-sm);
 }
 .save-btn { margin-top: 0; }
+
+.cross-link {
+  display: block;
+  text-align: center;
+  margin-top: var(--space-md);
+  font-size: 24rpx;
+  color: var(--color-gray-500);
+}
