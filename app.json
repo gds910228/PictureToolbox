@@ -7,33 +7,56 @@
     "pages/watermark/watermark",
     "pages/filter/filter",
     "pages/splice/splice",
-    "pages/aiDescribe/aiDescribe",
-    "pages/aiCaption/aiCaption",
-    "pages/aiMatting/aiMatting",
-    "pages/aiStyle/aiStyle",
-    "pages/aiOCR/aiOCR",
     "pages/compare/compare",
-    "pages/aiEraser/aiEraser",
-    "pages/imgToPdf/imgToPdf",
-    "pages/exif/exif",
-    "pages/aiUpscale/aiUpscale",
-    "pages/aiColorize/aiColorize",
-    "pages/aiChat/aiChat",
-    "pages/similarity/similarity",
-    "pages/makeGif/makeGif",
-    "pages/colorAnalysis/colorAnalysis",
-    "pages/formatRecommend/formatRecommend",
-    "pages/idPhoto/idPhoto",
-    "pages/hiddenWatermark/hiddenWatermark",
-    "pages/aiOutpaint/aiOutpaint",
-    "pages/aiTextToImage/aiTextToImage",
-    "pages/aiAvatar/aiAvatar",
-    "pages/pdfToImage/pdfToImage",
-    "pages/gifEditor/gifEditor",
-    "pages/gifBatch/gifBatch",
-    "pages/gifReport/gifReport",
-    "pages/gifDrafts/gifDrafts"
+    "pages/idPhoto/idPhoto"
   ],
+  "subpackages": [
+    {
+      "root": "pkgAi",
+      "pages": [
+        "pages/aiDescribe/aiDescribe",
+        "pages/aiCaption/aiCaption",
+        "pages/aiMatting/aiMatting",
+        "pages/aiStyle/aiStyle",
+        "pages/aiOCR/aiOCR",
+        "pages/aiEraser/aiEraser",
+        "pages/aiUpscale/aiUpscale",
+        "pages/aiColorize/aiColorize",
+        "pages/aiChat/aiChat",
+        "pages/aiOutpaint/aiOutpaint",
+        "pages/aiTextToImage/aiTextToImage",
+        "pages/aiAvatar/aiAvatar"
+      ]
+    },
+    {
+      "root": "pkgGif",
+      "pages": [
+        "pages/makeGif/makeGif",
+        "pages/gifEditor/gifEditor",
+        "pages/gifBatch/gifBatch",
+        "pages/gifReport/gifReport",
+        "pages/gifDrafts/gifDrafts"
+      ]
+    },
+    {
+      "root": "pkgTools",
+      "pages": [
+        "pages/exif/exif",
+        "pages/similarity/similarity",
+        "pages/formatRecommend/formatRecommend",
+        "pages/colorAnalysis/colorAnalysis",
+        "pages/hiddenWatermark/hiddenWatermark",
+        "pages/pdfToImage/pdfToImage",
+        "pages/imgToPdf/imgToPdf"
+      ]
+    }
+  ],
+  "preloadRule": {
+    "pages/index/index": {
+      "network": "all",
+      "packages": ["pkgAi"]
+    }
+  },
   "window": {
     "backgroundTextStyle": "light",
     "navigationBarBackgroundColor": "#0A0E27",
