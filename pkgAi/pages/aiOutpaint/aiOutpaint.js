@@ -1,4 +1,4 @@
-// pages/aiOutpaint/aiOutpaint.js
+// pkgAi/pages/aiOutpaint/aiOutpaint.js
 // AI 扩图 —— 按指定宽高比智能扩展画面（腾讯混元 ImageOutpainting，同步 10–30s）
 //
 // 流程：选图 → guardImage 前端内容安全 → 上传云存储拿 fileID →

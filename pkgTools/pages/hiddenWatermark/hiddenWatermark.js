@@ -1,4 +1,4 @@
-// pages/hiddenWatermark/hiddenWatermark.js
+// pkgTools/pages/hiddenWatermark/hiddenWatermark.js
 // 隐形水印：嵌入（文字 → 蓝通道 LSB）+ 提取（多数判决还原）。
 // 算法见 utils/hidden-watermark.js（纯函数，已 node 单测）。
 // 像素读写走 Canvas 2D，含 getImageData 兼容守卫（参照 colorAnalysis）。

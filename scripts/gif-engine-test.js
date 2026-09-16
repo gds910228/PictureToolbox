@@ -7,12 +7,12 @@
 'use strict';
 
 const path = require('path');
-const { decodeGif } = require(path.join(__dirname, '..', 'utils', 'gif-decoder.js'));
-const { buildGIF, buildGIFDiff, buildGIFAdaptive, buildGIFDiffAdaptive } = require(path.join(__dirname, '..', 'utils', 'gif-encoder.js'));
-const { compressGif, scaleFrame, sampleFrames } = require(path.join(__dirname, '..', 'utils', 'gif-compress.js'));
-const { glowEffect, glitchEffect, vignetteEffect, fadeFrame } = require(path.join(__dirname, '..', 'utils', 'gif-effects.js'));
-const { cropFrame, cloneFrame, eraseCircle } = require(path.join(__dirname, '..', 'utils', 'gif-frame-ops.js'));
-const report = require(path.join(__dirname, '..', 'utils', 'gif-report.js'));
+const { decodeGif } = require(path.join(__dirname, '..', 'pkgGif', 'utils', 'gif-decoder.js'));
+const { buildGIF, buildGIFDiff, buildGIFAdaptive, buildGIFDiffAdaptive } = require(path.join(__dirname, '..', 'pkgGif', 'utils', 'gif-encoder.js'));
+const { compressGif, scaleFrame, sampleFrames } = require(path.join(__dirname, '..', 'pkgGif', 'utils', 'gif-compress.js'));
+const { glowEffect, glitchEffect, vignetteEffect, fadeFrame } = require(path.join(__dirname, '..', 'pkgGif', 'utils', 'gif-effects.js'));
+const { cropFrame, cloneFrame, eraseCircle } = require(path.join(__dirname, '..', 'pkgGif', 'utils', 'gif-frame-ops.js'));
+const report = require(path.join(__dirname, '..', 'pkgGif', 'utils', 'gif-report.js'));
 
 let pass = 0, fail = 0;
 const failures = [];

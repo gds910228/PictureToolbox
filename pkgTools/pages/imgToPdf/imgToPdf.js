@@ -1,4 +1,4 @@
-// pages/imgToPdf/imgToPdf.js
+// pkgTools/pages/imgToPdf/imgToPdf.js
 // 多图合成 PDF 工具
 // - 多选图片，按文件名自然排序
 // - 支持页面尺寸 (A4 / 16:9 / 1:1) 和页边距

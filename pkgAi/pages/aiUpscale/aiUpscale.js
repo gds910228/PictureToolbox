@@ -1,4 +1,4 @@
-// pages/aiUpscale/aiUpscale.js
+// pkgAi/pages/aiUpscale/aiUpscale.js
 // AI 图片放大增强 —— 上传 → 选倍数/增强 → 提交任务 → 轮询结果 → 对比/保存
 // 云端不可用时降级为本地基础放大（Canvas 平滑缩放）。
 

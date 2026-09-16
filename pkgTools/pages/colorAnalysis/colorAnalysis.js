@@ -1,4 +1,4 @@
-// pages/colorAnalysis/colorAnalysis.js
+// pkgTools/pages/colorAnalysis/colorAnalysis.js
 // 图像颜色分析：选图 → 降采样 → Canvas 取像素 → Median Cut 提取主色 → 色卡展示/复制/导出
 // 全程前端本地，不依赖云函数与外部 API。算法见 utils/color-quantize.js（已交叉验证）。
 const imageProcess = require('../../../utils/image-process');

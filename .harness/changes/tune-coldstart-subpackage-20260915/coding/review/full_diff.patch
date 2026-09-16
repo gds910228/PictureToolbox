@@ -1,0 +1,2607 @@
+diff --git a/.harness/changes/tune-coldstart-subpackage-20260915/coding/coding_report_v1.md b/.harness/changes/tune-coldstart-subpackage-20260915/coding/coding_report_v1.md
+new file mode 100644
+index 0000000..af8f164
+--- /dev/null
++++ b/.harness/changes/tune-coldstart-subpackage-20260915/coding/coding_report_v1.md
+@@ -0,0 +1,59 @@
++# coding_report_v1：三分包重构
++
++- 日期：2026-09-15（北京）
++- 执行模式：Inline（coding-skill 模式 B，单一机械性重构全上下文在手，派 subagent 反而需转译全部依赖清单）
++- 工件：`coding/migrate-subpackage.js`（改写脚本，可追溯）、`coding/verify-subpackage.js`（验证脚本，证据生成）
++
++## 任务完成情况
++
++| 任务 | 状态 | 说明 |
++|---|---|---|
++| T1 死重清理 | ✅ | `git rm` pages/aiEnhance（4 文件 17K，2026-03 遗留未注册）+ images/placeholder.png（35K，无引用） |
++| T2 pkgGif | ✅ | 5 页 + 6 utils；页面 require 改写 8 处 |
++| T3 pkgAi | ✅ | 12 页 + colorize-detect；页面 require 改写 36 处 |
++| T4 pkgTools | ✅ | 7 页 + 5 utils；页面 require 改写 12 处 |
++| T5 注册与入口 | ✅ | app.json 重写（9 页 + 3 subpackages + preloadRule）；index.js 27 处 url；wxml navigator 5 处；分享 path 24 处；sitemap 20 处 + 手工补 4 个 GIF 页；全仓旧路径清扫 0 残留 |
++| T6 验证 | ✅ | verify-subpackage.js ALL PASS（证据见下） |
++
++## 改写计数（migrate-subpackage.js 输出）
++
++- A 页面 require：56 处（pkgAi 36 + pkgGif 8 + pkgTools 12）
++  - 与 spec 预期 55 的 +1：aiColorize.js:6 `upscale-local`（行尾带 `// 注释`，人工清单的 `grep -v "//"` 滤掉了，脚本正则抓全）→ **56 为正确值**
++- B utils 内部定点：4/4（colorize-detect/image-hash/format-recommend→`../../utils/`，gif-encoder→`../../utils/color-quantize.js`；gif-compress 同包 2 处不动）
++- C 路由路径：56 处（index.js 27 + 各页 js 24 + wxml 5）
++- sitemap.json：20 处自动 + 4 处手工补录
++
++## 验证证据（verify-subpackage.js，2026-09-15 实跑输出）
++
++```
++✅ JSON 合法: 35 个文件
++✅ 注册页 33 个（主包 9 + 分包 24）四件套齐全，磁盘无孤儿
++✅ require 解析: 114 条，全部通过（剥注释行后；此前 1 条误报为 analytics.js JSDoc 用法示例）
++✅ 路由字面量 '/pages/x/x': 17 处，非主包残留 0
++✅ sitemap: 33 条规则，未注册 0
++✅ preloadRule: index -> pkgAi (network=all)
++ALL PASS
++```
++
++## 体积核对（du 源码口径）
++
++| 包 | 体积 | 限制 |
++|---|---|---|
++| 主包（pages 385 + utils 96 + components 33 + 全局 ~20） | **~534K** | <600K 目标 ✅（原 1.65MB，**-68%**） |
++| pkgAi | 412K | <2MB ✅；preload 412K <2MB ✅ |
++| pkgGif | 325K | <2MB ✅ |
++| pkgTools | 379K | <2MB ✅ |
++
++## 编码期新发现（spec 之外）
++
++1. **sitemap.json 缺 4 个 GIF 页**（gifEditor/gifBatch/gifReport/gifDrafts，今日 e56e481 上线时未登记）——存量缺口，本次顺手补录并把 desc 更新为"33页（主包9+分包24）"。
++2. aiColorize 的 `ensureBounded`（upscale-local）依赖在人工清单中被 grep 注释滤掉——依赖 spec §3 的 upscale-local 落位结论本来就留主包，无影响；教训：清单类 grep 别用 `grep -v "//"` 滤行。
++
++## git 变更统计
++
++77 R（纯改名）+ 31 RM（改名+改写）+ 3 M（app.json / sitemap.json / pages/index/index.js）+ 5 D（aiEnhance 四件套 + placeholder.png）+ 新增 .harness/changes/ 本目录。
++
++## 未尽事项（进入阶段 4/7/8）
++
++- 微信开发者工具真实编译（阶段 7 用户操作，node 静态验证已全过但无法替代官方编译器）
++- 真机预览 33 页可达性 + 5 条功能链路（阶段 8）
+diff --git a/.harness/changes/tune-coldstart-subpackage-20260915/coding/migrate-subpackage.js b/.harness/changes/tune-coldstart-subpackage-20260915/coding/migrate-subpackage.js
+new file mode 100644
+index 0000000..eee8ee4
+--- /dev/null
++++ b/.harness/changes/tune-coldstart-subpackage-20260915/coding/migrate-subpackage.js
+@@ -0,0 +1,126 @@
++#!/usr/bin/env node
++/**
++ * 分包迁移改写脚本（一次性，产物留档追溯）
++ * 规则来源：request_analysis/spec.md §4/§5 + spec_review_v1~v3 修正
++ *
++ * A. pkgX 页面 require 主包 utils：`../../utils/T` → `../../../utils/T`
++ *    （T ∈ MAIN：留主包的共享 utils；其余目标为包内 utils，两层不动）
++ * B. 被迁 utils 自身内部 require 定点修（4 处，见 spec §4 表）
++ * C. 路由路径改写：`'/pages/<page>/<page>` → `'/pkgX/pages/<page>/<page>`
++ *    （覆盖 pages/ pkgX components/ 下 js+wxml 及 sitemap.json）
++ */
++const fs = require('fs');
++const path = require('path');
++const ROOT = path.resolve(__dirname, '..', '..', '..', '..');
++
++// 留主包的共享 utils（页面三层引用它们）
++const MAIN = new Set([
++  'analytics', 'content-check', 'image-process', 'compare-helper',
++  'color-quantize', 'upscale-local'
++]);
++
++// 页面 → 分包 映射（24 页）
++const PKG = {
++  pkgAi: ['aiDescribe', 'aiCaption', 'aiMatting', 'aiStyle', 'aiOCR', 'aiEraser',
++    'aiUpscale', 'aiColorize', 'aiChat', 'aiOutpaint', 'aiTextToImage', 'aiAvatar'],
++  pkgGif: ['makeGif', 'gifEditor', 'gifBatch', 'gifReport', 'gifDrafts'],
++  pkgTools: ['exif', 'similarity', 'formatRecommend', 'colorAnalysis',
++    'hiddenWatermark', 'pdfToImage', 'imgToPdf'],
++};
++
++function walk(dir, exts, acc) {
++  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
++    const p = path.join(dir, e.name);
++    if (e.isDirectory()) walk(p, exts, acc);
++    else if (exts.some(x => e.name.endsWith(x))) acc.push(p);
++  }
++  return acc;
++}
++
++const report = { A: [], B: [], C: [] };
++
++/* ---------- A+B：require 改写 ---------- */
++for (const pkg of Object.keys(PKG)) {
++  for (const f of walk(path.join(ROOT, pkg), ['.js'], [])) {
++    let src = fs.readFileSync(f, 'utf8');
++    let n = 0;
++    src = src.replace(/require\((['"])((?:\.\.\/)+utils\/)([A-Za-z0-9_-]+(?:\.js)?)\1\)/g,
++      (m, q, dots, target) => {
++        const base = target.replace(/\.js$/, '');
++        if (dots === '../../utils/' && MAIN.has(base)) {
++          n++;
++          return `require(${q}../../../utils/${target}${q})`;
++        }
++        return m; // 包内 utils（两层）或已正确的三层，不动
++      });
++    if (n) {
++      fs.writeFileSync(f, src);
++      report.A.push(`${path.relative(ROOT, f)}: ${n}`);
++    }
++  }
++}
++
++const INTERNAL = [
++  ['pkgAi/utils/colorize-detect.js', "require('./image-process')", "require('../../utils/image-process')"],
++  ['pkgTools/utils/image-hash.js', "require('./image-process')", "require('../../utils/image-process')"],
++  ['pkgTools/utils/format-recommend.js', "require('./color-quantize')", "require('../../utils/color-quantize')"],
++  ['pkgGif/utils/gif-encoder.js', "require('./color-quantize.js')", "require('../../utils/color-quantize.js')"],
++];
++for (const [rel, from, to] of INTERNAL) {
++  const f = path.join(ROOT, rel);
++  const src = fs.readFileSync(f, 'utf8');
++  if (!src.includes(from)) throw new Error(`B 失败：${rel} 找不到 ${from}`);
++  fs.writeFileSync(f, src.replace(from, to));
++  report.B.push(rel);
++}
++
++/* ---------- C：路由路径改写 ---------- */
++const ROUTES = [];
++for (const [pkg, pages] of Object.entries(PKG))
++  for (const p of pages) ROUTES.push([`/pages/${p}/${p}`, `/` + pkg + `/pages/${p}/${p}`]);
++
++const C_TARGETS = [
++  ...walk(path.join(ROOT, 'pages'), ['.js', '.wxml'], []),
++  ...walk(path.join(ROOT, 'pkgAi'), ['.js', '.wxml'], []),
++  ...walk(path.join(ROOT, 'pkgGif'), ['.js', '.wxml'], []),
++  ...walk(path.join(ROOT, 'pkgTools'), ['.js', '.wxml'], []),
++  ...walk(path.join(ROOT, 'components'), ['.js', '.wxml'], []),
++  path.join(ROOT, 'app.js'),
++];
++for (const f of C_TARGETS) {
++  let src = fs.readFileSync(f, 'utf8');
++  let n = 0;
++  for (const [from, to] of ROUTES) {
++    for (const q of ["'", '"']) {
++      const pat = q + from, rep = q + to;
++      while (src.includes(pat)) { src = src.replace(pat, rep); n++; }
++    }
++  }
++  if (n) {
++    fs.writeFileSync(f, src);
++    report.C.push(`${path.relative(ROOT, f)}: ${n}`);
++  }
++}
++
++/* ---------- sitemap.json ---------- */
++const smPath = path.join(ROOT, 'sitemap.json');
++let sm = fs.readFileSync(smPath, 'utf8');
++let smN = 0;
++for (const [from, to] of ROUTES) {
++  const noSlash = from.slice(1); // pages/xxx/xxx（sitemap 无前导斜杠）
++  const pat = '"' + noSlash + '"', rep = '"' + to.slice(1) + '"';
++  while (sm.includes(pat)) { sm = sm.replace(pat, rep); smN++; }
++}
++fs.writeFileSync(smPath, sm);
++
++/* ---------- 汇总 ---------- */
++const aTotal = report.A.reduce((s, x) => s + parseInt(x.split(': ')[1]), 0);
++const cTotal = report.C.reduce((s, x) => s + parseInt(x.split(': ')[1]), 0);
++console.log(`A 页面 require 改写：${aTotal} 处（预期 56：pkgAi 36 + pkgGif 8 + pkgTools 12；aiColorize 含行尾注释的 upscale-local 曾被人工清单 grep -v "//" 滤掉，正则抓全）`);
++report.A.forEach(x => console.log('  ' + x));
++console.log(`B utils 内部定点修：${report.B.length}/4 文件`);
++console.log(`C 路由路径改写：${cTotal} 处`);
++report.C.forEach(x => console.log('  ' + x));
++console.log(`sitemap.json：${smN} 处（预期 24）`);
++if (aTotal !== 56) { console.error('!! A 总数与预期不符，检查上面明细'); process.exit(1); }
++console.log('OK');
+diff --git a/.harness/changes/tune-coldstart-subpackage-20260915/coding/verify-subpackage.js b/.harness/changes/tune-coldstart-subpackage-20260915/coding/verify-subpackage.js
+new file mode 100644
+index 0000000..957b2ca
+--- /dev/null
++++ b/.harness/changes/tune-coldstart-subpackage-20260915/coding/verify-subpackage.js
+@@ -0,0 +1,128 @@
++#!/usr/bin/env node
++/**
++ * 分包迁移验证脚本（T6 证据生成）
++ * 1. JSON 合法性：app.json / sitemap.json / 全部页面 .json
++ * 2. 注册↔磁盘一致：app.json 每个注册页四件套齐全；磁盘页面目录无未注册孤儿
++ * 3. require 解析：pages/ pkgX/ utils/ components/ app.js 的全部相对 require 目标文件必须存在
++ * 4. 路由清扫：字符串字面量里的 '/pages/xxx' 只允许出现 9 个主包页
++ * 5. preloadRule：入口页在主包、目标分包已注册
++ */
++const fs = require('fs');
++const path = require('path');
++const ROOT = path.resolve(__dirname, '..', '..', '..', '..');
++const fail = [];
++const ok = [];
++
++function walk(dir, exts, acc) {
++  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
++    const p = path.join(dir, e.name);
++    if (e.isDirectory()) walk(p, exts, acc);
++    else if (exts.some(x => e.name.endsWith(x))) acc.push(p);
++  }
++  return acc;
++}
++
++/* 1. JSON 合法性 */
++const app = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8'));
++const sitemap = JSON.parse(fs.readFileSync(path.join(ROOT, 'sitemap.json'), 'utf8'));
++let jsonN = 1;
++for (const f of [...walk(path.join(ROOT, 'pages'), ['.json'], []),
++...walk(path.join(ROOT, 'pkgAi'), ['.json'], []),
++...walk(path.join(ROOT, 'pkgGif'), ['.json'], []),
++...walk(path.join(ROOT, 'pkgTools'), ['.json'], []),
++path.join(ROOT, 'sitemap.json')]) {
++  try { JSON.parse(fs.readFileSync(f, 'utf8')); jsonN++; } catch (e) { fail.push(`JSON 解析失败: ${f}: ${e.message}`); }
++}
++ok.push(`JSON 合法: ${jsonN} 个文件`);
++
++/* 2. 注册↔磁盘一致 */
++const MAIN_PAGES = app.pages;                                   // 9
++const SUB = app.subpackages;                                    // 3
++const REG = new Set(MAIN_PAGES);
++for (const s of SUB) for (const p of s.pages) REG.add(`${s.root}/${p}`);
++for (const page of REG) {
++  for (const ext of ['.js', '.json', '.wxml', '.wxss']) {
++    if (!fs.existsSync(path.join(ROOT, page + ext))) fail.push(`注册页缺文件: ${page}${ext}`);
++  }
++}
++const orphanDirs = [];
++for (const base of ['pages', 'pkgAi/pages', 'pkgGif/pages', 'pkgTools/pages']) {
++  for (const d of fs.readdirSync(path.join(ROOT, base), { withFileTypes: true })) {
++    if (d.isDirectory()) {
++      const rel = `${base}/${d.name}/${d.name}`;
++      if (!REG.has(rel)) orphanDirs.push(rel);
++    }
++  }
++}
++if (orphanDirs.length) fail.push(`磁盘孤儿页面目录: ${orphanDirs.join(', ')}`);
++ok.push(`注册页 ${REG.size} 个（主包 ${MAIN_PAGES.length} + 分包 ${REG.size - MAIN_PAGES.length}）四件套齐全，磁盘无孤儿`);
++
++/* 3. require 解析 */
++let reqN = 0, reqBad = 0;
++const CODE = [
++  ...walk(path.join(ROOT, 'pages'), ['.js'], []),
++  ...walk(path.join(ROOT, 'pkgAi'), ['.js'], []),
++  ...walk(path.join(ROOT, 'pkgGif'), ['.js'], []),
++  ...walk(path.join(ROOT, 'pkgTools'), ['.js'], []),
++  ...walk(path.join(ROOT, 'utils'), ['.js'], []),
++  ...walk(path.join(ROOT, 'components'), ['.js'], []),
++  path.join(ROOT, 'app.js'),
++];
++const REQ_RE = /require\((['"])(\.[^'"]+)\1\)/g;
++for (const f of CODE) {
++  const src = fs.readFileSync(f, 'utf8')
++    .split('\n').filter(l => { const t = l.trim(); return !(t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')); }).join('\n'); // 剥注释行（JSDoc 用法示例会被误报）
++  let m;
++  while ((m = REQ_RE.exec(src))) {
++    const spec = m[2];
++    if (!spec.endsWith('.js') && !/\.json$/.test(spec)) {
++      // 无后缀模块：按 CommonJS 规则尝试 spec、spec.js
++    }
++    const base = path.resolve(path.dirname(f), spec);
++    const exists = fs.existsSync(base) || fs.existsSync(base + '.js');
++    reqN++;
++    if (!exists) { reqBad++; fail.push(`require 无法解析: ${path.relative(ROOT, f)} -> ${spec}`); }
++  }
++}
++ok.push(`require 解析: ${reqN} 条${reqBad ? '，失败 ' + reqBad : '，全部通过'}`);
++
++/* 4. 路由清扫：'/pages/xxx 只允许主包 9 页 */
++const MAIN_SET = new Set(MAIN_PAGES);
++let routeHits = 0, routeBad = 0;
++const ROUTE_FILES = CODE.flatMap(f => [f, f.replace(/\.js$/, '.wxml')]).filter(f => f.endsWith('.wxml') || f.endsWith('.js'))
++  .concat(walk(path.join(ROOT, 'pages'), ['.wxml'], []));
++const seen = new Set();
++for (const f of ROUTE_FILES) {
++  if (seen.has(f) || !fs.existsSync(f)) continue;
++  seen.add(f);
++  const src = fs.readFileSync(f, 'utf8');
++  let m;
++  const R = /(['"])\/pages\/([A-Za-z0-9_]+)\/\2/g;
++  while ((m = R.exec(src))) {
++    routeHits++;
++    if (!MAIN_SET.has(`pages/${m[2]}/${m[2]}`)) { routeBad++; fail.push(`旧路径残留: ${path.relative(ROOT, f)} -> ${m[0]}`); }
++  }
++}
++ok.push(`路由字面量 '/pages/x/x': ${routeHits} 处，非主包残留 ${routeBad}`);
++
++/* sitemap 页面均在注册集内 */
++let smBad = 0;
++for (const r of sitemap.rules) {
++  if (!REG.has(r.page)) { smBad++; fail.push(`sitemap 含未注册页: ${r.page}`); }
++}
++ok.push(`sitemap: ${sitemap.rules.length} 条规则，未注册 ${smBad}`);
++
++/* 5. preloadRule */
++const pr = app.preloadRule && app.preloadRule['pages/index/index'];
++if (!pr || !pr.packages.every(p => SUB.some(s => s.root === p))) fail.push('preloadRule 配置异常');
++else ok.push(`preloadRule: index -> ${pr.packages.join(',')} (network=${pr.network})`);
++
++/* 汇总 */
++console.log('===== 验证结果 =====');
++ok.forEach(x => console.log('✅ ' + x));
++if (fail.length) {
++  console.log(`\n❌ 失败 ${fail.length} 项:`);
++  fail.forEach(x => console.log('  - ' + x));
++  process.exit(1);
++}
++console.log('\nALL PASS');
+diff --git a/.harness/changes/tune-coldstart-subpackage-20260915/request_analysis/review/spec_review_v1.md b/.harness/changes/tune-coldstart-subpackage-20260915/request_analysis/review/spec_review_v1.md
+new file mode 100644
+index 0000000..54db8ef
+--- /dev/null
++++ b/.harness/changes/tune-coldstart-subpackage-20260915/request_analysis/review/spec_review_v1.md
+@@ -0,0 +1,95 @@
++# spec_review_v1
++
++- 评审对象：`request_analysis/spec.md` + `tasks.md`（tune-coldstart-subpackage-20260915）
++- 评审方式：对抗性验证——所有关键声明独立 grep/读码复核，不采信 spec 自洽叙述
++- 评审日期：2026-09-15
++
++## 结论：❌ 需修改
++
++方案骨架（三分包分组、preloadRule、utils 随页迁移、死重清理、硬约束隔离）全部经得起对抗验证，页面落位 33/33 无遗漏；但依赖图存在 **1 个 Critical 破绽**（color-quantize 落位造成分包间非法 require）和 **2 个 Important 缺失**（被迁移 utils 的内部 require 修正缺失、T5 残留验证 grep 假阳性失效）。修改量小，改完可直接进编码。
++
++## 事实核查结果（spec 声明 vs 实际 grep）
++
++| # | spec 声明 | 核查结果 | 判定 |
++|---|---|---|---|
++| 1 | §1「33 个注册页面全部在主包」 | app.json `pages[]` 恰 33 项，无 subpackages/preloadRule | ✅ 属实 |
++| 2 | §3 主包 9 页（index+compress/crop/convert/watermark/filter/splice/compare/idPhoto） | 与 app.json 逐项对照，9+12+5+7=33，无漏页无多页 | ✅ 属实 |
++| 3 | §3 colorize-detect 仅 aiColorize 引用 → 迁 pkgAi | 全仓唯一引用 `pages/aiColorize/aiColorize.js:7` | ✅ 属实 |
++| 4 | §3 piexif 仅被 pages/exif 和 exif-tags 引用 | `pages/exif/exif.js:10` `require('../../utils/piexif.js')`（带后缀）；`utils/exif-tags.js:2-3` 仅注释提及、**无 require** | ✅ 属实 |
++| 5 | §3 exif-tags 迁 pkgTools | 唯一引用 `pages/exif/exif.js:11`（带 `.js` 后缀） | ✅ 属实 |
++| 6 | §3 gif-* 6 文件「仅被这 5 页引用」 | 实际仅 **4 页**引用（makeGif/gifEditor/gifBatch/gifReport）；**gifDrafts 不引用任何 gif util**（只 require analytics）。落位不受影响 | ⚠️ 表述不准（Minor-6） |
++| 7 | §3 color-quantize 仅 colorAnalysis 用 → 迁 pkgTools | 页面层面属实（`colorAnalysis.js:5` 唯一页面引用）；**但 utils 层面另有两处**：`utils/format-recommend.js:20`（同包，没问题）和 `utils/gif-encoder.js:20`（**跨包，非法**，见 Critical-1） | ❌ 破绽（Critical-1） |
++| 8 | §3 image-hash / format-recommend / hidden-watermark 各仅对应页引用 | `similarity.js:8` / `formatRecommend.js:5` / `hiddenWatermark.js:6` 唯一引用，均随页同包 | ✅ 属实 |
++| 9 | §3 compare-helper「主包 4 页 + pkgAi 多页」留主包 | 主包 compress/watermark/filter/compare 4 页 + pkgAi 7 页（aiAvatar/aiMatting/aiEraser/aiColorize/aiStyle/aiUpscale/aiOutpaint）引用 → 必须留主包，正确 | ✅ 属实 |
++| 10 | §3 upscale-local（crop 引用）/ saliency-detect（crop 引用）留主包 | crop.js:9,10 确实引用 → 留主包正确。但 upscale-local 另被 aiUpscale.js:6、aiColorize.js:6（pkgAi 页）引用——§5.3 修正清单已含 upscale-local，结论不受影响 | ⚠️ 依据不完整（Minor-7） |
++| 11 | §3 image-process「15 页引用」留主包 | 14 个页面 + `components/image-uploader/image-uploader.js:2`（spec 未提及的主包组件依赖方）；主包 8 页 + 分包 6 页 + 组件引用 → 留主包正确 | ⚠️ 计数口径（Minor-7/8） |
++| 12 | §3 留主包 utils 清单（image-process/analytics/content-check/compare-helper/upscale-local/saliency-detect） | utils/ 目录共 **20 个文件**，spec 落位 19 个；**id-photo-geometry.js 未列入任何落位**（实际被主包 idPhoto.js:15 引用，应留主包——按"不动即留"语义无行为错误，但清单声称完备而不完备） | ⚠️ Minor-5 |
++| 13 | §4 主包 require 分包（反向依赖）不存在 | 主包侧（app.js/主包 9 页/image-uploader）require 的 utils 全部在留主包清单内；无动态 require（`require([^'"]` 全仓 0 命中） | ✅ 属实 |
++| 14 | §4/§5.3「仅需改页面 `../../utils/` → `../../../`」 | **不完整**：被迁移 utils 自身有 3 处内部 require 需同步修正（见 Important-2） | ❌ 缺失（Important-2） |
++| 15 | §5.5 index.js「约 26 处」url 前缀更新 | 实测 `/pages/` 共 36 处，其中指向迁移页 **27 处**（另 9 处为主包页+index，不变） | ⚠️ 差 1，"约"字可容（不单列） |
++| 16 | §2/T1 aiEnhance 未注册、无入口 | 不在 app.json 33 项内；全仓 grep（排除自身目录/.harness）0 引用；index.js/LAUNCH_DATES/index.wxss 均无 | ✅ 属实 |
++| 17 | §2/T1 placeholder.png 无引用 | 全仓 grep（js/json/wxml/wxss）0 引用 | ✅ 属实 |
++| 18 | §5.6 grep 模式覆盖所有硬编码跳转/分享路径 | 24 个迁移页**每页都有** `onShareAppMessage` 硬编码 `path:'/pages/x/x'`；另有 `gifDrafts.js:118` navigateTo、gifBatch/gifEditor/makeGif 的 wxml `<navigator url="/pages/...">` 5 处、index.wxml 数据绑定 url——全部落在 `/pages/(ai\|gif\|makeGif\|exif\|similarity\|formatRecommend\|colorAnalysis\|hiddenWatermark\|pdfToImage\|imgToPdf)` 模式覆盖内 | ✅ 覆盖面够，但见 Important-3（验证会假阳性） |
++| 19 | （spec 未查）wxml/wxss 引用主包资源 | 迁移页 wxml 无 `src="../` / `src="/` 资源引用；wxss 无 `url()` / `@import`；全仓无 `<wxs>`；app.wxss 无 `@import`/`url()` | ✅ 无坑 |
++| 20 | （spec 未查）usingComponents 跨包 | aiAvatar/aiOutpaint/aiStyle/aiTextToImage（均迁 pkgAi）+ compress/splice（留主包）使用 `image-uploader`，路径为**绝对路径** `/components/image-uploader/image-uploader`——组件留主包，绝对路径跨包引用合法，组件自身的 `../../utils/image-process` 因组件不动而无需改 | ✅ 无坑（但 spec 未列，Minor-8） |
++| 21 | （spec 未查）其他 `/pages/` 引用 | 唯一 pages/ 之外的引用是 `utils/compare-helper.js:45` → `/pages/compare/compare`，compare 留主包，无需改 | ✅ 无坑 |
++| 22 | （评审清单提示项）preloadRule ≤2MB | pkgAi 实测源码 404K（12 页）+ colorize-detect 3K ≈ 407K < 2MB 同页预下载上限 | ✅ 无坑 |
++| 23 | （评审清单提示项）app.wxss 全局样式对分包页 | 全局 wxss 自动作用于分包页，无需迁移；实测 app.wxss 无 @import，无跨文件依赖 | ✅ 无坑 |
++| 24 | （评审清单提示项）wx.cloud.init 时机 | `app.js:23` onLaunch 内 init，先于任何分包页 onLoad，分包页调云函数不受影响 | ✅ 无坑 |
++
++体积实测（供 T6 阈值核对）：主包 9 页 377K + 留主包 utils（image-process 48.7K + piexif 不迁 + 其余约 20K）≈ 470K 口径成立；pkgAi 404K、pkgGif 229K、pkgTools 247K + 各自 utils，均远低于 500K 阈值。
++
++## 发现
++
++### Critical
++
++**C-1：color-quantize.js 落位造成「分包 require 另一分包」的非法依赖，gifEditor 自适应编码路径将运行时崩溃。**
++- 证据链：spec §3 将 color-quantize 归 pkgTools（理由"colorAnalysis 用"）；但 `utils/gif-encoder.js:17-23`：
++  ```js
++  function getMedianCut() {
++    if (!_medianCut) {
++      _medianCut = require('./color-quantize.js').medianCut;  // :20 懒加载
++    }
++  ```
++  gif-encoder 归 pkgGif → `pkgGif/utils/gif-encoder.js` 的 `./color-quantize.js` 在 pkgGif/utils/ 不存在（被挪去 pkgTools）→ 微信分包规则禁止分包 A require 分包 B 的 JS → 模块缺失。这不是死代码：gifEditor.js:7 解构的 `buildGIFDiffAdaptive` 即自适应路径，真机点一次自适应导出就触发。
++- 附带：`utils/format-recommend.js:20` 也 require color-quantize（同 pkgTools，本身没问题）——即 color-quantize 有**两个不同分包**的依赖方，不可能两全。
++- 修复建议（最小改动）：**color-quantize.js 留主包**（7.8K，对冷启动目标无感）；随之 `gif-encoder.js:20` 与 `format-recommend.js:20` 的 require 改为 `../../utils/color-quantize`（分包→主包合法）。不建议双份复制（违背单一来源，CLAUDE.md 已吐槽云函数复制之痛）。
++
++### Important
++
++**I-2：被迁移 utils 自身的内部 require 修正完全缺失（spec §4 第 3 条与 T2-T4 均只处理"页面"的路径）。**
++- 证据（utils→utils require 全清单实测）：
++  - `utils/colorize-detect.js:10` → `./image-process`（迁 pkgAi 后须改 `../../utils/image-process`）
++  - `utils/image-hash.js:17` → `./image-process`（迁 pkgTools 后同上）
++  - `utils/gif-encoder.js:20` → `./color-quantize.js`（见 C-1）
++  - 同包无影响的：`gif-compress.js:19-20` → gif-encoder/gif-frame-ops（均 pkgGif ✓）；`format-recommend.js:20` → color-quantize（按 C-1 方案须改）；留主包的 upscale-local/saliency-detect/image-process/content-check 互引不动 ✓。
++- 连带验证盲区：T2-T4 的验证命令 `grep -rn "require('../../utils/" pkgX/` 只匹配 `../../utils/` 前缀，抓不到 utils 内部的 `./xxx` 形式——即便漏改，宣称的验证手段也不会发现（开发者工具编译会兜底报错，但任务书的"独立可验证"名存实亡）。应补验证：`grep -rn "require('\./" pkg*/utils/` 逐条核对落位。
++
++**I-3：T5 残留验证 grep 必然假阳性，按任务书写的口径无法收敛。**
++- 证据：重构完成后的新路径本身包含旧模式子串——`/pkgAi/pages/aiDescribe` 含 `/pages/ai`、`/pkgGif/pages/gifEditor` 含 `/pages/gif`。T5 验证 grep（全仓查 `/pages/(ai|gif|...)`）会对 app.json subpackages 三段、index.js 27 处新 url、wxml navigator 新 url 全部误报。"app.json 注释除外"的豁免表述也不成立（JSON 无注释；且误报源不止 app.json）。
++- 修复建议：验证模式加左边界引号——`grep -rnE "['\"]\/pages\/(ai[A-Z]|gif|makeGif|exif|similarity|formatRecommend|colorAnalysis|hiddenWatermark|pdfToImage|imgToPdf)" `，只命中旧式字符串字面量。
++
++### Minor
++
++**M-4**：§7.2「32 个注册页面（33 - aiEnhance 删除）」算术错——aiEnhance 本就不在 33 个注册页内，重构后注册页仍是 33（9+12+5+7）。验收口径按 32 会数不上。
++**M-5**：utils 落位清单缺 `id-photo-geometry.js`（idPhoto 引用，应留主包）。"不动即留"语义下无行为错误，但 §3 声称完备的落位清单应补齐为 20/20。
++**M-6**：§3「（gif utils）仅被这 5 页引用」不准——实际 4 页（gifDrafts 仅 require analytics）。落位结论不变。
++**M-7**：落位依据括号注释多处不完整：upscale-local「crop 引用」漏 aiUpscale/aiColorize；image-process「15 页引用」实为 14 页+1 组件。结论均正确，依据表述有误导后来人之嫌。
++**M-8**：spec 通篇未提 `components/image-uploader`（4 个 pkgAi 页依赖的主包组件）。绝对路径引用使其无需改动（已验证无坑），但"依赖图已验证"的声明漏列主包组件这个依赖方，应补一句说明。
++
++## 评审清单逐条结论
++
++1. **覆盖度**：页面 33/33 全落位 ✅；utils 19/20 有落位（id-photo-geometry 缺列，M-5）。
++2. **三层落位**：pkgX/pages + pkgX/utils 结构合法；页面→本包 utils `../../utils/x` 不变的路径推演成立 ✅；主包 require 分包确不存在 ✅；**但 spec 自己引入了分包→分包 require（C-1）**。
++3. **硬约束**：四项"不涉及"声明全部成立——content-check 留主包且所有 guardImage/guardText 调用点仅随页面改一层路径；密钥/限流/云函数零改动；app.wxss 全局样式自动作用于分包页且无 @import 依赖（核查 #19/#23-24）✅。
++4. **任务粒度**：T1-T4 顺序无关、T5 收口的结构合理；T4 对 exif.js 带 `.js` 后缀"指向本包不变"的提示正确 ✅。但 T2-T4 验证 grep 有 `./` 形式盲区（I-2）、T5 验证假阳性（I-3）；T2 括号列举"image-process/analytics/content-check 等"与 §5.3 五件套表述不完全一致（pkgGif 页实际只引前两类，"等"字侥幸不错，建议对齐列举）。
++5. **风险遗漏**：风险表 5 条外漏了 C-1（跨分包 require）、I-2（utils 内部 require）、I-3（验证方法失效）。提示的三项（app.wxss 全局样式 / wx.cloud.init 时机 / preloadRule 2MB 上限）实测均无坑。
++6. **占位符/歧义**：无 TBD/TODO ✅；歧义三处：M-4（32 vs 33）、"app.json 注释除外"（JSON 无注释）、M-6（5 页 vs 4 页）。
++
++## 建议
++
++1. （必须，对应 C-1）spec §3 修订：color-quantize.js 从 pkgTools 迁移清单移回「留主包 utils」；§5.3 require 修正清单补 `pkgGif/utils/gif-encoder.js`、`pkgTools/utils/format-recommend.js` 两处 color-quantize 引用改 `../../utils/`。
++2. （必须，对应 I-2）spec §4 第 3 条与 T2-T4 各补一条：被迁移 utils 内部 require 主包 utils 的路径修正（colorize-detect/image-hash 的 `./image-process` → `../../utils/image-process`）；验证补 `grep -rn "require('\./" pkgX/utils/`。
++3. （必须，对应 I-3）T5 验证命令改为带左边界引号的 grep 模式（见 I-3），删除"app.json 注释除外"表述。
++4. （建议）§3 补 id-photo-geometry.js 留主包 + components/image-uploader 说明；§7.2 改"33 个注册页面"；修正"5 页引用/15 页引用"两处计数。
++5. 修完后可直接进阶段 3（coding），无需二轮全量评审——本次评审已把依赖图全部实测核清，剩余仅上述文字修订。
+diff --git a/.harness/changes/tune-coldstart-subpackage-20260915/request_analysis/review/spec_review_v2.md b/.harness/changes/tune-coldstart-subpackage-20260915/request_analysis/review/spec_review_v2.md
+new file mode 100644
+index 0000000..1c70ba3
+--- /dev/null
++++ b/.harness/changes/tune-coldstart-subpackage-20260915/request_analysis/review/spec_review_v2.md
+@@ -0,0 +1,67 @@
++# spec_review_v2（复审）
++
++- 评审对象：`request_analysis/spec.md` + `tasks.md` 修改稿（针对 spec_review_v1 全部发现的修复）
++- 评审方式：逐项核对 v1 发现的修复落点 + 对修改新增内容（§3:57 / §4 表格 / §5.6 / T2-T5）做对抗性实测——行号对码、grep 全扫、路径推演
++- 评审日期：2026-09-15
++- 上一轮结论：❌ 需修改（v1：C-1 / I-2 / I-3 / M-4~M-8）
++
++## 结论：❌ 需修改（仅 1 项阻塞：N-1 路径层数错误，30 秒可改完）
++
++v1 的 8 项发现中 7 项已正确修复、1 项 Minor 残留（M-7，不阻塞）；但本次修改**引入 1 个 Critical 新问题**：§3/§4/tasks 中被迁移 utils 指向主包的修正路径全部写成三层 `../../../utils/`，正确应为两层 `../../utils/`——4 处修正指令 4 处全错。修复该层数 + 两个 Minor 后即可进编码，无需三轮评审。
++
++## 一、v1 发现逐项修复核对
++
++| v1 编号 | 内容 | v2 修复落点 | 核对结果 | 状态 |
++|---|---|---|---|---|
++| C-1 | color-quantize 跨分包非法依赖 | spec §3:57 移回「留主包」+ 两处引用列入修正；tasks T2:13、T4:24 同步 | 落位决策正确（留主包 7.8K，pkgTools 迁移清单已移除，留主包清单 8+迁移 12=20/20 与 utils 目录闭环）；**但两处引用的修正目标路径层数错**（→N-1） | 已修，修复内容有错（N-1） |
++| I-2 | 被迁移 utils 内部 require 修正缺失 | spec §4 新增逐处修正表（5 行）；tasks T2-T4 加 `require('./` 全扫验证 | 行号 5/5 实测全对（见下节抽查）；本轮全扫 utils→utils require 共 10 处：须改 4 处全在表格内、同包不变 1 处已列、留主包互引 5 处确不需动——**表格完备无漏列**；**但 4 处须改项的目标路径层数全错**（→N-1） | 已修，修复内容有错（N-1） |
++| I-3 | T5 grep 假阳性 | spec §5.6、tasks T5 改带引号左边界模式 `['\"]/pages/(ai[A-Z]\|gif\|...)`，注明裸模式禁用 | 模式实测推演正确：新路径 `/pkgAi/pages/aiXxx` 中 `/pages/` 左邻是字母非引号，不误报；本轮补查全仓**无反引号模板串形式**的 `/pages/` 路径（`` `/pages/ `` 0 命中），模式无假阴性缺口；「app.json 注释除外」错误表述已删 | ✅ 已修 |
++| M-4 | 32 vs 33 算术错 | §7.2 | 「33 个注册页面（app.json 现有 33 页不变；aiEnhance 本就未注册，删除不影响注册数）」——正确且自洽 | ✅ 已修 |
++| M-5 | id-photo-geometry 缺列 | §3:56 | 已明确留主包（idPhoto 引用，idPhoto 留主包）；清单闭环验证通过（见 C-1 行） | ✅ 已修 |
++| M-6 | gif utils「5 页引用」不准 | §3:45 | 「仅被本包 4 页引用：makeGif/gifBatch/gifEditor/gifReport，gifDrafts 不直接用」——与 v1 实测一致 | ✅ 已修 |
++| M-7 | 依据表述不完整（image-process「15 页引用」实为 14 页+1 组件；upscale-local 括号漏 aiUpscale/aiColorize） | — | §3:52 仍写「15 页引用」、§3:54 upscale-local 仍只标「crop 引用」。结论不受影响（§5.3 五件套修正清单是对的），但误导性表述原样残留 | ⚠️ 未修（Minor，不阻塞） |
++| M-8 | components/image-uploader 未提及 | §3:58 + §5.7 + tasks T5 | 「留主包，绝对路径 `/components/...`，零改动」+ 编码时 grep 复核相对路径形式——说明准确，复核项到位 | ✅ 已修 |
++
++v1 附带的建议级事项（T2 括号列举「image-process/analytics/content-check 等」与 §5.3 五件套不完全一致）：tasks T2:12 原样保留，「等」字 + §5.3 权威清单兜底，维持建议级不阻塞。
++
++## 二、新引入问题
++
++### N-1（Critical，本次唯一阻塞项）：分包 utils → 主包 utils 的修正路径层数全部写错——`../../../` 应为 `../../`
++
++**事实**：spec §3:57（两处）、§4 表格 4 行（colorize-detect / image-hash / format-recommend / gif-encoder）、tasks T2:13、T3:19、T4:26，凡是被迁移 **utils 文件**指向主包的 require，目标路径一律写 `../../../utils/...`。
++
++**推演**（require 相对路径相对当前文件，与现网代码一致，如 `pages/exif/exif.js` 的 `../../utils/piexif.js`）：
++
++| 文件位置 | 目录深度 | 跳到项目根 | 例 |
++|---|---|---|---|
++| 分包页面 `pkgX/pages/<name>/<name>.js` | 3 层 | `../../../` ✓（spec §4:64 的规则，主语是「页面」，正确） | 页面引主包 `../../../utils/image-process` ✓ |
++| 分包 utils `pkgX/utils/<file>.js` | 2 层 | `../../` | utils 引主包应为 `../../utils/image-process`；写成 `../../../utils/...` = `pkgX/utils/` 上跳 3 层 = **项目根之外**，模块不存在 |
++
++**后果**：照 spec 编码，4 处修正（gif-encoder.js:20、format-recommend.js:20、colorize-detect.js:10、image-hash.js:17）全部指向不存在的路径，编译即报 module not found——恰是本轮 C-1+I-2 修复的核心交付物，4/4 全错，且 spec §4:64 自己写对的三层规则（限页面）与表格里 utils 的三层用法自相矛盾。v1 建议原文即为两层（`../../utils/color-quantize`），修改时被误「统一」成三层。
++
++**修复**：把上述 7 处位置的 `../../../utils/` 改为 `../../utils/`（**仅限 utils 文件内的引用**；页面引用主包仍三层不动）。gif-encoder 行保留 `.js` 后缀、format-recommend 行不带后缀（各自沿用原风格，v2 表格已区分，保持即可）。
++
++### N-2（Minor）：§5.2「utils/piexif.js 等 13 个文件」应为 12 个
++
++color-quantize 移回主包后，迁移清单为 pkgAi 1 + pkgGif 6 + pkgTools 5 = **12**。13 是 v1 旧口径残留。§3 各包清单本身正确，编码按 §3 走不会错，仅数字失实。
++
++### N-3（Minor）：T2-T4 验证 grep 的期望口径不精确
++
++T2 验证写 `grep -rn "require('../../utils/" pkgGif/` 「仅剩指向本包 utils 的」。但按 N-1 修正后的正确路径，**分包 utils 文件引主包也是 `require('../../utils/` 前缀**（gif-encoder/colorize-detect/image-hash/format-recommend 共 4 处），会被该 grep 命中且目标在主包——按现口径执行会出 4 处「假异常」。期望口径应改为：「命中项分两类均为合法——页面文件的 `../../utils/` 指本包 utils；utils 文件的 `../../utils/` 指主包 utils（即 §4 修正表 4 项）。两类之外无残留」。（若不修 N-1 而照三层执行，该 grep 反而抓不到这 4 处——又一层数错的佐证。）
++
++## 三、抽查证据（行号引用 vs 实际代码，5/5 一致）
++
++- `utils/gif-encoder.js:20` → `_medianCut = require('./color-quantize.js').medianCut;` ✓（懒加载，§4 表格「:20」准确）
++- `utils/format-recommend.js:20` → `const { medianCut } = require('./color-quantize');` ✓（不带 .js 后缀，表格区分正确）
++- `utils/colorize-detect.js:10` → `require('./image-process')` ✓
++- `utils/image-hash.js:17` → `require('./image-process')` ✓
++- `utils/gif-compress.js:19,20` → `./gif-encoder.js` / `./gif-frame-ops.js` ✓（同包 pkgGif，标「不变」正确）
++- utils→utils require 全仓实扫（`require\('\./` in utils/）共 10 处：须改 4 处（上表）+ 同包 2 处（gif-compress）+ 留主包互引 4 处（upscale-local.js:11 / saliency-detect.js:16 / image-process.js:571 / content-check.js:19）——与 §4 表格 + 留主包清单完全对账，无漏网
++- 模板串路径 `` `/pages/ `` 全仓 0 命中 → §5.6 模式（`['\"]` 左边界，不含反引号）无假阴性缺口
++
++## 四、建议
++
++1. （必须，N-1）spec §3:57、§4 表格 4 行、tasks T2:13 / T3:19 / T4:26：utils 文件内的 `../../../utils/` 全部改 `../../utils/`。页面三层规则（§4:64、§5.3、T2「`../../` → `../../../`」）不动。
++2. （必须随 1，N-3）T2-T4 验证口径改为「两类合法命中（页面→本包 utils、分包 utils→主包 utils）之外无残留」。
++3. （建议，N-2）§5.2「13 个」改「12 个」；（M-7）§3:52「15 页引用」改「14 页 + image-uploader 组件」、§3:54 upscale-local 补「+ aiUpscale/aiColorize（分包页，§5.3 已列）」。
++4. 修完 N-1 即可进阶段 3（coding），无需三轮全量评审——本轮已对全部修改落点实测核清，剩余仅机械性路径/数字修订。
+diff --git a/.harness/changes/tune-coldstart-subpackage-20260915/request_analysis/review/spec_review_v3.md b/.harness/changes/tune-coldstart-subpackage-20260915/request_analysis/review/spec_review_v3.md
+new file mode 100644
+index 0000000..3ad702d
+--- /dev/null
++++ b/.harness/changes/tune-coldstart-subpackage-20260915/request_analysis/review/spec_review_v3.md
+@@ -0,0 +1,75 @@
++# spec_review_v3（终审）
++
++- 评审对象：`request_analysis/spec.md` + `tasks.md` 修改稿（针对 spec_review_v2 全部发现的修复）
++- 评审方式：逐项 grep 核对 v2 修复落点 + 通读修改后全文查新引入问题 + 抽查 spec 引用的源码行号是否仍准确
++- 评审日期：2026-09-15
++- 上一轮结论：❌ 需修改（v2：N-1 Critical / N-2 / N-3 / M-7 残留）
++
++## 结论：APPROVED ✅（4/4 已修，0 新问题，可进阶段 3 coding）
++
++## 一、v2 未决发现逐项核验
++
++### N-1（Critical）分包 utils→主包 require 层数 —— 已修 ✅
++
++全文件 grep `\.\./\.\./\.\./` 与 `\.\./\.\./utils/` 两种模式交叉核验，结果：
++
++**三层 `../../../` 全部剩余出现处（共 5 处），主语均为「页面」，层数正确，无一处套在 utils 文件上：**
++
++| 位置 | 主语 | 判定 |
++|---|---|---|
++| spec.md:63 | 分包页面 require 主包 utils | ✓ 正确 |
++| spec.md:64 | 页面在 `pkgX/pages/<name>/` 三层深 | ✓ 正确 |
++| spec.md:65 | 「三层 `../../../` 是页面专属规则」（层级警示，非修正指令） | ✓ 正确 |
++| spec.md:80（§5.3） | 分包页引用主包 5 件套 `../../utils/` → `../../../utils/` | ✓ 正确 |
++| tasks.md:12（T2） | 分包页 require 修正（页面三层） | ✓ 正确 |
++
++**utils 文件指向主包的修正处（实测 9 处，多于声称的 7 处，全部两层 `../../utils/`，无一遗漏无一错误）：**
++
++| 位置 | 内容 | 判定 |
++|---|---|---|
++| spec.md:57（§3 color-quantize 行） | 两处引用改 `../../utils/color-quantize`，注明「utils 文件两层深，**不是**页面的三层规则」 | ✓ 已改两层 |
++| spec.md:65（§4 新增层级说明） | 「被迁移 utils 在 `pkgX/utils/` 只有两层深…三层套到 utils 上会跳出项目根（评审 N-1 教训）」 | ✓ 新增且正确 |
++| spec.md:69（§4 表 colorize-detect） | `../../utils/image-process` | ✓ |
++| spec.md:70（§4 表 image-hash） | `../../utils/image-process` | ✓ |
++| spec.md:71（§4 表 format-recommend） | `../../utils/color-quantize`（不带后缀，沿用原风格） | ✓ |
++| spec.md:72（§4 表 gif-encoder） | `../../utils/color-quantize.js`（带 .js 后缀，沿用原风格） | ✓ |
++| tasks.md:13（T2） | gif-encoder.js:20 → `../../utils/color-quantize.js`（utils 文件两层深） | ✓ |
++| tasks.md:19（T3） | colorize-detect.js:10 → `../../utils/image-process`（utils 两层深） | ✓ |
++| tasks.md:26（T4） | image-hash.js:17 / format-recommend.js:20 → 两层 | ✓ |
++
++后缀风格区分（gif-encoder 带 `.js`、format-recommend 不带）在 §4 表格与 T2/T4 中均与源码原文一致，v2 要求的「沿用原风格」已落实。
++
++**源码行号抽查（4/4 仍准确，非陈旧引用）**：`utils/gif-encoder.js:20` = `require('./color-quantize.js')`、`utils/format-recommend.js:20` = `require('./color-quantize')`、`utils/colorize-detect.js:10` = `require('./image-process')`、`utils/image-hash.js:17` = `require('./image-process')`。utils/ 目录实测 20 个 js 文件，与 spec 落位闭环口径（留主包 8 + 迁移 12 = 20）一致。
++
++备注（不构成问题）：spec.md:57 的概述「两处引用改 `../../utils/color-quantize`」不带 `.js`，与 gif-encoder 原文风格（带后缀）不完全一致——但权威修正清单在 §4 表格与 T2（均精确带后缀），且小程序 require 对不带后缀形式同样可解析，无行为风险。
++
++### N-2（Minor）§5.2「13 个文件」→ 12 个 —— 已修 ✅
++
++spec.md:79 现为「`utils/piexif.js` 等 **12 个文件** → 各分包 `utils/`（pkgTools 5 个 + pkgGif 6 个 + pkgAi 1 个，见 §3；color-quantize 不迁）」。grep 全文无「13 个」残留。构成 5+6+1=12 与 §3 各包头（pkgTools 5 utils / pkgGif 6 utils / pkgAi 1 util）逐项对账一致。
++
++### N-3（Minor）T2-T4 验证前缀口径 —— 已修 ✅（方案强于 v2 建议）
++
++tasks.md:15（T2 验证）现为：「`grep -rn "require('./" pkgGif/utils/` 逐条确认目标同包或已改；**用 node 脚本解析 pkgGif/ 下全部 require 并核验目标文件存在**（替代前缀口径——分包页引本包 utils 与包内 utils 引主包同为 `../../utils/` 前缀，前缀 grep 无法区分合法性）；工具编译无错」。
++
++- 括号内替换理由的路径推演实测成立：页面 `pkgX/pages/<n>/x.js` 上两层 = pkgX 根（→本包 utils）；utils `pkgX/utils/x.js` 上两层 = 项目根（→主包 utils）——两者字符串前缀同为 `../../utils/`，前缀 grep 确实无法区分。
++- 「解析全部 require + 核验目标文件存在」比 v2 建议的「两类合法命中」文字口径更强：能同时捕获层数错误（跳出项目根）、漏改 `./xxx`、指向不存在模块的全部情况。
++- T3:20、T4:27「验证同 T2（含 `require('./` 扫描）」按引用覆盖，无遗漏。
++
++### M-7（Minor）§3 依据表述 —— 已修 ✅
++
++- spec.md:52：「image-process.js（**14 页 + image-uploader 组件引用**，分包可 require 主包）」——与 v1 实测（14 页 + image-uploader.js:2）一致。
++- spec.md:55：「upscale-local.js（**crop/aiUpscale/aiColorize** 引用）、saliency-detect.js（crop 引用）」——与 v1 实测（crop.js + aiUpscale.js:6 + aiColorize.js:6）一致。
++- grep 全文无「15 页」残留。
++
++## 二、新引入问题检查 —— 无 ✅
++
++通读修改后 spec.md（122 行）与 tasks.md（37 行）全文：
++
++1. **无残留错误层数**：`../../../` 仅存于页面语境 5 处（见 N-1 表），utils 语境零残留。
++2. **无旧口径残留**：「13 个 / 15 页 / 32 个」全 grep 0 命中。
++3. **无新矛盾**：§3:57、§4:64-65、§5.3、T2:12-13 的层级表述互相一致（页面三层 / utils 两层，且 §4:65 显式警示区别）；§5.2 的 12 与 §3 各包清单一致；T2/T3/T4 与 §4 修正表逐行对得上。
++4. v1/v2 已修项无回退抽查：§3:45「4 页引用，gifDrafts 不直接用」、§3:56 id-photo-geometry、§3:58 image-uploader 绝对路径、§5.6/T5 带引号左边界 grep 模式、§7.2「33 个注册页面」均原样保持正确。
++
++## 三、终审结论
++
++v2 的 4 项未决发现全部修复到位且未引入新问题；spec 依赖图、修正清单、验证手段经三轮对抗核验均已闭环。**批准进入阶段 3（coding）**，按 `.harness/agents/application-owner.md` 流程与 tasks.md T1-T6 执行。
+diff --git a/.harness/changes/tune-coldstart-subpackage-20260915/request_analysis/spec.md b/.harness/changes/tune-coldstart-subpackage-20260915/request_analysis/spec.md
+new file mode 100644
+index 0000000..2528500
+--- /dev/null
++++ b/.harness/changes/tune-coldstart-subpackage-20260915/request_analysis/spec.md
+@@ -0,0 +1,121 @@
++# spec：冷启动优化——主包分包重构 + 死重清理
++
++- 类型：tune（性能优化，纯前端工程结构调整）
++- 日期：2026-09-15（北京）
++- 背景数据源：We分析 小程序全局诊断日报 2026-09-14
++
++## 1. 问题与根因
++
++**现象**：平均冷启动耗时当前 1439.5ms，基准 360ms（+299.9%），归因版本 5.0.1（贡献度 100%）。
++
++**数据解读（重要）**：
++- 走势 09-08:2877 → 09-11:360 → 09-12:1439.5，剧烈震荡 = 小样本长尾主导均值；
++- 唯一在网版本 5.0.1 发布于 07-19，飙升发生在 09-08，期间无新代码发布 → 归因"版本"无信息量；
++- 最可能根因：推广期（小红书/公众号引流）**首装新用户占比上升**——首装冷启动需全量下载主包。
++
++**代码侧唯一可控杠杆**：33 个注册页面全部在主包（pages 1282K + utils 312K ≈ 1.65MB 源码），无 subpackages、无 preloadRule。GIF 功能上线已把包体顶到 2MB 上限（见 commit d80aca2 "fix: 上传大于2MB，调整"）。
++
++**已做对、不再动的部分**：`lazyCodeLoading: "requiredComponents"`（app.json:46）、app.js onLaunch 轻量、首页 onLoad 轻量、无 tabBar、无 UI 库。
++
++## 2. 方案总览（用户已裁决：激进分包）
++
++四件事：
++1. **三分包**：pkgAi / pkgGif / pkgTools，主包只留 index + 8 个高频工具页；
++2. **preloadRule**：首页全网络预下载 pkgAi；
++3. **utils 随页迁移**（依赖图已验证，见 §4）；
++4. **死重清理**：`pages/aiEnhance/`（17K，未注册无入口，2026-03 遗留）+ `images/placeholder.png`（35K，全仓无引用）。
++
++**不涉及**：云函数三件套、限流、密钥、内容安全（`content-check.js` 留主包，分包页照常 require）、设计 token（wxss 随页整体迁移，内容不改）。
++
++## 3. 页面落位清单
++
++### 主包（9 页，~470K 源码）
++| 页面 | 依据 |
++|---|---|
++| index | 入口 |
++| compress / crop / convert / watermark / filter / splice / compare | 高频基础工具 |
++| idPhoto | 商业价值高（首页精选前3） |
++
++### pkgAi（12 页 + 1 util，~408K）
++aiDescribe, aiCaption, aiMatting, aiStyle, aiOCR, aiEraser, aiUpscale, aiColorize, aiChat, aiOutpaint, aiTextToImage, aiAvatar
++- 迁入 util：`colorize-detect.js`（仅 aiColorize 引用）
++
++### pkgGif（5 页 + 6 utils，~309K）
++makeGif, gifEditor, gifBatch, gifReport, gifDrafts
++- 迁入 utils：gif-encoder / gif-decoder / gif-report / gif-compress / gif-effects / gif-frame-ops（仅被本包 4 页引用：makeGif/gifBatch/gifEditor/gifReport，gifDrafts 不直接用；makeGif 依赖 gif-encoder，故随包走）
++
++### pkgTools（7 页 + 5 utils，~372K）
++exif, similarity, formatRecommend, colorAnalysis, hiddenWatermark, pdfToImage, imgToPdf
++- 迁入 utils：piexif.js(78K) / exif-tags.js / image-hash.js / format-recommend.js / hidden-watermark.js
++
++### 留主包的 utils / components（被主包页、全局、或跨分包引用）
++- image-process.js（14 页 + image-uploader 组件引用，分包可 require 主包）
++- analytics.js、content-check.js（全局/多数页引用）
++- compare-helper.js（主包 4 页 + pkgAi 多页引用）
++- upscale-local.js（crop/aiUpscale/aiColorize 引用）、saliency-detect.js（crop 引用）
++- id-photo-geometry.js（idPhoto 引用，idPhoto 留主包）
++- **color-quantize.js（Critical 修正）**：被 `pkgGif/utils/gif-encoder.js:20`（懒加载 medianCut）和 `pkgTools/utils/format-recommend.js:20` 双跨分包引用 → 必须留主包（7.8K），两处引用改 `../../utils/color-quantize`（utils 文件两层深，**不是**页面的三层规则）
++- `components/image-uploader/`：被 compress/splice（主包）+ aiAvatar/aiOutpaint/aiStyle/aiTextToImage（→pkgAi）经 `usingComponents` **绝对路径** `/components/...` 引用 → 留主包，零改动
++
++## 4. 依赖图验证结论（已 grep 全仓）
++
++- `utils/xxx` 引用形式两种：`require('../../utils/piexif.js')`（带 .js 后缀）与 `require('../../utils/image-process')`（不带）。**迁移时 grep 必须两种模式都查**（本 spec 前期分析曾因只查不带后缀形式漏报 piexif 引用）。
++- 分包页面 require 主包 utils 合法（`../../../utils/x`）；反向（主包 require 分包）非法——已验证不存在反向依赖。
++- 分包内部镜像 `pkgX/utils/` 目录结构后，**页面对本包 utils 的相对路径 `../../utils/x` 不变**，仅需改引用主包的路径为三层 `../../../`（页面在 `pkgX/pages/<name>/` 共三层深）。
++- **注意层级**：被迁移的 utils 文件在 `pkgX/utils/` 只有两层深，指向主包 utils 用**两层** `../../utils/`；三层 `../../../` 是页面专属规则，套到 utils 上会跳出项目根（评审 N-1 教训）。
++- **被迁移 utils 自身的内部 require（评审 Important 修正）**，逐处定点修：
++  | 文件（迁后位置） | 原 require | 改为 |
++  |---|---|---|
++  | pkgAi/utils/colorize-detect.js:10 | `./image-process` | `../../utils/image-process` |
++  | pkgTools/utils/image-hash.js:17 | `./image-process` | `../../utils/image-process` |
++  | pkgTools/utils/format-recommend.js:20 | `./color-quantize` | `../../utils/color-quantize` |
++  | pkgGif/utils/gif-encoder.js:20 | `./color-quantize.js` | `../../utils/color-quantize.js` |
++  | pkgGif/utils/gif-compress.js:19,20 | `./gif-encoder.js` / `./gif-frame-ops.js` | **不变**（同包） |
++- 迁移 utils 时必须 grep `require('./` 全扫一遍，`./` 目标要么同包要么已列入上表，不允许漏网。
++
++## 5. 具体改动
++
++1. `git mv` 页面目录：`pages/aiXxx` → `pkgAi/pages/aiXxx`（12 个）、`pkgGif/pages/`（5 个）、`pkgTools/pages/`（7 个）。
++2. `git mv` utils：`utils/piexif.js` 等 12 个文件 → 各分包 `utils/`（pkgTools 5 个 + pkgGif 6 个 + pkgAi 1 个，见 §3；color-quantize 不迁）。
++3. **require 修正**：分包页引用主包 utils/image-process、analytics、content-check、compare-helper、upscale-local 的 `../../utils/` → `../../../utils/`；引用本包 utils 的不变。
++4. `app.json`：`pages` 只留 9 页；新增 `subpackages`（3 个，root+pages）+ `preloadRule`（`pages/index/index` → network:all → `["pkgAi"]`）。
++5. `pages/index/index.js`：groups/featured 全部 url 前缀更新（约 26 处 `/pages/` → `/pkgX/pages/`）。
++6. 全仓 grep 硬编码旧路径，**用带引号左边界的模式**（评审 Important 修正：裸 `/pages/ai` 会匹配新路径 `/pkgAi/pages/aiXxx` 造成全面假阳性）：`grep -rnE "['\"]/pages/(ai[A-Z]|gif|makeGif|exif|similarity|formatRecommend|colorAnalysis|hiddenWatermark|pdfToImage|imgToPdf)" --include=*.js --include=*.json --include=*.wxml`，期望 0 命中。分享 path/navigator 跳转的硬编码均已确认在该模式覆盖内。
++7. `usingComponents` 引用 `components/image-uploader` 已确认全部为绝对路径 `/components/...`，迁移页 json 无需改动（编码时仍 grep 复核一遍相对路径形式的组件引用）。
++8. 删除：`pages/aiEnhance/`、`images/placeholder.png`。
++
++## 6. 风险与已知代价
++
++| 风险 | 影响 | 处置 |
++|---|---|---|
++| 老分享卡片/外部直达链接指向旧路径 | 打开降级到首页（微信行为） | 接受：项目早期，外链存量小 |
++| require 漏改 | 开发者工具编译报错 | 静态双验证：工具编译 + 全仓 grep 两种 require 形式 |
++| 首次进 pkgGif/pkgTools 有分包下载等待 | 低频页秒级 loading | 预期行为；pkgAi 已 preload 规避 |
++| preloadRule network:all 消耗用户流量（~410K） | 4G 用户首访多耗流量 | 接受（AI 为商业重点）；可后续改 wifi |
++| 分包各自独立缓存 | 微信分包缓存策略与主包独立 | 无需处理 |
++
++## 7. 验收标准
++
++1. 开发者工具编译 **0 error**；「代码依赖分析」主包 < 600K（源码口径 ~470K，含 minify 余量）；
++2. 33 个注册页面（app.json 现有 33 页不变；aiEnhance 本就未注册，删除不影响注册数）真机预览全部可达；
++3. 功能抽测 5 条链路：compress（主包内）、aiMatting（分包→主包 utils）、gifEditor（分包内 utils + gif-encoder）、exif（piexif 迁移后 EXIF 读正常）、pdfToImage（云函数链路不受影响）；
++4. 上线后次日 We分析 冷启动 P50/P90 对比（数据侧观察项，非阻塞验收）。
++
++## 8. 并行行动项（用户，方案 B）
++
++- mp 后台 → 版本管理：核实 09-08 前后是否有未 bump 版本号的重新发布；
++- We分析 → 性能 → 启动分析：看 P50/P90 + 启动漏斗（下载/注入/渲染）定位慢在哪段；
++- We分析 → 用户：09-08 前后新用户占比是否跳升（验证首装假设）。
++
++## 9. 必问清单对照
++
++| 项 | 答案 |
++|---|---|
++| 执行层 | 纯 on-device 工程结构，无云函数改动 |
++| 页面注册 | app.json pages+subpackages、index.js urls；无新增页面（LAUNCH_DATES/icon 不动） |
++| 云函数三件套 | 不涉及 |
++| 限流 featureKey | 不涉及 |
++| 密钥 | 不涉及 |
++| 内容安全 | 不涉及（分层不变） |
++| 设计 token | 不涉及（wxss 随页迁移不改内容） |
++| 成功标准 | §7 |
+diff --git a/.harness/changes/tune-coldstart-subpackage-20260915/request_analysis/tasks.md b/.harness/changes/tune-coldstart-subpackage-20260915/request_analysis/tasks.md
+new file mode 100644
+index 0000000..b64e43f
+--- /dev/null
++++ b/.harness/changes/tune-coldstart-subpackage-20260915/request_analysis/tasks.md
+@@ -0,0 +1,37 @@
++# tasks：冷启动分包重构
++
++> 每任务独立可验证；T1-T4 无相互依赖可任意顺序，T5 依赖 T1-T4 全部完成，T6 收口。
++
++## T1 死重清理
++- 删 `pages/aiEnhance/`（未注册无入口）+ `images/placeholder.png`（无引用）
++- 验证：`grep -r aiEnhance` 无残留引用；app.json 本就无注册
++
++## T2 建 pkgGif
++- `git mv` 5 页（makeGif/gifEditor/gifBatch/gifReport/gifDrafts）→ `pkgGif/pages/`
++- `git mv` 6 utils（gif-encoder/decoder/report/compress/effects/frame-ops）→ `pkgGif/utils/`
++- 修正分包页 require 主包（image-process/analytics/content-check 等）`../../` → `../../../`（页面三层）
++- 修正 **pkgGif/utils/gif-encoder.js:20** `./color-quantize.js` → `../../utils/color-quantize.js`（color-quantize 留主包，Critical；utils 文件两层深）
++- gif-compress.js 的 `./gif-encoder.js`/`./gif-frame-ops.js` 同包不动
++- 验证：`grep -rn "require('./" pkgGif/utils/` 逐条确认目标同包或已改；**用 node 脚本解析 pkgGif/ 下全部 require 并核验目标文件存在**（替代前缀口径——分包页引本包 utils 与包内 utils 引主包同为 `../../utils/` 前缀，前缀 grep 无法区分合法性）；工具编译无错
++
++## T3 建 pkgAi
++- `git mv` 12 页 → `pkgAi/pages/`；`colorize-detect.js` → `pkgAi/utils/`
++- require 修正同 T2；**colorize-detect.js:10** `./image-process` → `../../utils/image-process`（utils 两层深）
++- 验证同 T2（含 `require('./` 扫描）
++
++## T4 建 pkgTools
++- `git mv` 7 页（exif/similarity/formatRecommend/colorAnalysis/hiddenWatermark/pdfToImage/imgToPdf）→ `pkgTools/pages/`
++- `git mv` 5 utils（piexif/exif-tags/image-hash/format-recommend/hidden-watermark）→ `pkgTools/utils/`（**color-quantize 不迁**，留主包）
++- require 修正同 T2（注意 exif.js 的 `../../utils/piexif.js` 带 .js 后缀、指向本包**不变**）
++- **image-hash.js:17** `./image-process` → `../../utils/image-process`；**format-recommend.js:20** `./color-quantize` → `../../utils/color-quantize`（utils 两层深）
++- 验证同 T2（含 `require('./` 扫描）
++
++## T5 注册与入口更新
++- `app.json`：pages 留 9 页 + subpackages + preloadRule（index→all→[pkgAi]）
++- `pages/index/index.js`：全部 url 前缀更新（~26 处）
++- 全仓 grep 旧路径硬编码，**带引号左边界模式**：`grep -rnE "['\"]/pages/(ai[A-Z]|gif|makeGif|exif|similarity|formatRecommend|colorAnalysis|hiddenWatermark|pdfToImage|imgToPdf)" --include=*.js --include=*.json --include=*.wxml`，期望 0 命中（裸 `/pages/ai` 会匹配新路径 `/pkgAi/pages/...` 假阳性，禁用）
++- 复核迁移页 json 无相对路径形式的 usingComponents（当前已确认 image-uploader 全为绝对路径）
++
++## T6 编译与体积核对
++- 微信开发者工具编译 0 error；代码依赖分析：主包 <600K、三分包各 <500K
++- 产出体积数字进 coding_report
+diff --git a/.harness/changes/tune-coldstart-subpackage-20260915/summary.md b/.harness/changes/tune-coldstart-subpackage-20260915/summary.md
+new file mode 100644
+index 0000000..58a43d2
+--- /dev/null
++++ b/.harness/changes/tune-coldstart-subpackage-20260915/summary.md
+@@ -0,0 +1,43 @@
++# tune-coldstart-subpackage-20260915
++
++- 类型：tune
++- 创建：2026-09-15（北京）
++- 状态：进行中
++
++## 阶段进度
++| 阶段 | 状态 | 评审轮次 | 产出物 |
++|---|---|---|---|
++| 1 需求分析 | ✅ | - | request_analysis/spec.md, tasks.md |
++| 3 编码实现 | ✅ | - | coding/coding_report_v1.md（含验证证据 + 迁移/验证脚本工件） |
++| 4 编码评审 | ⏳ | - | - |
++| 5 验证用例设计 | - | - | - |
++| 6 验证用例评审 | - | - | - |
++| 7 构建部署 | - | - | - |
++| 8 预览验证 | - | - | - |
++| 9 部署验证 | - | - | - |
++| 10 用户确认 | - | - | - |
++
++## 验证用例数
++待阶段5
++
++## 关键决议
++- HITL①（2026-09-15）：方案 A+B 都做（分包治本 + 用户后台数据核实）；分包粒度取激进方案（主包只留 index+8 高频页）。
++- HITL②（2026-09-15）：spec 经 3 轮评审 APPROVED，待用户批准进编码。
++- HITL③④⑤：-
++
++## 评审轮次记录
++- v1（❌）：Critical×1——gif-encoder(→pkgGif) 懒加载 `./color-quantize` 与 color-quantize(→pkgTools) 跨分包非法，改为 color-quantize 留主包；Important×2——被迁 utils 自身内部 require 修正缺失、T5 残留 grep 必然假阳性；Minor×5。
++- v2（❌）：N-1 Critical——修 v1 时把 utils 文件指向主包的层数错写成三层（应为两层，v1 引入）；N-2/N-3/M-7 Minor。
++- v3（APPROVED）：4/4 已修，0 新问题。
++
++## 背景速记
++- 诊断：冷启动 1439.5ms vs 基准 360ms（+299.9%）；根因最可能为推广期首装占比上升 + 主包 1.65MB 无分包。
++- 已确认死代码：pages/aiEnhance（17K，2026-03 遗留未注册）、images/placeholder.png（35K 无引用）。
++- 用户并行行动项（方案 B）：后台核实版本发布记录 / 启动漏斗分位数 / 新用户占比。
++
++## 产出物索引
++- request_analysis/spec.md
++- request_analysis/tasks.md
++
++## 教训沉淀
++- （分析期）grep require 需同时查带 `.js` 后缀与不带两种形式，否则漏报（piexif.js 曾被误判为死代码）。
+diff --git a/app.json b/app.json
+index f867a1e..f9b2380 100644
+--- a/app.json
++++ b/app.json
+@@ -7,33 +7,56 @@
+     "pages/watermark/watermark",
+     "pages/filter/filter",
+     "pages/splice/splice",
+-    "pages/aiDescribe/aiDescribe",
+-    "pages/aiCaption/aiCaption",
+-    "pages/aiMatting/aiMatting",
+-    "pages/aiStyle/aiStyle",
+-    "pages/aiOCR/aiOCR",
+     "pages/compare/compare",
+-    "pages/aiEraser/aiEraser",
+-    "pages/imgToPdf/imgToPdf",
+-    "pages/exif/exif",
+-    "pages/aiUpscale/aiUpscale",
+-    "pages/aiColorize/aiColorize",
+-    "pages/aiChat/aiChat",
+-    "pages/similarity/similarity",
+-    "pages/makeGif/makeGif",
+-    "pages/colorAnalysis/colorAnalysis",
+-    "pages/formatRecommend/formatRecommend",
+-    "pages/idPhoto/idPhoto",
+-    "pages/hiddenWatermark/hiddenWatermark",
+-    "pages/aiOutpaint/aiOutpaint",
+-    "pages/aiTextToImage/aiTextToImage",
+-    "pages/aiAvatar/aiAvatar",
+-    "pages/pdfToImage/pdfToImage",
+-    "pages/gifEditor/gifEditor",
+-    "pages/gifBatch/gifBatch",
+-    "pages/gifReport/gifReport",
+-    "pages/gifDrafts/gifDrafts"
++    "pages/idPhoto/idPhoto"
+   ],
++  "subpackages": [
++    {
++      "root": "pkgAi",
++      "pages": [
++        "pages/aiDescribe/aiDescribe",
++        "pages/aiCaption/aiCaption",
++        "pages/aiMatting/aiMatting",
++        "pages/aiStyle/aiStyle",
++        "pages/aiOCR/aiOCR",
++        "pages/aiEraser/aiEraser",
++        "pages/aiUpscale/aiUpscale",
++        "pages/aiColorize/aiColorize",
++        "pages/aiChat/aiChat",
++        "pages/aiOutpaint/aiOutpaint",
++        "pages/aiTextToImage/aiTextToImage",
++        "pages/aiAvatar/aiAvatar"
++      ]
++    },
++    {
++      "root": "pkgGif",
++      "pages": [
++        "pages/makeGif/makeGif",
++        "pages/gifEditor/gifEditor",
++        "pages/gifBatch/gifBatch",
++        "pages/gifReport/gifReport",
++        "pages/gifDrafts/gifDrafts"
++      ]
++    },
++    {
++      "root": "pkgTools",
++      "pages": [
++        "pages/exif/exif",
++        "pages/similarity/similarity",
++        "pages/formatRecommend/formatRecommend",
++        "pages/colorAnalysis/colorAnalysis",
++        "pages/hiddenWatermark/hiddenWatermark",
++        "pages/pdfToImage/pdfToImage",
++        "pages/imgToPdf/imgToPdf"
++      ]
++    }
++  ],
++  "preloadRule": {
++    "pages/index/index": {
++      "network": "all",
++      "packages": ["pkgAi"]
++    }
++  },
+   "window": {
+     "backgroundTextStyle": "light",
+     "navigationBarBackgroundColor": "#0A0E27",
+diff --git a/images/placeholder.png b/images/placeholder.png
+deleted file mode 100644
+index 53a6b36..0000000
+--- a/images/placeholder.png
++++ /dev/null
+@@ -1 +0,0 @@
+-iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAAsTAAALEwEAmpwYAAAGGmlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNy4xLWMwMDAgNzkuYjBmOGJlOSwgMjAyMS8xMi8wOC0xOToxMTo1MyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIDIzLjEgKE1hY2ludG9zaCkiIHhtcDpDcmVhdGVEYXRlPSIyMDI1LTAxLTAxVDEyOjAwOjAwKzA4OjAwIiB4bXA6TW9kaWZ5RGF0ZT0iMjAyNS0wMS0wMVQxMjowMDowMCswODowMCIgeG1wOk1ldGFkYXRhRGF0ZT0iMjAyNS0wMS0wMVQxMjowMDowMCswODowMCIgZGM6Zm9ybWF0PSJpbWFnZS9wbmciIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6MTIzNDU2NzgiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6MTIzNDU2NzgiIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDoxMjM0NTY3OCI+IDx4bXBNTTpIaXN0b3J5PiA8cmRmOlNlcT4gPHJkZjpsaSBzdEV2dDphY3Rpb249ImNyZWF0ZWQiIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6MTIzNDU2NzgiIHN0RXZ0OndoZW49IjIwMjUtMDEtMDFUMTI6MDA6MDArMDg6MDAiIHN0RXZ0OnNvZnR3YXJlQWdlbnQ9IkFkb2JlIFBob3Rvc2hvcCAyMy4xIChNYWNpbnRvc2gpIi8+IDwvcmRmOlNlcT4gPC94bXBNTTpIaXN0b3J5PiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PgH//v38+/r5+Pf29fTz8vHw7+7t7Ovq6ejn5uXk4+Lh4N/e3dzb2tnY19bV1NPS0dDPzs3My8rJyMfGxcTDwsHAv769vLu6ubi3trW0s7KxsK+urayrqqmop6alpKOioaCfnp2cm5qZmJeWlZSTkpGQj46NjIuKiYiHhoWEg4KBgH9+fXx7enl4d3Z1dHNycXBvbm1sa2ppaGdmZWRjYmFgX15dXFtaWVhXVlVUU1JRUE9OTUxLSklIR0ZFRENCQUA/Pj08Ozo5ODc2NTQzMjEwLy4tLCsqKSgnJiUkIyIhIB8eHRwbGhkYFxYVFBMSERAPDg0MCwoJCAcGBQQDAgEAACH5BAEAAAAALAAAAACAAAgAAAL/hI+py+0Po5y02ouz3rz7D4biSJbmiabqyrbuC8fyTNf2jef6zvf+DwwKh8Si8YhMKpfMpvMJjUqn1Kr1is1qt9yu9wsOi8fksvmMTqvX7Lb7DY/L5/S6/Y7P6/f8vv8PGCg4SFhoeIiYqLjI2Oj4CBkpOUlZaXmJmam5ydnp+QkaKjpKWmp6ipqqusra6voKGys7S1tre4ubq7vL2+v7CxwsPExcbHyMnKy8zNzs/AwdLT1NXW19jZ2tvc3d7f0NHi4+Tl5ufo6err7O3u7+Dh8vP09fb3+Pn6+/z9/v/w8woMCBBAsaPIgwocKFDBs6fAgxosSJFCtavIgxo8aN/xE+fIATx8rRAgxIkTJkyhT4xAtS5kixYt/5w9cvwZEmu0KVOm9PxlzQGvOJLk27cuPXo2PNnz4HqUbVCuWrlu7du3c+VGr1K9eQvEWK5cuXbt2+fev0MObLkuHHjxpUuXbty//zHksVdm0qdOn1Rg0rNwTQOUIbDu3r17BcIk27d+/fwIHOLJkx48iQ4c2bN2/cm0Jvypx7du3jR2HNzbt27d+/e3Lx48e/a7cuXhjx49//fjR+Jrl279u//RhgkBB4a/vIXHx58u/6gz59/Pv79//xL+Pn/38+fQIEX/q1+EnT5++/vz5+1f/69Pfv//+lP/78+//fyE+C/v38+fPnz+Pfz58//v/79+/v3///wAowlk7wwVgAy6YOMFGH1Y4YQhbhRh/iBqJiKGHxXo4QYgotijihiS6WKPIKIZYogojPPghCjl+CKOdCqII41ADnjkDqeWaORVbJ45FJZolkkFqGKWSWaVYZ5JLVZinlllx26eWXY08p5JZhbqnllpZ6KemmdA0wAAAAAAd8Dw/wcQoixQNJv/D90G6+Ocfv8bFJnxxwwUCX3LBBRdc8MEEEFyQwAAOLTBB2ds8MMT+0www1LHnDCCAZ+coMNN7ywwQ04bLBBSit8MMRRJwwxQY7HBHFkM8MMURayxxRsNPLGGmmk8MMTyzxxBPHXPHFFRdc8cUYJy5xxRd/PHHGGWfc8cghdxJR5JqvIqnHXnYkkkeUqTVZJJ5U8onllmS6oCyVSUYYJJJKD2mkkkRGKSiUU0YpJZZWDEmlmnyCWaWaSUkbp5JaRClollFIAKqWVUdnx5JZdTUGkmll1EA6eWWXH7O5JdhiQkMnlpfPHKGeWcccccBgxxxxEKPLHIIrcccjZJ5yxxhw3PHEFGm8ccgYph5xxyCSXHPLIKJ+8sgkopwzySSS3DLLKK28s8sop6wzyyizn/PLLMM8s8swyzyzzSPTTLLPfNLMsss8w26+yzzDbbbPPMNNdcM880124zzzjzDfbPMNNOcMc80156xzzzjzDfbPMNNP880012yzzTj7DbbPPNOv880126yzTwjT3TS320M9vtdNNghr0y0TTT73PNPNuuMc880216zzzzj3PPPNNuecs88012yzzzjzbXfPPONu+cs80126zzzzy3XfPNOv+cs80126zzzzz3XfPNOv8c80126zzzjz3fbPMNNP880012yzzTj7DfbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzzTv7DLbPPMOvfMNNuuMc9s80w12yzw==
+diff --git a/pages/aiEnhance/aiEnhance.js b/pages/aiEnhance/aiEnhance.js
+deleted file mode 100644
+index b048cc7..0000000
+--- a/pages/aiEnhance/aiEnhance.js
++++ /dev/null
+@@ -1,129 +0,0 @@
+-// pages/aiEnhance/aiEnhance.js
+-Page({
+-  data: {
+-    imageSrc: '',
+-    originalFileID: '',
+-    enhancedFileID: '',
+-    enhancedSrc: '',
+-    selectedType: 'upscale',
+-    types: [
+-      { value: 'upscale', label: '超分辨率', icon: '🔍', desc: '2倍放大' },
+-      { value: 'denoise', label: '智能降噪', icon: '✨', desc: '去除噪点' },
+-      { value: 'sharpen', label: '清晰化', icon: '💎', desc: '增强细节' }
+-    ],
+-    loading: false
+-  },
+-
+-  chooseImage() {
+-    const that = this;
+-    wx.chooseMedia({
+-      count: 1,
+-      mediaType: ['image'],
+-      sourceType: ['album', 'camera'],
+-      success(res) {
+-        that.setData({
+-          imageSrc: res.tempFiles[0].tempFilePath,
+-          originalFileID: '',
+-          enhancedFileID: '',
+-          enhancedSrc: ''
+-        });
+-        that.uploadImage(res.tempFiles[0].tempFilePath);
+-      }
+-    });
+-  },
+-
+-  async uploadImage(filePath) {
+-    const that = this;
+-    // 内容安全：违规则拦截（已弹标准化提示，不暴露原因），并清掉已展示的图
+-    const { guardImage } = require('../../utils/content-check');
+-    if (!(await guardImage(filePath))) {
+-      this.setData({ imageSrc: '', originalFileID: '' });
+-      return;
+-    }
+-    wx.showLoading({ title: '上传中...', mask: true });
+-    const cloudPath = `aiEnhance/${Date.now()}.jpg`;
+-
+-    wx.cloud.uploadFile({
+-      cloudPath: cloudPath,
+-      filePath: filePath,
+-      success: res => {
+-        that.setData({ originalFileID: res.fileID });
+-        wx.hideLoading();
+-      },
+-      fail: err => {
+-        console.error('上传失败', err);
+-        wx.hideLoading();
+-        wx.showToast({ title: '上传失败', icon: 'none' });
+-      }
+-    });
+-  },
+-
+-  selectType(e) {
+-    this.setData({
+-      selectedType: e.currentTarget.dataset.type,
+-      enhancedFileID: '',
+-      enhancedSrc: ''
+-    });
+-  },
+-
+-  async enhanceImage() {
+-    const that = this;
+-    if (!that.data.originalFileID) {
+-      wx.showToast({ title: '请先选择图片', icon: 'none' });
+-      return;
+-    }
+-
+-    that.setData({ loading: true });
+-    wx.showLoading({ title: 'AI增强中...', mask: true });
+-
+-    try {
+-      const res = await wx.cloud.callFunction({
+-        name: 'aiImageEnhance',
+-        data: {
+-          fileID: that.data.originalFileID,
+-          type: that.data.selectedType
+-        }
+-      });
+-
+-      wx.hideLoading();
+-      if (res.result.success) {
+-        // 如果有提示消息，显示给用户
+-        if (res.result.message) {
+-          wx.showToast({
+-            title: res.result.message,
+-            icon: 'none',
+-            duration: 3000
+-          });
+-        }
+-
+-        // 显示增强后的图片
+-        wx.cloud.getTempFileURL({
+-          fileList: [res.result.fileID]
+-        }).then(urlRes => {
+-          that.setData({
+-            enhancedFileID: res.result.fileID,
+-            enhancedSrc: urlRes.fileList[0].tempFileURL
+-          });
+-        });
+-      } else {
+-        wx.showToast({ title: '增强失败', icon: 'none' });
+-      }
+-    } catch (err) {
+-      console.error('调用失败', err);
+-      wx.hideLoading();
+-      wx.showToast({ title: '增强失败', icon: 'none' });
+-    } finally {
+-      that.setData({ loading: false });
+-    }
+-  },
+-
+-  saveEnhanced() {
+-    if (!this.data.enhancedSrc) return;
+-    wx.saveImageToPhotosAlbum({
+-      filePath: this.data.enhancedSrc,
+-      success() {
+-        wx.showToast({ title: '已保存', icon: 'success' });
+-      }
+-    });
+-  }
+-});
+diff --git a/pages/aiEnhance/aiEnhance.json b/pages/aiEnhance/aiEnhance.json
+deleted file mode 100644
+index 2e22b4f..0000000
+--- a/pages/aiEnhance/aiEnhance.json
++++ /dev/null
+@@ -1 +0,0 @@
+-{"navigationBarTitleText": "AI图片增强", "usingComponents": {}}
+diff --git a/pages/aiEnhance/aiEnhance.wxml b/pages/aiEnhance/aiEnhance.wxml
+deleted file mode 100644
+index e0af3bb..0000000
+--- a/pages/aiEnhance/aiEnhance.wxml
++++ /dev/null
+@@ -1,41 +0,0 @@
+-<view class="container">
+-  <view class="page-header">
+-    <text class="page-title">AI图片增强</text>
+-    <text class="page-subtitle">智能提升图片质量</text>
+-  </view>
+-
+-  <view class="image-section">
+-    <view class="image-row">
+-      <view class="image-box">
+-        <text class="box-label">原图</text>
+-        <image class="box-image {{imageSrc ? '' : 'placeholder'}}" src="{{imageSrc}}" mode="aspectFit" bindtap="chooseImage" />
+-      </view>
+-      <view class="image-box">
+-        <text class="box-label">增强后</text>
+-        <image class="box-image {{enhancedSrc ? '' : 'placeholder'}}" src="{{enhancedSrc}}" mode="aspectFit" />
+-      </view>
+-    </view>
+-  </view>
+-
+-  <view class="type-section">
+-    <view class="section-title">选择增强类型</view>
+-    <view class="type-list">
+-      <view class="type-item {{selectedType === item.value ? 'active' : ''}}"
+-            wx:for="{{types}}" wx:key="value" data-type="{{item.value}}" bindtap="selectType">
+-        <text class="type-icon">{{item.icon}}</text>
+-        <text class="type-label">{{item.label}}</text>
+-        <text class="type-desc">{{item.desc}}</text>
+-      </view>
+-    </view>
+-  </view>
+-
+-  <view class="generate-section">
+-    <button class="generate-btn" bindtap="enhanceImage" disabled="{{loading || !originalFileID}}">
+-      {{loading ? '增强中...' : '开始增强'}}
+-    </button>
+-  </view>
+-
+-  <view class="action-section" wx:if="{{enhancedSrc}}">
+-    <button class="action-btn" bindtap="saveEnhanced">保存增强图片</button>
+-  </view>
+-</view>
+diff --git a/pages/aiEnhance/aiEnhance.wxss b/pages/aiEnhance/aiEnhance.wxss
+deleted file mode 100644
+index a500b9e..0000000
+--- a/pages/aiEnhance/aiEnhance.wxss
++++ /dev/null
+@@ -1,23 +0,0 @@
+-.container { min-height: 100vh; background: linear-gradient(135deg, #0A0E27 0%, #1a1f3a 100%); padding: 20rpx; }
+-.page-header { text-align: center; padding: 40rpx 0; }
+-.page-title { display: block; font-size: 48rpx; font-weight: bold; color: #fff; margin-bottom: 10rpx; }
+-.page-subtitle { display: block; font-size: 28rpx; color: #8b9dc3; }
+-.image-section { background: rgba(255,255,255,0.05); border-radius: 20rpx; padding: 20rpx; margin-bottom: 30rpx; }
+-.image-row { display: flex; gap: 15rpx; }
+-.image-box { flex: 1; }
+-.box-label { display: block; font-size: 24rpx; color: #8b9dc3; margin-bottom: 10rpx; text-align: center; }
+-.box-image { width: 100%; height: 300rpx; border-radius: 12rpx; background: rgba(255,255,255,0.1); }
+-.box-image.placeholder { display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); position: relative; }
+-.box-image.placeholder::after { content: '点击上传'; position: absolute; color: #8b9dc3; font-size: 24rpx; }
+-.section-title { font-size: 32rpx; color: #fff; margin-bottom: 20rpx; font-weight: bold; }
+-.type-section { margin-bottom: 30rpx; }
+-.type-list { display: flex; flex-wrap: wrap; gap: 15rpx; }
+-.type-item { flex: 1; min-width: 30%; background: rgba(255,255,255,0.05); border-radius: 12rpx; padding: 20rpx; text-align: center; border: 2rpx solid transparent; }
+-.type-item.active { background: rgba(102,126,234,0.2); border-color: #667eea; }
+-.type-icon { display: block; font-size: 36rpx; margin-bottom: 8rpx; }
+-.type-label { display: block; font-size: 28rpx; color: #fff; margin-bottom: 5rpx; }
+-.type-desc { display: block; font-size: 22rpx; color: #8b9dc3; }
+-.generate-btn { width: 100%; height: 90rpx; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; border-radius: 45rpx; font-size: 32rpx; font-weight: bold; border: none; }
+-.generate-btn[disabled] { background: rgba(255,255,255,0.1); color: #8b9dc3; }
+-.action-section { margin-top: 20rpx; }
+-.action-btn { width: 100%; height: 80rpx; background: rgba(102,126,234,0.3); color: #667eea; border-radius: 40rpx; font-size: 28rpx; border: none; }
+diff --git a/pages/index/index.js b/pages/index/index.js
+index 0ca03c4..c7b801e 100644
+--- a/pages/index/index.js
++++ b/pages/index/index.js
+@@ -57,12 +57,12 @@ Page({
+     currentToolIdx: 0,
+     // 热门场景直达（高频搜索词既是入口又强化首页主题相关性）
+     hotScenes: [
+-      { id: 'matting', name: '抠图换背景', icon: '✂️', url: '/pages/aiMatting/aiMatting' },
+-      { id: 'eraser', name: '去水印/消除', icon: '🩹', url: '/pages/aiEraser/aiEraser' },
++      { id: 'matting', name: '抠图换背景', icon: '✂️', url: '/pkgAi/pages/aiMatting/aiMatting' },
++      { id: 'eraser', name: '去水印/消除', icon: '🩹', url: '/pkgAi/pages/aiEraser/aiEraser' },
+       { id: 'idphoto', name: '证件照制作', icon: '🪪', url: '/pages/idPhoto/idPhoto' },
+-      { id: 'colorize', name: '老照片上色', icon: '🌈', url: '/pages/aiColorize/aiColorize' },
+-      { id: 'pdf2img', name: 'PDF转图片', icon: '📄', url: '/pages/pdfToImage/pdfToImage' },
+-      { id: 't2i', name: 'AI 画画', icon: '🎨', url: '/pages/aiTextToImage/aiTextToImage' }
++      { id: 'colorize', name: '老照片上色', icon: '🌈', url: '/pkgAi/pages/aiColorize/aiColorize' },
++      { id: 'pdf2img', name: 'PDF转图片', icon: '📄', url: '/pkgTools/pages/pdfToImage/pdfToImage' },
++      { id: 't2i', name: 'AI 画画', icon: '🎨', url: '/pkgAi/pages/aiTextToImage/aiTextToImage' }
+     ],
+     // 分组
+     groups: [
+@@ -76,7 +76,7 @@ Page({
+             id: 'aiMatting',
+             name: '智能抠图',
+             desc: '智能抠图，一键去除背景',
+-            url: '/pages/aiMatting/aiMatting',
++            url: '/pkgAi/pages/aiMatting/aiMatting',
+             available: true,
+             isNew: true
+           },
+@@ -84,7 +84,7 @@ Page({
+             id: 'aiEraser',
+             name: '去水印',
+             desc: '涂抹水印区域，AI智能修复去除',
+-            url: '/pages/aiEraser/aiEraser',
++            url: '/pkgAi/pages/aiEraser/aiEraser',
+             available: true,
+             isNew: true
+           },
+@@ -100,7 +100,7 @@ Page({
+             id: 'aiAvatar',
+             name: 'AI 百变头像',
+             desc: '15种风格头像/萌宠贴纸，一键生成',
+-            url: '/pages/aiAvatar/aiAvatar',
++            url: '/pkgAi/pages/aiAvatar/aiAvatar',
+             available: true,
+             isNew: true
+           },
+@@ -108,7 +108,7 @@ Page({
+             id: 'aiColorize',
+             name: '老照片上色',
+             desc: '黑白老照片智能上色，自然/复古风格',
+-            url: '/pages/aiColorize/aiColorize',
++            url: '/pkgAi/pages/aiColorize/aiColorize',
+             available: true,
+             isNew: true
+           },
+@@ -116,7 +116,7 @@ Page({
+             id: 'aiOCR',
+             name: '文字识别',
+             desc: '高精度OCR识别图片中的文字',
+-            url: '/pages/aiOCR/aiOCR',
++            url: '/pkgAi/pages/aiOCR/aiOCR',
+             available: true,
+             isNew: true
+           },
+@@ -124,7 +124,7 @@ Page({
+             id: 'aiCaption',
+             name: '智能配文',
+             desc: '一键生成朋友圈、小红书等社媒配文',
+-            url: '/pages/aiCaption/aiCaption',
++            url: '/pkgAi/pages/aiCaption/aiCaption',
+             available: true,
+             isNew: true
+           },
+@@ -132,7 +132,7 @@ Page({
+             id: 'aiUpscale',
+             name: '图片放大',
+             desc: '2x/4x超分辨率放大，可选降噪锐化',
+-            url: '/pages/aiUpscale/aiUpscale',
++            url: '/pkgAi/pages/aiUpscale/aiUpscale',
+             available: true,
+             isNew: true
+           },
+@@ -140,7 +140,7 @@ Page({
+             id: 'aiTextToImage',
+             name: 'AI 文生图',
+             desc: '腾讯混元3.0文生图，AI帮写提示词',
+-            url: '/pages/aiTextToImage/aiTextToImage',
++            url: '/pkgAi/pages/aiTextToImage/aiTextToImage',
+             available: true,
+             isNew: true
+           },
+@@ -148,7 +148,7 @@ Page({
+             id: 'aiChat',
+             name: '图片问答',
+             desc: '上传图片自由提问，多轮对话追问细节',
+-            url: '/pages/aiChat/aiChat',
++            url: '/pkgAi/pages/aiChat/aiChat',
+             available: true,
+             isNew: true
+           },
+@@ -156,7 +156,7 @@ Page({
+             id: 'aiOutpaint',
+             name: 'AI 扩图',
+             desc: '按比例智能扩展画面，补全背景',
+-            url: '/pages/aiOutpaint/aiOutpaint',
++            url: '/pkgAi/pages/aiOutpaint/aiOutpaint',
+             available: true,
+             isNew: true
+           },
+@@ -164,7 +164,7 @@ Page({
+             id: 'aiDescribe',
+             name: '图片描述',
+             desc: '7种风格智能描述图片，看懂画面内容',
+-            url: '/pages/aiDescribe/aiDescribe',
++            url: '/pkgAi/pages/aiDescribe/aiDescribe',
+             available: true,
+             isNew: true
+           }
+@@ -196,7 +196,7 @@ Page({
+             id: 'imgToPdf',
+             name: '多图合PDF',
+             desc: '多图按名称排序合成PDF，支持A4/16:9/1:1',
+-            url: '/pages/imgToPdf/imgToPdf',
++            url: '/pkgTools/pages/imgToPdf/imgToPdf',
+             available: true,
+             isNew: true
+           },
+@@ -204,7 +204,7 @@ Page({
+             id: 'pdfToImage',
+             name: 'PDF转图片',
+             desc: 'PDF逐页导出为PNG/JPG高清图片',
+-            url: '/pages/pdfToImage/pdfToImage',
++            url: '/pkgTools/pages/pdfToImage/pdfToImage',
+             available: true,
+             isNew: true
+           },
+@@ -236,7 +236,7 @@ Page({
+             id: 'exif',
+             name: 'EXIF信息',
+             desc: '查看图片元数据，一键抹除GPS等隐私信息',
+-            url: '/pages/exif/exif',
++            url: '/pkgTools/pages/exif/exif',
+             available: true,
+             isNew: true
+           },
+@@ -244,7 +244,7 @@ Page({
+             id: 'similarity',
+             name: '找重复图',
+             desc: '双图相似度对比，多图批量查重',
+-            url: '/pages/similarity/similarity',
++            url: '/pkgTools/pages/similarity/similarity',
+             available: true,
+             isNew: true
+           },
+@@ -252,7 +252,7 @@ Page({
+             id: 'formatRecommend',
+             name: '格式推荐',
+             desc: '分析图片特征，推荐最优格式与压缩参数',
+-            url: '/pages/formatRecommend/formatRecommend',
++            url: '/pkgTools/pages/formatRecommend/formatRecommend',
+             available: true,
+             isNew: true
+           },
+@@ -260,7 +260,7 @@ Page({
+             id: 'colorAnalysis',
+             name: '颜色分析',
+             desc: '提取图片主色调，生成色卡并导出HEX/RGB/HSL',
+-            url: '/pages/colorAnalysis/colorAnalysis',
++            url: '/pkgTools/pages/colorAnalysis/colorAnalysis',
+             available: true,
+             isNew: true
+           }
+@@ -276,7 +276,7 @@ Page({
+             id: 'makeGif',
+             name: 'GIF制作',
+             desc: '多图合成动图，本地生成无需联网',
+-            url: '/pages/makeGif/makeGif',
++            url: '/pkgGif/pages/makeGif/makeGif',
+             available: true,
+             isNew: true
+           },
+@@ -284,7 +284,7 @@ Page({
+             id: 'gifEditor',
+             name: 'GIF编辑器',
+             desc: '拆解GIF逐帧编辑，裁剪/字幕/擦除/压缩',
+-            url: '/pages/gifEditor/gifEditor',
++            url: '/pkgGif/pages/gifEditor/gifEditor',
+             available: true,
+             isNew: true
+           },
+@@ -292,7 +292,7 @@ Page({
+             id: 'gifBatch',
+             name: 'GIF批量处理',
+             desc: '多选GIF批量调速/倒放/压缩/裁剪',
+-            url: '/pages/gifBatch/gifBatch',
++            url: '/pkgGif/pages/gifBatch/gifBatch',
+             available: true,
+             isNew: true
+           },
+@@ -309,7 +309,7 @@ Page({
+             id: 'aiStyle',
+             name: '风格迁移',
+             desc: '将照片转换为艺术风格',
+-            url: '/pages/aiStyle/aiStyle',
++            url: '/pkgAi/pages/aiStyle/aiStyle',
+             available: true,
+             isNew: true
+           },
+@@ -317,7 +317,7 @@ Page({
+             id: 'hiddenWatermark',
+             name: '隐形水印',
+             desc: '文字隐形嵌入图片像素，可密钥提取还原',
+-            url: '/pages/hiddenWatermark/hiddenWatermark',
++            url: '/pkgTools/pages/hiddenWatermark/hiddenWatermark',
+             available: true,
+             isNew: true
+           }
+diff --git a/pages/aiAvatar/aiAvatar.js b/pkgAi/pages/aiAvatar/aiAvatar.js
+similarity index 98%
+rename from pages/aiAvatar/aiAvatar.js
+rename to pkgAi/pages/aiAvatar/aiAvatar.js
+index 49d902d..1d4977f 100644
+--- a/pages/aiAvatar/aiAvatar.js
++++ b/pkgAi/pages/aiAvatar/aiAvatar.js
+@@ -8,8 +8,8 @@
+ //      限流 / 排队 / 违规 / 人像质检 各自友好提示。
+ // 流量：onShareAppMessage + onShareTimeline 双分享入口；结果图即分享图。
+ 
+-const compareHelper = require('../../utils/compare-helper');
+-const analytics = require('../../utils/analytics');
++const compareHelper = require('../../../utils/compare-helper');
++const analytics = require('../../../utils/analytics');
+ 
+ // 官方「百变头像风格列表」15 个风格（仅人像模式生效；编号不臆造）。
+ // 来源：https://cloud.tencent.com/document/product/1668/107741
+@@ -119,7 +119,7 @@ Page({
+    * 内容安全 + 分辨率预检 + 上传云存储
+    */
+   async uploadImage(filePath) {
+-    const { guardImage } = require('../../utils/content-check');
++    const { guardImage } = require('../../../utils/content-check');
+     if (!(await guardImage(filePath))) {
+       // 内容安全拦截，清空已展示的图
+       this._clearSelectedImage();
+@@ -414,7 +414,7 @@ Page({
+     analytics.trackShare('aiAvatar', 'friend');
+     return {
+       title: '用 AI 一键生成多风格头像：复古繁花 / 暴富 / 多巴胺…',
+-      path: '/pages/aiAvatar/aiAvatar',
++      path: '/pkgAi/pages/aiAvatar/aiAvatar',
+       imageUrl: this.data.resultSrc || this.data.imageSrc || ''
+     };
+   },
+diff --git a/pages/aiAvatar/aiAvatar.json b/pkgAi/pages/aiAvatar/aiAvatar.json
+similarity index 100%
+rename from pages/aiAvatar/aiAvatar.json
+rename to pkgAi/pages/aiAvatar/aiAvatar.json
+diff --git a/pages/aiAvatar/aiAvatar.wxml b/pkgAi/pages/aiAvatar/aiAvatar.wxml
+similarity index 100%
+rename from pages/aiAvatar/aiAvatar.wxml
+rename to pkgAi/pages/aiAvatar/aiAvatar.wxml
+diff --git a/pages/aiAvatar/aiAvatar.wxss b/pkgAi/pages/aiAvatar/aiAvatar.wxss
+similarity index 100%
+rename from pages/aiAvatar/aiAvatar.wxss
+rename to pkgAi/pages/aiAvatar/aiAvatar.wxss
+diff --git a/pages/aiCaption/aiCaption.js b/pkgAi/pages/aiCaption/aiCaption.js
+similarity index 97%
+rename from pages/aiCaption/aiCaption.js
+rename to pkgAi/pages/aiCaption/aiCaption.js
+index 4f5ba14..6aeb630 100644
+--- a/pages/aiCaption/aiCaption.js
++++ b/pkgAi/pages/aiCaption/aiCaption.js
+@@ -8,7 +8,7 @@
+ //   success:true  → captions[]，mock=true 表示示例文案（密钥未配置），另带 used/limit
+ //   success:false → error='rate_limit'（配额用完）或 error=服务异常文案
+ 
+-const analytics = require('../../utils/analytics');
++const analytics = require('../../../utils/analytics');
+ 
+ Page({
+   data: {
+@@ -90,7 +90,7 @@ Page({
+   async uploadImage(filePath) {
+     const that = this;
+     // 内容安全：违规则拦截（已弹标准化提示，不暴露原因），并清掉已展示的图
+-    const { guardImage } = require('../../utils/content-check');
++    const { guardImage } = require('../../../utils/content-check');
+     if (!(await guardImage(filePath))) {
+       this.setData({ imageSrc: '', fileID: '' });
+       return;
+@@ -228,7 +228,7 @@ Page({
+     analytics.trackShare('aiCaption', 'friend');
+     return {
+       title: 'AI 智能配文：看图一键生成朋友圈/小红书文案',
+-      path: '/pages/aiCaption/aiCaption'
++      path: '/pkgAi/pages/aiCaption/aiCaption'
+     };
+   },
+ 
+diff --git a/pages/aiCaption/aiCaption.json b/pkgAi/pages/aiCaption/aiCaption.json
+similarity index 100%
+rename from pages/aiCaption/aiCaption.json
+rename to pkgAi/pages/aiCaption/aiCaption.json
+diff --git a/pages/aiCaption/aiCaption.wxml b/pkgAi/pages/aiCaption/aiCaption.wxml
+similarity index 100%
+rename from pages/aiCaption/aiCaption.wxml
+rename to pkgAi/pages/aiCaption/aiCaption.wxml
+diff --git a/pages/aiCaption/aiCaption.wxss b/pkgAi/pages/aiCaption/aiCaption.wxss
+similarity index 100%
+rename from pages/aiCaption/aiCaption.wxss
+rename to pkgAi/pages/aiCaption/aiCaption.wxss
+diff --git a/pages/aiChat/aiChat.js b/pkgAi/pages/aiChat/aiChat.js
+similarity index 96%
+rename from pages/aiChat/aiChat.js
+rename to pkgAi/pages/aiChat/aiChat.js
+index 65d8655..143b28e 100644
+--- a/pages/aiChat/aiChat.js
++++ b/pkgAi/pages/aiChat/aiChat.js
+@@ -5,7 +5,7 @@
+ 
+ const MAX_ROUNDS = 10;
+ 
+-const analytics = require('../../utils/analytics');
++const analytics = require('../../../utils/analytics');
+ 
+ Page({
+   data: {
+@@ -56,7 +56,7 @@ Page({
+   },
+ 
+   async uploadImage(filePath) {
+-    const { guardImage } = require('../../utils/content-check');
++    const { guardImage } = require('../../../utils/content-check');
+     if (!(await guardImage(filePath))) {
+       this.setData({ imageSrc: '', fileID: '' });
+       return;
+@@ -110,7 +110,7 @@ Page({
+     }
+ 
+     // 文本内容安全（违规则已弹标准化提示）
+-    const { guardText } = require('../../utils/content-check');
++    const { guardText } = require('../../../utils/content-check');
+     if (!(await guardText(q))) return;
+ 
+     // 历史（不含当前问题），供云函数重建多轮
+@@ -251,7 +251,7 @@ Page({
+     analytics.trackShare('aiChat', 'friend');
+     return {
+       title: 'AI 图片问答：上传图片自由提问，多轮追问',
+-      path: '/pages/aiChat/aiChat'
++      path: '/pkgAi/pages/aiChat/aiChat'
+     };
+   },
+ 
+diff --git a/pages/aiChat/aiChat.json b/pkgAi/pages/aiChat/aiChat.json
+similarity index 100%
+rename from pages/aiChat/aiChat.json
+rename to pkgAi/pages/aiChat/aiChat.json
+diff --git a/pages/aiChat/aiChat.wxml b/pkgAi/pages/aiChat/aiChat.wxml
+similarity index 100%
+rename from pages/aiChat/aiChat.wxml
+rename to pkgAi/pages/aiChat/aiChat.wxml
+diff --git a/pages/aiChat/aiChat.wxss b/pkgAi/pages/aiChat/aiChat.wxss
+similarity index 100%
+rename from pages/aiChat/aiChat.wxss
+rename to pkgAi/pages/aiChat/aiChat.wxss
+diff --git a/pages/aiColorize/aiColorize.js b/pkgAi/pages/aiColorize/aiColorize.js
+similarity index 96%
+rename from pages/aiColorize/aiColorize.js
+rename to pkgAi/pages/aiColorize/aiColorize.js
+index 93c5762..16bd1b6 100644
+--- a/pages/aiColorize/aiColorize.js
++++ b/pkgAi/pages/aiColorize/aiColorize.js
+@@ -2,10 +2,10 @@
+ // AI 老照片上色 —— 上传 → 黑白检测 → 风格选择 → 提交任务 → 轮询结果 → 对比/保存
+ // 约束：云端不可用时直接提示「当前服务繁忙，请稍后再试」，不做本地 Canvas 伪上色。
+ 
+-const compareHelper = require('../../utils/compare-helper');
+-const { ensureBounded } = require('../../utils/upscale-local'); // 通用最长边限制工具
++const compareHelper = require('../../../utils/compare-helper');
++const { ensureBounded } = require('../../../utils/upscale-local'); // 通用最长边限制工具
+ const { detectGrayscale } = require('../../utils/colorize-detect');
+-const analytics = require('../../utils/analytics');
++const analytics = require('../../../utils/analytics');
+ 
+ const MAX_FILE_BYTES = 20 * 1024 * 1024; // 入口文件大小上限 20MB
+ const POLL_INTERVAL = 3000;               // 轮询间隔 3s
+@@ -106,7 +106,7 @@ Page({
+ 
+     // 3) 内容安全检测（违规内部已弹标准提示，不暴露原因）
+     try {
+-      const { guardImage } = require('../../utils/content-check');
++      const { guardImage } = require('../../../utils/content-check');
+       if (!(await guardImage(workPath))) {
+         this.setData({ imageSrc: '', fileID: '' });
+         wx.hideLoading();
+@@ -380,7 +380,7 @@ Page({
+ 
+   onShareAppMessage() {
+     analytics.trackShare('aiColorize', 'friend');
+-    return { title: 'AI 老照片上色 - 让黑白老照片重焕色彩', path: '/pages/aiColorize/aiColorize', imageUrl: this.data.resultSrc || '' };
++    return { title: 'AI 老照片上色 - 让黑白老照片重焕色彩', path: '/pkgAi/pages/aiColorize/aiColorize', imageUrl: this.data.resultSrc || '' };
+   },
+ 
+   onShareTimeline() {
+diff --git a/pages/aiColorize/aiColorize.json b/pkgAi/pages/aiColorize/aiColorize.json
+similarity index 100%
+rename from pages/aiColorize/aiColorize.json
+rename to pkgAi/pages/aiColorize/aiColorize.json
+diff --git a/pages/aiColorize/aiColorize.wxml b/pkgAi/pages/aiColorize/aiColorize.wxml
+similarity index 100%
+rename from pages/aiColorize/aiColorize.wxml
+rename to pkgAi/pages/aiColorize/aiColorize.wxml
+diff --git a/pages/aiColorize/aiColorize.wxss b/pkgAi/pages/aiColorize/aiColorize.wxss
+similarity index 100%
+rename from pages/aiColorize/aiColorize.wxss
+rename to pkgAi/pages/aiColorize/aiColorize.wxss
+diff --git a/pages/aiDescribe/aiDescribe.js b/pkgAi/pages/aiDescribe/aiDescribe.js
+similarity index 97%
+rename from pages/aiDescribe/aiDescribe.js
+rename to pkgAi/pages/aiDescribe/aiDescribe.js
+index 16f6ffb..b560301 100644
+--- a/pages/aiDescribe/aiDescribe.js
++++ b/pkgAi/pages/aiDescribe/aiDescribe.js
+@@ -5,7 +5,7 @@
+ // 区别于 aiCaption = 帮这张图配句话发出去（可发布文案，按平台口吻 + 话题）。
+ // 本页 social 风格已移除（与 aiCaption 配文重叠）；社媒发布文案请用 aiCaption。
+ 
+-const analytics = require('../../utils/analytics');
++const analytics = require('../../../utils/analytics');
+ 
+ Page({
+   data: {
+@@ -93,7 +93,7 @@ Page({
+   async uploadImage(filePath) {
+     const that = this;
+     // 内容安全：违规则拦截（已弹标准化提示，不暴露原因），并清掉已展示的图
+-    const { guardImage } = require('../../utils/content-check');
++    const { guardImage } = require('../../../utils/content-check');
+     if (!(await guardImage(filePath))) {
+       this.setData({ imageSrc: '', fileID: '' });
+       return;
+@@ -239,7 +239,7 @@ Page({
+     analytics.trackShare('aiDescribe', 'friend');
+     return {
+       title: 'AI 图片描述：7 种风格看懂画面内容',
+-      path: '/pages/aiDescribe/aiDescribe'
++      path: '/pkgAi/pages/aiDescribe/aiDescribe'
+     };
+   },
+ 
+diff --git a/pages/aiDescribe/aiDescribe.json b/pkgAi/pages/aiDescribe/aiDescribe.json
+similarity index 100%
+rename from pages/aiDescribe/aiDescribe.json
+rename to pkgAi/pages/aiDescribe/aiDescribe.json
+diff --git a/pages/aiDescribe/aiDescribe.wxml b/pkgAi/pages/aiDescribe/aiDescribe.wxml
+similarity index 100%
+rename from pages/aiDescribe/aiDescribe.wxml
+rename to pkgAi/pages/aiDescribe/aiDescribe.wxml
+diff --git a/pages/aiDescribe/aiDescribe.wxss b/pkgAi/pages/aiDescribe/aiDescribe.wxss
+similarity index 100%
+rename from pages/aiDescribe/aiDescribe.wxss
+rename to pkgAi/pages/aiDescribe/aiDescribe.wxss
+diff --git a/pages/aiEraser/aiEraser.js b/pkgAi/pages/aiEraser/aiEraser.js
+similarity index 99%
+rename from pages/aiEraser/aiEraser.js
+rename to pkgAi/pages/aiEraser/aiEraser.js
+index e2f5b75..e4f3718 100644
+--- a/pages/aiEraser/aiEraser.js
++++ b/pkgAi/pages/aiEraser/aiEraser.js
+@@ -1,8 +1,8 @@
+ // pages/aiEraser/aiEraser.js
+ // AI 智能去水印页面 —— Canvas 涂抹 + 云端 AI + 本地模糊兜底
+ 
+-const compareHelper = require('../../utils/compare-helper');
+-const analytics = require('../../utils/analytics');
++const compareHelper = require('../../../utils/compare-helper');
++const analytics = require('../../../utils/analytics');
+ 
+ Page({
+   data: {
+@@ -120,7 +120,7 @@ Page({
+     const that = this;
+     // 内容安全检测
+     try {
+-      const { guardImage } = require('../../utils/content-check');
++      const { guardImage } = require('../../../utils/content-check');
+       if (!(await guardImage(filePath))) {
+         this.setData({ imageSrc: '', fileID: '' });
+         return;
+@@ -861,7 +861,7 @@ Page({
+     analytics.trackShare('aiEraser', 'friend');
+     return {
+       title: 'AI 智能去水印 - 一键去除图片水印',
+-      path: '/pages/aiEraser/aiEraser'
++      path: '/pkgAi/pages/aiEraser/aiEraser'
+     };
+   },
+ 
+diff --git a/pages/aiEraser/aiEraser.json b/pkgAi/pages/aiEraser/aiEraser.json
+similarity index 100%
+rename from pages/aiEraser/aiEraser.json
+rename to pkgAi/pages/aiEraser/aiEraser.json
+diff --git a/pages/aiEraser/aiEraser.wxml b/pkgAi/pages/aiEraser/aiEraser.wxml
+similarity index 100%
+rename from pages/aiEraser/aiEraser.wxml
+rename to pkgAi/pages/aiEraser/aiEraser.wxml
+diff --git a/pages/aiEraser/aiEraser.wxss b/pkgAi/pages/aiEraser/aiEraser.wxss
+similarity index 100%
+rename from pages/aiEraser/aiEraser.wxss
+rename to pkgAi/pages/aiEraser/aiEraser.wxss
+diff --git a/pages/aiMatting/aiMatting.js b/pkgAi/pages/aiMatting/aiMatting.js
+similarity index 97%
+rename from pages/aiMatting/aiMatting.js
+rename to pkgAi/pages/aiMatting/aiMatting.js
+index 0d2882b..6e80cce 100644
+--- a/pages/aiMatting/aiMatting.js
++++ b/pkgAi/pages/aiMatting/aiMatting.js
+@@ -5,8 +5,8 @@
+ //   success:true  → fileID（真实抠图后的透明 PNG）
+ //   success:false → error（标准化错误：未检测到主体引导 / 通用重试）
+ // 旧版"返原图当抠图结果 + 假识别置信度"的兜底已移除——失败即显错误 + 重试，不伪装成功。
+-const compareHelper = require('../../utils/compare-helper');
+-const analytics = require('../../utils/analytics');
++const compareHelper = require('../../../utils/compare-helper');
++const analytics = require('../../../utils/analytics');
+ 
+ Page({
+   data: {
+@@ -89,7 +89,7 @@ Page({
+   async uploadImage(filePath) {
+     const that = this;
+     // 内容安全：违规则拦截（已弹标准化提示，不暴露原因），并清掉已展示的图
+-    const { guardImage } = require('../../utils/content-check');
++    const { guardImage } = require('../../../utils/content-check');
+     if (!(await guardImage(filePath))) {
+       this.setData({ imageSrc: '', fileID: '' });
+       return;
+@@ -265,7 +265,7 @@ Page({
+     analytics.trackShare('aiMatting', 'friend');
+     return {
+       title: 'AI 一键抠图：去背景换底色，透明 PNG 秒出',
+-      path: '/pages/aiMatting/aiMatting',
++      path: '/pkgAi/pages/aiMatting/aiMatting',
+       imageUrl: this.data.resultSrc || ''
+     };
+   },
+diff --git a/pages/aiMatting/aiMatting.json b/pkgAi/pages/aiMatting/aiMatting.json
+similarity index 100%
+rename from pages/aiMatting/aiMatting.json
+rename to pkgAi/pages/aiMatting/aiMatting.json
+diff --git a/pages/aiMatting/aiMatting.wxml b/pkgAi/pages/aiMatting/aiMatting.wxml
+similarity index 100%
+rename from pages/aiMatting/aiMatting.wxml
+rename to pkgAi/pages/aiMatting/aiMatting.wxml
+diff --git a/pages/aiMatting/aiMatting.wxss b/pkgAi/pages/aiMatting/aiMatting.wxss
+similarity index 100%
+rename from pages/aiMatting/aiMatting.wxss
+rename to pkgAi/pages/aiMatting/aiMatting.wxss
+diff --git a/pages/aiOCR/aiOCR.js b/pkgAi/pages/aiOCR/aiOCR.js
+similarity index 99%
+rename from pages/aiOCR/aiOCR.js
+rename to pkgAi/pages/aiOCR/aiOCR.js
+index a8d8408..7f2f757 100644
+--- a/pages/aiOCR/aiOCR.js
++++ b/pkgAi/pages/aiOCR/aiOCR.js
+@@ -1,7 +1,7 @@
+ // pages/aiOCR/aiOCR.js
+ // AI文字识别页面 - 选择图片、识别、查看结果、复制导出
+ 
+-const analytics = require('../../utils/analytics');
++const analytics = require('../../../utils/analytics');
+ 
+ Page({
+   data: {
+@@ -157,7 +157,7 @@ Page({
+   async uploadImage(filePath) {
+     const that = this;
+     // 内容安全：违规则拦截（已弹标准化提示，不暴露原因），并清掉已展示的图
+-    const { guardImage } = require('../../utils/content-check');
++    const { guardImage } = require('../../../utils/content-check');
+     if (!(await guardImage(filePath))) {
+       this.setData({ imageSrc: '', fileID: '' });
+       return;
+@@ -644,7 +644,7 @@ Page({
+     analytics.trackShare('aiOCR', 'friend');
+     return {
+       title: title,
+-      path: '/pages/aiOCR/aiOCR',
++      path: '/pkgAi/pages/aiOCR/aiOCR',
+       imageUrl: this.data.imageSrc || ''
+     };
+   },
+diff --git a/pages/aiOCR/aiOCR.json b/pkgAi/pages/aiOCR/aiOCR.json
+similarity index 100%
+rename from pages/aiOCR/aiOCR.json
+rename to pkgAi/pages/aiOCR/aiOCR.json
+diff --git a/pages/aiOCR/aiOCR.wxml b/pkgAi/pages/aiOCR/aiOCR.wxml
+similarity index 100%
+rename from pages/aiOCR/aiOCR.wxml
+rename to pkgAi/pages/aiOCR/aiOCR.wxml
+diff --git a/pages/aiOCR/aiOCR.wxss b/pkgAi/pages/aiOCR/aiOCR.wxss
+similarity index 100%
+rename from pages/aiOCR/aiOCR.wxss
+rename to pkgAi/pages/aiOCR/aiOCR.wxss
+diff --git a/pages/aiOutpaint/aiOutpaint.js b/pkgAi/pages/aiOutpaint/aiOutpaint.js
+similarity index 97%
+rename from pages/aiOutpaint/aiOutpaint.js
+rename to pkgAi/pages/aiOutpaint/aiOutpaint.js
+index 42b134d..bcf50fe 100644
+--- a/pages/aiOutpaint/aiOutpaint.js
++++ b/pkgAi/pages/aiOutpaint/aiOutpaint.js
+@@ -6,8 +6,8 @@
+ //      callFunction('aiOutpaint') → 结果对比（内嵌左右卡 + compareHelper 滑动对比）→ 保存/分享/重新扩图
+ // 诚信：demo 态（未配置密钥）结果=原图 + 示例角标；失败态显错误+重试；限流/排队/违规各自友好提示。
+ 
+-const compareHelper = require('../../utils/compare-helper');
+-const analytics = require('../../utils/analytics');
++const compareHelper = require('../../../utils/compare-helper');
++const analytics = require('../../../utils/analytics');
+ 
+ // 可选扩图比例（与云函数 SUPPORTED_RATIOS 一致）
+ const RATIOS = [
+@@ -87,7 +87,7 @@ Page({
+    * 内容安全 + 上传云存储 + 读取原图尺寸 / 比例
+    */
+   async uploadImage(filePath) {
+-    const { guardImage } = require('../../utils/content-check');
++    const { guardImage } = require('../../../utils/content-check');
+     if (!(await guardImage(filePath))) {
+       // 内容安全拦截，清空已展示的图
+       this.setData({ imageSrc: '', fileID: '' });
+@@ -326,7 +326,7 @@ Page({
+     analytics.trackShare('aiOutpaint', 'friend');
+     return {
+       title: '用 AI 一键扩图，智能补全画面背景',
+-      path: '/pages/aiOutpaint/aiOutpaint',
++      path: '/pkgAi/pages/aiOutpaint/aiOutpaint',
+       imageUrl: this.data.resultSrc || this.data.imageSrc || ''
+     };
+   },
+diff --git a/pages/aiOutpaint/aiOutpaint.json b/pkgAi/pages/aiOutpaint/aiOutpaint.json
+similarity index 100%
+rename from pages/aiOutpaint/aiOutpaint.json
+rename to pkgAi/pages/aiOutpaint/aiOutpaint.json
+diff --git a/pages/aiOutpaint/aiOutpaint.wxml b/pkgAi/pages/aiOutpaint/aiOutpaint.wxml
+similarity index 100%
+rename from pages/aiOutpaint/aiOutpaint.wxml
+rename to pkgAi/pages/aiOutpaint/aiOutpaint.wxml
+diff --git a/pages/aiOutpaint/aiOutpaint.wxss b/pkgAi/pages/aiOutpaint/aiOutpaint.wxss
+similarity index 100%
+rename from pages/aiOutpaint/aiOutpaint.wxss
+rename to pkgAi/pages/aiOutpaint/aiOutpaint.wxss
+diff --git a/pages/aiStyle/aiStyle.js b/pkgAi/pages/aiStyle/aiStyle.js
+similarity index 97%
+rename from pages/aiStyle/aiStyle.js
+rename to pkgAi/pages/aiStyle/aiStyle.js
+index 66a3d3b..34b6512 100644
+--- a/pages/aiStyle/aiStyle.js
++++ b/pkgAi/pages/aiStyle/aiStyle.js
+@@ -1,6 +1,6 @@
+ // pages/aiStyle/aiStyle.js
+-const compareHelper = require('../../utils/compare-helper');
+-const analytics = require('../../utils/analytics');
++const compareHelper = require('../../../utils/compare-helper');
++const analytics = require('../../../utils/analytics');
+ 
+ Page({
+   data: {
+@@ -123,7 +123,7 @@ Page({
+ 
+   async uploadImage(filePath) {
+     const that = this;
+-    const { guardImage } = require('../../utils/content-check');
++    const { guardImage } = require('../../../utils/content-check');
+     if (!(await guardImage(filePath))) {
+       // 内容安全拦截，清空已展示的图
+       this.setData({ imageSrc: '', fileID: '', resultSrc: '', resultFileID: '' });
+@@ -358,7 +358,7 @@ Page({
+     analytics.trackShare('aiStyle', 'friend');
+     return {
+       title: 'AI 风格迁移：照片秒变油画/动漫/古风',
+-      path: '/pages/aiStyle/aiStyle',
++      path: '/pkgAi/pages/aiStyle/aiStyle',
+       imageUrl: this.data.resultSrc || ''
+     };
+   },
+diff --git a/pages/aiStyle/aiStyle.json b/pkgAi/pages/aiStyle/aiStyle.json
+similarity index 100%
+rename from pages/aiStyle/aiStyle.json
+rename to pkgAi/pages/aiStyle/aiStyle.json
+diff --git a/pages/aiStyle/aiStyle.wxml b/pkgAi/pages/aiStyle/aiStyle.wxml
+similarity index 100%
+rename from pages/aiStyle/aiStyle.wxml
+rename to pkgAi/pages/aiStyle/aiStyle.wxml
+diff --git a/pages/aiStyle/aiStyle.wxss b/pkgAi/pages/aiStyle/aiStyle.wxss
+similarity index 100%
+rename from pages/aiStyle/aiStyle.wxss
+rename to pkgAi/pages/aiStyle/aiStyle.wxss
+diff --git a/pages/aiTextToImage/aiTextToImage.js b/pkgAi/pages/aiTextToImage/aiTextToImage.js
+similarity index 98%
+rename from pages/aiTextToImage/aiTextToImage.js
+rename to pkgAi/pages/aiTextToImage/aiTextToImage.js
+index b927350..0948633 100644
+--- a/pages/aiTextToImage/aiTextToImage.js
++++ b/pkgAi/pages/aiTextToImage/aiTextToImage.js
+@@ -23,7 +23,7 @@ const POLL_INTERVAL = 3000; // 轮询间隔 3s
+ const POLL_MAX = 40;        // 最多轮询 40 次（约 2 分钟）
+ const MAX_PROMPT = 500;     // 前端输入框上限（云函数侧另有上限校验）
+ 
+-const analytics = require('../../utils/analytics');
++const analytics = require('../../../utils/analytics');
+ 
+ Page({
+   data: {
+@@ -104,7 +104,7 @@ Page({
+ 
+     // 想法文本走前端内容安全（违规内部已弹标准提示）
+     if (prompt) {
+-      const { guardText } = require('../../utils/content-check');
++      const { guardText } = require('../../../utils/content-check');
+       if (!(await guardText(prompt))) return;
+     }
+ 
+@@ -153,7 +153,7 @@ Page({
+     const list = Array.isArray(paths) ? paths : [];
+     const existing = new Map(this.data.refImages.map(r => [r.path, r.fileID]));
+     const next = [];
+-    const { guardImage } = require('../../utils/content-check');
++    const { guardImage } = require('../../../utils/content-check');
+ 
+     for (const path of list) {
+       const fileID = existing.get(path);
+@@ -205,7 +205,7 @@ Page({
+     }
+ 
+     // 提示词前端内容安全（违规已弹标准提示）
+-    const { guardText } = require('../../utils/content-check');
++    const { guardText } = require('../../../utils/content-check');
+     if (!(await guardText(prompt))) return;
+ 
+     this._pollCount = 0;
+@@ -486,7 +486,7 @@ Page({
+     analytics.trackShare('aiTextToImage', 'friend');
+     return {
+       title: '用腾讯混元 3.0 一键文生图，AI 帮你写提示词',
+-      path: '/pages/aiTextToImage/aiTextToImage',
++      path: '/pkgAi/pages/aiTextToImage/aiTextToImage',
+       imageUrl: this.data.resultSrc || ''
+     };
+   },
+diff --git a/pages/aiTextToImage/aiTextToImage.json b/pkgAi/pages/aiTextToImage/aiTextToImage.json
+similarity index 100%
+rename from pages/aiTextToImage/aiTextToImage.json
+rename to pkgAi/pages/aiTextToImage/aiTextToImage.json
+diff --git a/pages/aiTextToImage/aiTextToImage.wxml b/pkgAi/pages/aiTextToImage/aiTextToImage.wxml
+similarity index 100%
+rename from pages/aiTextToImage/aiTextToImage.wxml
+rename to pkgAi/pages/aiTextToImage/aiTextToImage.wxml
+diff --git a/pages/aiTextToImage/aiTextToImage.wxss b/pkgAi/pages/aiTextToImage/aiTextToImage.wxss
+similarity index 100%
+rename from pages/aiTextToImage/aiTextToImage.wxss
+rename to pkgAi/pages/aiTextToImage/aiTextToImage.wxss
+diff --git a/pages/aiUpscale/aiUpscale.js b/pkgAi/pages/aiUpscale/aiUpscale.js
+similarity index 97%
+rename from pages/aiUpscale/aiUpscale.js
+rename to pkgAi/pages/aiUpscale/aiUpscale.js
+index 81c2ec0..6122a6c 100644
+--- a/pages/aiUpscale/aiUpscale.js
++++ b/pkgAi/pages/aiUpscale/aiUpscale.js
+@@ -2,9 +2,9 @@
+ // AI 图片放大增强 —— 上传 → 选倍数/增强 → 提交任务 → 轮询结果 → 对比/保存
+ // 云端不可用时降级为本地基础放大（Canvas 平滑缩放）。
+ 
+-const compareHelper = require('../../utils/compare-helper');
+-const { ensureBounded, enhanceImage, localUpscale } = require('../../utils/upscale-local');
+-const analytics = require('../../utils/analytics');
++const compareHelper = require('../../../utils/compare-helper');
++const { ensureBounded, enhanceImage, localUpscale } = require('../../../utils/upscale-local');
++const analytics = require('../../../utils/analytics');
+ 
+ const MAX_FILE_BYTES = 20 * 1024 * 1024; // 入口文件大小上限 20MB
+ const POLL_INTERVAL = 3000;             // 轮询间隔 3s
+@@ -95,7 +95,7 @@ Page({
+ 
+     // 2) 内容安全检测（违规内部已弹标准提示，不暴露原因）
+     try {
+-      const { guardImage } = require('../../utils/content-check');
++      const { guardImage } = require('../../../utils/content-check');
+       if (!(await guardImage(workPath))) {
+         this.setData({ imageSrc: '', fileID: '' });
+         wx.hideLoading();
+@@ -422,7 +422,7 @@ Page({
+ 
+   onShareAppMessage() {
+     analytics.trackShare('aiUpscale', 'friend');
+-    return { title: 'AI 图片放大 - 2x/4x 超分辨率增强', path: '/pages/aiUpscale/aiUpscale', imageUrl: this.data.resultSrc || '' };
++    return { title: 'AI 图片放大 - 2x/4x 超分辨率增强', path: '/pkgAi/pages/aiUpscale/aiUpscale', imageUrl: this.data.resultSrc || '' };
+   },
+ 
+   onShareTimeline() {
+diff --git a/pages/aiUpscale/aiUpscale.json b/pkgAi/pages/aiUpscale/aiUpscale.json
+similarity index 100%
+rename from pages/aiUpscale/aiUpscale.json
+rename to pkgAi/pages/aiUpscale/aiUpscale.json
+diff --git a/pages/aiUpscale/aiUpscale.wxml b/pkgAi/pages/aiUpscale/aiUpscale.wxml
+similarity index 100%
+rename from pages/aiUpscale/aiUpscale.wxml
+rename to pkgAi/pages/aiUpscale/aiUpscale.wxml
+diff --git a/pages/aiUpscale/aiUpscale.wxss b/pkgAi/pages/aiUpscale/aiUpscale.wxss
+similarity index 100%
+rename from pages/aiUpscale/aiUpscale.wxss
+rename to pkgAi/pages/aiUpscale/aiUpscale.wxss
+diff --git a/utils/colorize-detect.js b/pkgAi/utils/colorize-detect.js
+similarity index 97%
+rename from utils/colorize-detect.js
+rename to pkgAi/utils/colorize-detect.js
+index c085c5e..327b1f3 100644
+--- a/utils/colorize-detect.js
++++ b/pkgAi/utils/colorize-detect.js
+@@ -7,7 +7,7 @@
+ //   8 ~ 20     → 轻微色彩（可能是褪色老照片或低饱和图），仍可上色
+ //   > 20       → 彩色图片，提示「已有色彩，上色效果可能不明显」，允许继续
+ 
+-const { getImageInfo } = require('./image-process');
++const { getImageInfo } = require('../../utils/image-process');
+ 
+ const SAMPLE_EDGE = 64;   // 采样缩图边长（越小越快，64 足以判定整体饱和度）
+ const TH_GRAY = 8;        // < 视为黑白/灰度
+diff --git a/pages/gifBatch/gifBatch.js b/pkgGif/pages/gifBatch/gifBatch.js
+similarity index 98%
+rename from pages/gifBatch/gifBatch.js
+rename to pkgGif/pages/gifBatch/gifBatch.js
+index 49668f5..cdcc804 100644
+--- a/pages/gifBatch/gifBatch.js
++++ b/pkgGif/pages/gifBatch/gifBatch.js
+@@ -1,12 +1,12 @@
+ // pages/gifBatch/gifBatch.js
+ // GIF 批量处理：多选 GIF → 逐个解码 → 应用操作（调速/倒放/压缩/裁剪）→ 批量导出。
+ // 串行处理防内存峰值，复用 gif-decoder/gif-encoder/gif-compress 引擎。
+-const imageProcess = require('../../utils/image-process');
++const imageProcess = require('../../../utils/image-process');
+ const { decodeGifChunked } = require('../../utils/gif-decoder');
+ const { buildGIFDiff } = require('../../utils/gif-encoder');
+ const { compressGif } = require('../../utils/gif-compress');
+ const { cropFrame } = require('../../utils/gif-frame-ops');
+-const analytics = require('../../utils/analytics');
++const analytics = require('../../../utils/analytics');
+ 
+ const MAX_FILES = 9;
+ const MAX_DIMENSION = 480;
+@@ -354,6 +354,6 @@ Page({
+ 
+   onShareAppMessage() {
+     analytics.trackShare('gifBatch', 'friend');
+-    return { title: 'GIF批量处理：调速/倒放/压缩/裁剪，本地免联网', path: '/pages/gifBatch/gifBatch' };
++    return { title: 'GIF批量处理：调速/倒放/压缩/裁剪，本地免联网', path: '/pkgGif/pages/gifBatch/gifBatch' };
+   }
+ });
+diff --git a/pages/gifBatch/gifBatch.json b/pkgGif/pages/gifBatch/gifBatch.json
+similarity index 100%
+rename from pages/gifBatch/gifBatch.json
+rename to pkgGif/pages/gifBatch/gifBatch.json
+diff --git a/pages/gifBatch/gifBatch.wxml b/pkgGif/pages/gifBatch/gifBatch.wxml
+similarity index 98%
+rename from pages/gifBatch/gifBatch.wxml
+rename to pkgGif/pages/gifBatch/gifBatch.wxml
+index 1f3a2f8..0dd83e1 100644
+--- a/pages/gifBatch/gifBatch.wxml
++++ b/pkgGif/pages/gifBatch/gifBatch.wxml
+@@ -108,7 +108,7 @@
+     <button class="btn btn-secondary save-btn" wx:if="{{totalDone > 0}}" bindtap="saveAll">
+       全部保存到相册
+     </button>
+-    <navigator url="/pages/makeGif/makeGif" class="cross-link" hover-class="none">
++    <navigator url="/pkgGif/pages/makeGif/makeGif" class="cross-link" hover-class="none">
+       <text>💡 需要图片合成 GIF？前往 GIF制作 →</text>
+     </navigator>
+   </view>
+diff --git a/pages/gifBatch/gifBatch.wxss b/pkgGif/pages/gifBatch/gifBatch.wxss
+similarity index 100%
+rename from pages/gifBatch/gifBatch.wxss
+rename to pkgGif/pages/gifBatch/gifBatch.wxss
+diff --git a/pages/gifDrafts/gifDrafts.js b/pkgGif/pages/gifDrafts/gifDrafts.js
+similarity index 97%
+rename from pages/gifDrafts/gifDrafts.js
+rename to pkgGif/pages/gifDrafts/gifDrafts.js
+index 8fce718..a870dc2 100644
+--- a/pages/gifDrafts/gifDrafts.js
++++ b/pkgGif/pages/gifDrafts/gifDrafts.js
+@@ -1,6 +1,6 @@
+ // pages/gifDrafts/gifDrafts.js
+ // 编辑草稿管理：列表/恢复/删除/重命名/清理/存储统计。
+-const analytics = require('../../utils/analytics');
++const analytics = require('../../../utils/analytics');
+ 
+ const DRAFT_KEY = 'gifEditor_draft';
+ const DRAFT_SOURCE = 'gifEditor_source.gif';
+@@ -115,7 +115,7 @@ Page({
+       wx.showToast({ title: '源文件已失效', icon: 'none' });
+       return;
+     }
+-    wx.navigateTo({ url: '/pages/gifEditor/gifEditor?restoreDraft=1' });
++    wx.navigateTo({ url: '/pkgGif/pages/gifEditor/gifEditor?restoreDraft=1' });
+   },
+ 
+   deleteDraft(e) {
+diff --git a/pages/gifDrafts/gifDrafts.json b/pkgGif/pages/gifDrafts/gifDrafts.json
+similarity index 100%
+rename from pages/gifDrafts/gifDrafts.json
+rename to pkgGif/pages/gifDrafts/gifDrafts.json
+diff --git a/pages/gifDrafts/gifDrafts.wxml b/pkgGif/pages/gifDrafts/gifDrafts.wxml
+similarity index 100%
+rename from pages/gifDrafts/gifDrafts.wxml
+rename to pkgGif/pages/gifDrafts/gifDrafts.wxml
+diff --git a/pages/gifDrafts/gifDrafts.wxss b/pkgGif/pages/gifDrafts/gifDrafts.wxss
+similarity index 100%
+rename from pages/gifDrafts/gifDrafts.wxss
+rename to pkgGif/pages/gifDrafts/gifDrafts.wxss
+diff --git a/pages/gifEditor/gifEditor.js b/pkgGif/pages/gifEditor/gifEditor.js
+similarity index 99%
+rename from pages/gifEditor/gifEditor.js
+rename to pkgGif/pages/gifEditor/gifEditor.js
+index 176066e..82b4890 100644
+--- a/pages/gifEditor/gifEditor.js
++++ b/pkgGif/pages/gifEditor/gifEditor.js
+@@ -2,14 +2,14 @@
+ // GIF 编辑器：选择已有 GIF → 解码帧 → 裁剪/文字/擦除/删除/截取/倒放/调速 → 实时预览 → 差量编码导出
+ // 全程前端本地实现，不依赖外部 API。
+ // 解码见 utils/gif-decoder.js，编码见 utils/gif-encoder.js，像素操作见 utils/gif-frame-ops.js。
+-const imageProcess = require('../../utils/image-process');
++const imageProcess = require('../../../utils/image-process');
+ const { decodeGifChunked } = require('../../utils/gif-decoder');
+ const { buildGIFDiff, buildGIFDiffAdaptive } = require('../../utils/gif-encoder');
+ const { compressGif } = require('../../utils/gif-compress');
+ const effects = require('../../utils/gif-effects');
+ const frameOps = require('../../utils/gif-frame-ops');
+ const report = require('../../utils/gif-report');
+-const analytics = require('../../utils/analytics');
++const analytics = require('../../../utils/analytics');
+ 
+ const DRAFT_KEY = 'gifEditor_draft';
+ const DRAFT_SOURCE = 'gifEditor_source.gif';
+@@ -1655,7 +1655,7 @@ Page({
+     const title = ops.length > 0
+       ? `GIF编辑完成（${ops.join('/')}）- GIF编辑器`
+       : 'GIF编辑器：裁剪/文字/擦除/逐帧编辑，本地处理免联网';
+-    return { title, path: '/pages/gifEditor/gifEditor' };
++    return { title, path: '/pkgGif/pages/gifEditor/gifEditor' };
+   },
+ 
+   onShareTimeline() {
+diff --git a/pages/gifEditor/gifEditor.json b/pkgGif/pages/gifEditor/gifEditor.json
+similarity index 100%
+rename from pages/gifEditor/gifEditor.json
+rename to pkgGif/pages/gifEditor/gifEditor.json
+diff --git a/pages/gifEditor/gifEditor.wxml b/pkgGif/pages/gifEditor/gifEditor.wxml
+similarity index 98%
+rename from pages/gifEditor/gifEditor.wxml
+rename to pkgGif/pages/gifEditor/gifEditor.wxml
+index 3f3f2cb..e822ad5 100644
+--- a/pages/gifEditor/gifEditor.wxml
++++ b/pkgGif/pages/gifEditor/gifEditor.wxml
+@@ -371,14 +371,14 @@
+         <text class="progress-text">{{exportFrameProgress}}%</text>
+       </view>
+ 
+-      <navigator url="/pages/makeGif/makeGif" class="cross-link" hover-class="none">
++      <navigator url="/pkgGif/pages/makeGif/makeGif" class="cross-link" hover-class="none">
+         <text>💡 需要图片合成 GIF？前往 GIF制作 →</text>
+       </navigator>
+ 
+       <!-- 报告/草稿入口常驻（不依赖导出成功） -->
+       <view class="result-links">
+-        <navigator url="/pages/gifReport/gifReport" class="result-link" hover-class="none">📊 导出报告</navigator>
+-        <navigator url="/pages/gifDrafts/gifDrafts" class="result-link" hover-class="none">📝 草稿管理</navigator>
++        <navigator url="/pkgGif/pages/gifReport/gifReport" class="result-link" hover-class="none">📊 导出报告</navigator>
++        <navigator url="/pkgGif/pages/gifDrafts/gifDrafts" class="result-link" hover-class="none">📝 草稿管理</navigator>
+       </view>
+     </view>
+ 
+diff --git a/pages/gifEditor/gifEditor.wxss b/pkgGif/pages/gifEditor/gifEditor.wxss
+similarity index 100%
+rename from pages/gifEditor/gifEditor.wxss
+rename to pkgGif/pages/gifEditor/gifEditor.wxss
+diff --git a/pages/gifReport/gifReport.js b/pkgGif/pages/gifReport/gifReport.js
+similarity index 98%
+rename from pages/gifReport/gifReport.js
+rename to pkgGif/pages/gifReport/gifReport.js
+index f0e9184..8d64a6b 100644
+--- a/pages/gifReport/gifReport.js
++++ b/pkgGif/pages/gifReport/gifReport.js
+@@ -1,7 +1,7 @@
+ // pages/gifReport/gifReport.js
+ // GIF 导出报告：历史列表、趋势概览、详情、对比、文字摘要复制。
+ const report = require('../../utils/gif-report');
+-const analytics = require('../../utils/analytics');
++const analytics = require('../../../utils/analytics');
+ 
+ const STORAGE_KEY = 'gif_export_reports';
+ 
+@@ -235,6 +235,6 @@ Page({
+ 
+   onShareAppMessage() {
+     analytics.trackShare('gifReport', 'friend');
+-    return { title: 'GIF 导出报告', path: '/pages/gifReport/gifReport' };
++    return { title: 'GIF 导出报告', path: '/pkgGif/pages/gifReport/gifReport' };
+   }
+ });
+diff --git a/pages/gifReport/gifReport.json b/pkgGif/pages/gifReport/gifReport.json
+similarity index 100%
+rename from pages/gifReport/gifReport.json
+rename to pkgGif/pages/gifReport/gifReport.json
+diff --git a/pages/gifReport/gifReport.wxml b/pkgGif/pages/gifReport/gifReport.wxml
+similarity index 100%
+rename from pages/gifReport/gifReport.wxml
+rename to pkgGif/pages/gifReport/gifReport.wxml
+diff --git a/pages/gifReport/gifReport.wxss b/pkgGif/pages/gifReport/gifReport.wxss
+similarity index 100%
+rename from pages/gifReport/gifReport.wxss
+rename to pkgGif/pages/gifReport/gifReport.wxss
+diff --git a/pages/makeGif/makeGif.js b/pkgGif/pages/makeGif/makeGif.js
+similarity index 98%
+rename from pages/makeGif/makeGif.js
+rename to pkgGif/pages/makeGif/makeGif.js
+index 1133ba0..1e69695 100644
+--- a/pages/makeGif/makeGif.js
++++ b/pkgGif/pages/makeGif/makeGif.js
+@@ -1,9 +1,9 @@
+ // pages/makeGif/makeGif.js
+ // GIF 制作：多图选择 → 顺序调整 → 帧时长/字幕/尺寸 → 本地编码 → 预览/保存
+ // 全程前端本地实现，不依赖外部 API。编码逻辑见 utils/gif-encoder.js（已用 omggif 交叉验证）。
+-const imageProcess = require('../../utils/image-process');
++const imageProcess = require('../../../utils/image-process');
+ const { buildGIF } = require('../../utils/gif-encoder');
+-const analytics = require('../../utils/analytics');
++const analytics = require('../../../utils/analytics');
+ 
+ const MAX_IMAGES = 20;
+ const MIN_IMAGES = 2;
+@@ -392,7 +392,7 @@ Page({
+ 
+   onShareAppMessage() {
+     analytics.trackShare('makeGif', 'friend');
+-    return { title: 'GIF制作：多张图合成动图，本地生成免联网', path: '/pages/makeGif/makeGif' };
++    return { title: 'GIF制作：多张图合成动图，本地生成免联网', path: '/pkgGif/pages/makeGif/makeGif' };
+   },
+ 
+   onShareTimeline() {
+diff --git a/pages/makeGif/makeGif.json b/pkgGif/pages/makeGif/makeGif.json
+similarity index 100%
+rename from pages/makeGif/makeGif.json
+rename to pkgGif/pages/makeGif/makeGif.json
+diff --git a/pages/makeGif/makeGif.wxml b/pkgGif/pages/makeGif/makeGif.wxml
+similarity index 98%
+rename from pages/makeGif/makeGif.wxml
+rename to pkgGif/pages/makeGif/makeGif.wxml
+index 27d2543..1e950e4 100644
+--- a/pages/makeGif/makeGif.wxml
++++ b/pkgGif/pages/makeGif/makeGif.wxml
+@@ -140,7 +140,7 @@
+   </view>
+ 
+   <!-- 交叉引流 -->
+-  <navigator url="/pages/gifEditor/gifEditor" class="cross-link" hover-class="none">
++  <navigator url="/pkgGif/pages/gifEditor/gifEditor" class="cross-link" hover-class="none">
+     <text>💡 需要拆解/编辑已有 GIF？前往 GIF编辑器 →</text>
+   </navigator>
+ 
+diff --git a/pages/makeGif/makeGif.wxss b/pkgGif/pages/makeGif/makeGif.wxss
+similarity index 100%
+rename from pages/makeGif/makeGif.wxss
+rename to pkgGif/pages/makeGif/makeGif.wxss
+diff --git a/utils/gif-compress.js b/pkgGif/utils/gif-compress.js
+similarity index 100%
+rename from utils/gif-compress.js
+rename to pkgGif/utils/gif-compress.js
+diff --git a/utils/gif-decoder.js b/pkgGif/utils/gif-decoder.js
+similarity index 100%
+rename from utils/gif-decoder.js
+rename to pkgGif/utils/gif-decoder.js
+diff --git a/utils/gif-effects.js b/pkgGif/utils/gif-effects.js
+similarity index 100%
+rename from utils/gif-effects.js
+rename to pkgGif/utils/gif-effects.js
+diff --git a/utils/gif-encoder.js b/pkgGif/utils/gif-encoder.js
+similarity index 99%
+rename from utils/gif-encoder.js
+rename to pkgGif/utils/gif-encoder.js
+index 2deece5..3f9217e 100644
+--- a/utils/gif-encoder.js
++++ b/pkgGif/utils/gif-encoder.js
+@@ -17,7 +17,7 @@ var _medianCut = null;
+ function getMedianCut() {
+   if (!_medianCut) {
+     // 在微信小程序和 node 中都能 require
+-    _medianCut = require('./color-quantize.js').medianCut;
++    _medianCut = require('../../utils/color-quantize.js').medianCut;
+   }
+   return _medianCut;
+ }
+diff --git a/utils/gif-frame-ops.js b/pkgGif/utils/gif-frame-ops.js
+similarity index 100%
+rename from utils/gif-frame-ops.js
+rename to pkgGif/utils/gif-frame-ops.js
+diff --git a/utils/gif-report.js b/pkgGif/utils/gif-report.js
+similarity index 100%
+rename from utils/gif-report.js
+rename to pkgGif/utils/gif-report.js
+diff --git a/pages/colorAnalysis/colorAnalysis.js b/pkgTools/pages/colorAnalysis/colorAnalysis.js
+similarity index 97%
+rename from pages/colorAnalysis/colorAnalysis.js
+rename to pkgTools/pages/colorAnalysis/colorAnalysis.js
+index 367e249..5279c5e 100644
+--- a/pages/colorAnalysis/colorAnalysis.js
++++ b/pkgTools/pages/colorAnalysis/colorAnalysis.js
+@@ -1,9 +1,9 @@
+ // pages/colorAnalysis/colorAnalysis.js
+ // 图像颜色分析：选图 → 降采样 → Canvas 取像素 → Median Cut 提取主色 → 色卡展示/复制/导出
+ // 全程前端本地，不依赖云函数与外部 API。算法见 utils/color-quantize.js（已交叉验证）。
+-const imageProcess = require('../../utils/image-process');
+-const { buildPalette } = require('../../utils/color-quantize');
+-const analytics = require('../../utils/analytics');
++const imageProcess = require('../../../utils/image-process');
++const { buildPalette } = require('../../../utils/color-quantize');
++const analytics = require('../../../utils/analytics');
+ 
+ const MIN_COUNT = 3;
+ const MAX_COUNT = 10;
+@@ -337,7 +337,7 @@ Page({
+ 
+   onShareAppMessage() {
+     analytics.trackShare('colorAnalysis', 'friend');
+-    return { title: '图片取色：提取主色调生成色卡，导出 HEX/RGB', path: '/pages/colorAnalysis/colorAnalysis' };
++    return { title: '图片取色：提取主色调生成色卡，导出 HEX/RGB', path: '/pkgTools/pages/colorAnalysis/colorAnalysis' };
+   },
+ 
+   onShareTimeline() {
+diff --git a/pages/colorAnalysis/colorAnalysis.json b/pkgTools/pages/colorAnalysis/colorAnalysis.json
+similarity index 100%
+rename from pages/colorAnalysis/colorAnalysis.json
+rename to pkgTools/pages/colorAnalysis/colorAnalysis.json
+diff --git a/pages/colorAnalysis/colorAnalysis.wxml b/pkgTools/pages/colorAnalysis/colorAnalysis.wxml
+similarity index 100%
+rename from pages/colorAnalysis/colorAnalysis.wxml
+rename to pkgTools/pages/colorAnalysis/colorAnalysis.wxml
+diff --git a/pages/colorAnalysis/colorAnalysis.wxss b/pkgTools/pages/colorAnalysis/colorAnalysis.wxss
+similarity index 100%
+rename from pages/colorAnalysis/colorAnalysis.wxss
+rename to pkgTools/pages/colorAnalysis/colorAnalysis.wxss
+diff --git a/pages/exif/exif.js b/pkgTools/pages/exif/exif.js
+similarity index 99%
+rename from pages/exif/exif.js
+rename to pkgTools/pages/exif/exif.js
+index 26bcbb6..653adc8 100644
+--- a/pages/exif/exif.js
++++ b/pkgTools/pages/exif/exif.js
+@@ -9,7 +9,7 @@
+ 
+ const piexif = require('../../utils/piexif.js');
+ const TAGS = require('../../utils/exif-tags.js');
+-const analytics = require('../../utils/analytics');
++const analytics = require('../../../utils/analytics');
+ 
+ Page({
+   data: {
+@@ -437,7 +437,7 @@ Page({
+     analytics.trackShare('exif', 'friend');
+     return {
+       title: '查看/抹除图片 EXIF，一键清除 GPS 定位防隐私泄露',
+-      path: '/pages/exif/exif'
++      path: '/pkgTools/pages/exif/exif'
+     };
+   },
+ 
+diff --git a/pages/exif/exif.json b/pkgTools/pages/exif/exif.json
+similarity index 100%
+rename from pages/exif/exif.json
+rename to pkgTools/pages/exif/exif.json
+diff --git a/pages/exif/exif.wxml b/pkgTools/pages/exif/exif.wxml
+similarity index 100%
+rename from pages/exif/exif.wxml
+rename to pkgTools/pages/exif/exif.wxml
+diff --git a/pages/exif/exif.wxss b/pkgTools/pages/exif/exif.wxss
+similarity index 100%
+rename from pages/exif/exif.wxss
+rename to pkgTools/pages/exif/exif.wxss
+diff --git a/pages/formatRecommend/formatRecommend.js b/pkgTools/pages/formatRecommend/formatRecommend.js
+similarity index 98%
+rename from pages/formatRecommend/formatRecommend.js
+rename to pkgTools/pages/formatRecommend/formatRecommend.js
+index 5cf5d35..d1798ab 100644
+--- a/pages/formatRecommend/formatRecommend.js
++++ b/pkgTools/pages/formatRecommend/formatRecommend.js
+@@ -1,9 +1,9 @@
+ // pages/formatRecommend/formatRecommend.js
+ // 图像格式推荐：选图 → 240 画布取像素 → 启发式特征提取 → 规则推荐 → JPG/PNG Canvas 真转换 + 实测算体积
+ // 全程前端本地，不依赖云函数与外部 API。引擎见 utils/format-recommend.js（已 53 例交叉验证）。
+-const imageProcess = require('../../utils/image-process');
++const imageProcess = require('../../../utils/image-process');
+ const { extractFeatures, recommend, estimateSize } = require('../../utils/format-recommend');
+-const analytics = require('../../utils/analytics');
++const analytics = require('../../../utils/analytics');
+ 
+ const ANALYZE_MAX_EDGE = 240; // 分析画布最长边（控像素量，特征为尺度不变比率）
+ const EXPORT_MAX_EDGE = 2048; // 转换画布最长边（保高质、控内存）
+@@ -393,7 +393,7 @@ Page({
+ 
+   onShareAppMessage() {
+     analytics.trackShare('formatRecommend', 'friend');
+-    return { title: '图片格式推荐：分析特征给最优格式与压缩参数', path: '/pages/formatRecommend/formatRecommend' };
++    return { title: '图片格式推荐：分析特征给最优格式与压缩参数', path: '/pkgTools/pages/formatRecommend/formatRecommend' };
+   },
+ 
+   onShareTimeline() {
+diff --git a/pages/formatRecommend/formatRecommend.json b/pkgTools/pages/formatRecommend/formatRecommend.json
+similarity index 100%
+rename from pages/formatRecommend/formatRecommend.json
+rename to pkgTools/pages/formatRecommend/formatRecommend.json
+diff --git a/pages/formatRecommend/formatRecommend.wxml b/pkgTools/pages/formatRecommend/formatRecommend.wxml
+similarity index 100%
+rename from pages/formatRecommend/formatRecommend.wxml
+rename to pkgTools/pages/formatRecommend/formatRecommend.wxml
+diff --git a/pages/formatRecommend/formatRecommend.wxss b/pkgTools/pages/formatRecommend/formatRecommend.wxss
+similarity index 100%
+rename from pages/formatRecommend/formatRecommend.wxss
+rename to pkgTools/pages/formatRecommend/formatRecommend.wxss
+diff --git a/pages/hiddenWatermark/hiddenWatermark.js b/pkgTools/pages/hiddenWatermark/hiddenWatermark.js
+similarity index 98%
+rename from pages/hiddenWatermark/hiddenWatermark.js
+rename to pkgTools/pages/hiddenWatermark/hiddenWatermark.js
+index 92be2a4..7cd2184 100644
+--- a/pages/hiddenWatermark/hiddenWatermark.js
++++ b/pkgTools/pages/hiddenWatermark/hiddenWatermark.js
+@@ -2,9 +2,9 @@
+ // 隐形水印：嵌入（文字 → 蓝通道 LSB）+ 提取（多数判决还原）。
+ // 算法见 utils/hidden-watermark.js（纯函数，已 node 单测）。
+ // 像素读写走 Canvas 2D，含 getImageData 兼容守卫（参照 colorAnalysis）。
+-const imageProcess = require('../../utils/image-process');
++const imageProcess = require('../../../utils/image-process');
+ const hw = require('../../utils/hidden-watermark');
+-const analytics = require('../../utils/analytics');
++const analytics = require('../../../utils/analytics');
+ 
+ const MAX_EDGE = 2048;      // 嵌入工作分辨率上限（控制 getImageData 内存 ≤16MB）
+ const DEFAULT_KEY = 'tuGeJianDan';
+@@ -378,7 +378,7 @@ Page({
+ 
+   onShareAppMessage() {
+     analytics.trackShare('hiddenWatermark', 'friend');
+-    return { title: '隐形水印：文字藏进图片像素，可密钥提取还原', path: '/pages/hiddenWatermark/hiddenWatermark' };
++    return { title: '隐形水印：文字藏进图片像素，可密钥提取还原', path: '/pkgTools/pages/hiddenWatermark/hiddenWatermark' };
+   },
+ 
+   onShareTimeline() {
+diff --git a/pages/hiddenWatermark/hiddenWatermark.json b/pkgTools/pages/hiddenWatermark/hiddenWatermark.json
+similarity index 100%
+rename from pages/hiddenWatermark/hiddenWatermark.json
+rename to pkgTools/pages/hiddenWatermark/hiddenWatermark.json
+diff --git a/pages/hiddenWatermark/hiddenWatermark.wxml b/pkgTools/pages/hiddenWatermark/hiddenWatermark.wxml
+similarity index 100%
+rename from pages/hiddenWatermark/hiddenWatermark.wxml
+rename to pkgTools/pages/hiddenWatermark/hiddenWatermark.wxml
+diff --git a/pages/hiddenWatermark/hiddenWatermark.wxss b/pkgTools/pages/hiddenWatermark/hiddenWatermark.wxss
+similarity index 100%
+rename from pages/hiddenWatermark/hiddenWatermark.wxss
+rename to pkgTools/pages/hiddenWatermark/hiddenWatermark.wxss
+diff --git a/pages/imgToPdf/imgToPdf.js b/pkgTools/pages/imgToPdf/imgToPdf.js
+similarity index 99%
+rename from pages/imgToPdf/imgToPdf.js
+rename to pkgTools/pages/imgToPdf/imgToPdf.js
+index 9b8d608..02639bd 100644
+--- a/pages/imgToPdf/imgToPdf.js
++++ b/pkgTools/pages/imgToPdf/imgToPdf.js
+@@ -11,7 +11,7 @@ const PAGE_SIZE_OPTIONS = [
+   { key: '1:1',  label: '1:1',    desc: '正方形' }
+ ];
+ 
+-const analytics = require('../../utils/analytics');
++const analytics = require('../../../utils/analytics');
+ 
+ Page({
+   data: {
+@@ -361,7 +361,7 @@ Page({
+     analytics.trackShare('imgToPdf', 'friend');
+     return {
+       title: '多图合成 PDF：照片按序拼成 A4 文档',
+-      path: '/pages/imgToPdf/imgToPdf'
++      path: '/pkgTools/pages/imgToPdf/imgToPdf'
+     };
+   },
+ 
+diff --git a/pages/imgToPdf/imgToPdf.json b/pkgTools/pages/imgToPdf/imgToPdf.json
+similarity index 100%
+rename from pages/imgToPdf/imgToPdf.json
+rename to pkgTools/pages/imgToPdf/imgToPdf.json
+diff --git a/pages/imgToPdf/imgToPdf.wxml b/pkgTools/pages/imgToPdf/imgToPdf.wxml
+similarity index 100%
+rename from pages/imgToPdf/imgToPdf.wxml
+rename to pkgTools/pages/imgToPdf/imgToPdf.wxml
+diff --git a/pages/imgToPdf/imgToPdf.wxss b/pkgTools/pages/imgToPdf/imgToPdf.wxss
+similarity index 100%
+rename from pages/imgToPdf/imgToPdf.wxss
+rename to pkgTools/pages/imgToPdf/imgToPdf.wxss
+diff --git a/pages/pdfToImage/pdfToImage.js b/pkgTools/pages/pdfToImage/pdfToImage.js
+similarity index 99%
+rename from pages/pdfToImage/pdfToImage.js
+rename to pkgTools/pages/pdfToImage/pdfToImage.js
+index 41ae6b6..e482158 100644
+--- a/pages/pdfToImage/pdfToImage.js
++++ b/pkgTools/pages/pdfToImage/pdfToImage.js
+@@ -11,7 +11,7 @@ const MAX_PAGES = 50;
+ const MAX_PDF_BYTES = 50 * 1024 * 1024;
+ const CONCURRENCY = 3;
+ 
+-const analytics = require('../../utils/analytics');
++const analytics = require('../../../utils/analytics');
+ 
+ Page({
+   data: {
+@@ -408,7 +408,7 @@ Page({
+     analytics.trackShare('pdfToImage', 'friend');
+     return {
+       title: 'PDF 一键转图片，逐页高清导出 PNG/JPG',
+-      path: '/pages/pdfToImage/pdfToImage'
++      path: '/pkgTools/pages/pdfToImage/pdfToImage'
+     };
+   },
+ 
+diff --git a/pages/pdfToImage/pdfToImage.json b/pkgTools/pages/pdfToImage/pdfToImage.json
+similarity index 100%
+rename from pages/pdfToImage/pdfToImage.json
+rename to pkgTools/pages/pdfToImage/pdfToImage.json
+diff --git a/pages/pdfToImage/pdfToImage.wxml b/pkgTools/pages/pdfToImage/pdfToImage.wxml
+similarity index 100%
+rename from pages/pdfToImage/pdfToImage.wxml
+rename to pkgTools/pages/pdfToImage/pdfToImage.wxml
+diff --git a/pages/pdfToImage/pdfToImage.wxss b/pkgTools/pages/pdfToImage/pdfToImage.wxss
+similarity index 100%
+rename from pages/pdfToImage/pdfToImage.wxss
+rename to pkgTools/pages/pdfToImage/pdfToImage.wxss
+diff --git a/pages/similarity/similarity.js b/pkgTools/pages/similarity/similarity.js
+similarity index 97%
+rename from pages/similarity/similarity.js
+rename to pkgTools/pages/similarity/similarity.js
+index a5f3d11..99b202c 100644
+--- a/pages/similarity/similarity.js
++++ b/pkgTools/pages/similarity/similarity.js
+@@ -4,9 +4,9 @@
+ // 能识别压缩、缩放、轻微修改后的重复图；不识别内容语义相似（同主体不同姿态等）。
+ // 算法见 utils/image-hash.js，纯本地、零成本。
+ 
+-const imageProcess = require('../../utils/image-process');
++const imageProcess = require('../../../utils/image-process');
+ const imageHash = require('../../utils/image-hash');
+-const analytics = require('../../utils/analytics');
++const analytics = require('../../../utils/analytics');
+ 
+ // 阈值档位（pHash 汉明距离 0-64，越小越严格）
+ const THRESHOLDS = [
+@@ -168,7 +168,7 @@ Page({
+     analytics.trackShare('similarity', 'friend');
+     return {
+       title: '找重复图：双图相似度对比，多图批量查重',
+-      path: '/pages/similarity/similarity'
++      path: '/pkgTools/pages/similarity/similarity'
+     };
+   },
+ 
+diff --git a/pages/similarity/similarity.json b/pkgTools/pages/similarity/similarity.json
+similarity index 100%
+rename from pages/similarity/similarity.json
+rename to pkgTools/pages/similarity/similarity.json
+diff --git a/pages/similarity/similarity.wxml b/pkgTools/pages/similarity/similarity.wxml
+similarity index 100%
+rename from pages/similarity/similarity.wxml
+rename to pkgTools/pages/similarity/similarity.wxml
+diff --git a/pages/similarity/similarity.wxss b/pkgTools/pages/similarity/similarity.wxss
+similarity index 100%
+rename from pages/similarity/similarity.wxss
+rename to pkgTools/pages/similarity/similarity.wxss
+diff --git a/utils/exif-tags.js b/pkgTools/utils/exif-tags.js
+similarity index 100%
+rename from utils/exif-tags.js
+rename to pkgTools/utils/exif-tags.js
+diff --git a/utils/format-recommend.js b/pkgTools/utils/format-recommend.js
+similarity index 99%
+rename from utils/format-recommend.js
+rename to pkgTools/utils/format-recommend.js
+index 8d441eb..2d3a44d 100644
+--- a/utils/format-recommend.js
++++ b/pkgTools/utils/format-recommend.js
+@@ -17,7 +17,7 @@
+ //  AVIF 有损 ≈ JPG × 0.5（小 50%）。
+ //  平坦区占比越高越易压缩，用 flatAdj = 1 - flatRatio×0.4 线性下调。
+ 
+-const { medianCut } = require('./color-quantize');
++const { medianCut } = require('../../utils/color-quantize');
+ 
+ // ---- 边缘/平坦阈值（基于 Rec.601 亮度差，经验值）----
+ const EDGE_THRESH = 28; // 邻域亮度差 > 28 视为边缘（文字/UI 锐边）
+diff --git a/utils/hidden-watermark.js b/pkgTools/utils/hidden-watermark.js
+similarity index 100%
+rename from utils/hidden-watermark.js
+rename to pkgTools/utils/hidden-watermark.js
+diff --git a/utils/image-hash.js b/pkgTools/utils/image-hash.js
+similarity index 99%
+rename from utils/image-hash.js
+rename to pkgTools/utils/image-hash.js
+index c00ce0d..6465802 100644
+--- a/utils/image-hash.js
++++ b/pkgTools/utils/image-hash.js
+@@ -14,7 +14,7 @@
+ // - 批量串行 + 每张之间让出事件循环，控制内存占用、不卡 UI
+ // - 哈希以 hex 字符串返回（64bit → 16 字符），便于传输/存储/展示
+ 
+-const imageProcess = require('./image-process');
++const imageProcess = require('../../utils/image-process');
+ 
+ const EDGE = 32;            // 工作图边长（pHash DCT 尺寸）
+ const BLOCK = 8;            // 输出哈希 8×8 = 64bit
+diff --git a/utils/piexif.js b/pkgTools/utils/piexif.js
+similarity index 100%
+rename from utils/piexif.js
+rename to pkgTools/utils/piexif.js
+diff --git a/sitemap.json b/sitemap.json
+index 9759d10..dac6119 100644
+--- a/sitemap.json
++++ b/sitemap.json
+@@ -1,5 +1,5 @@
+ {
+-  "desc": "覆盖最大化：全部已上线工具页（29页）均收录，最大化长尾搜索覆盖。新增工具页时同步在此补 allow。",
++  "desc": "覆盖最大化：全部已上线工具页（33页，主包9+分包24）均收录，最大化长尾搜索覆盖。新增工具页时同步在此补 allow。",
+   "rules": [
+     { "action": "allow", "page": "pages/index/index" },
+     { "action": "allow", "page": "pages/compress/compress" },
+@@ -8,27 +8,31 @@
+     { "action": "allow", "page": "pages/watermark/watermark" },
+     { "action": "allow", "page": "pages/filter/filter" },
+     { "action": "allow", "page": "pages/splice/splice" },
+-    { "action": "allow", "page": "pages/aiDescribe/aiDescribe" },
+-    { "action": "allow", "page": "pages/aiCaption/aiCaption" },
+-    { "action": "allow", "page": "pages/aiMatting/aiMatting" },
+-    { "action": "allow", "page": "pages/aiStyle/aiStyle" },
+-    { "action": "allow", "page": "pages/aiOCR/aiOCR" },
++    { "action": "allow", "page": "pkgAi/pages/aiDescribe/aiDescribe" },
++    { "action": "allow", "page": "pkgAi/pages/aiCaption/aiCaption" },
++    { "action": "allow", "page": "pkgAi/pages/aiMatting/aiMatting" },
++    { "action": "allow", "page": "pkgAi/pages/aiStyle/aiStyle" },
++    { "action": "allow", "page": "pkgAi/pages/aiOCR/aiOCR" },
+     { "action": "allow", "page": "pages/compare/compare" },
+-    { "action": "allow", "page": "pages/aiEraser/aiEraser" },
+-    { "action": "allow", "page": "pages/imgToPdf/imgToPdf" },
+-    { "action": "allow", "page": "pages/exif/exif" },
+-    { "action": "allow", "page": "pages/aiUpscale/aiUpscale" },
+-    { "action": "allow", "page": "pages/aiColorize/aiColorize" },
+-    { "action": "allow", "page": "pages/aiChat/aiChat" },
+-    { "action": "allow", "page": "pages/similarity/similarity" },
+-    { "action": "allow", "page": "pages/makeGif/makeGif" },
+-    { "action": "allow", "page": "pages/colorAnalysis/colorAnalysis" },
+-    { "action": "allow", "page": "pages/formatRecommend/formatRecommend" },
++    { "action": "allow", "page": "pkgAi/pages/aiEraser/aiEraser" },
++    { "action": "allow", "page": "pkgTools/pages/imgToPdf/imgToPdf" },
++    { "action": "allow", "page": "pkgTools/pages/exif/exif" },
++    { "action": "allow", "page": "pkgAi/pages/aiUpscale/aiUpscale" },
++    { "action": "allow", "page": "pkgAi/pages/aiColorize/aiColorize" },
++    { "action": "allow", "page": "pkgAi/pages/aiChat/aiChat" },
++    { "action": "allow", "page": "pkgTools/pages/similarity/similarity" },
++    { "action": "allow", "page": "pkgGif/pages/makeGif/makeGif" },
++    { "action": "allow", "page": "pkgGif/pages/gifEditor/gifEditor" },
++    { "action": "allow", "page": "pkgGif/pages/gifBatch/gifBatch" },
++    { "action": "allow", "page": "pkgGif/pages/gifReport/gifReport" },
++    { "action": "allow", "page": "pkgGif/pages/gifDrafts/gifDrafts" },
++    { "action": "allow", "page": "pkgTools/pages/colorAnalysis/colorAnalysis" },
++    { "action": "allow", "page": "pkgTools/pages/formatRecommend/formatRecommend" },
+     { "action": "allow", "page": "pages/idPhoto/idPhoto" },
+-    { "action": "allow", "page": "pages/hiddenWatermark/hiddenWatermark" },
+-    { "action": "allow", "page": "pages/aiOutpaint/aiOutpaint" },
+-    { "action": "allow", "page": "pages/aiTextToImage/aiTextToImage" },
+-    { "action": "allow", "page": "pages/aiAvatar/aiAvatar" },
+-    { "action": "allow", "page": "pages/pdfToImage/pdfToImage" }
++    { "action": "allow", "page": "pkgTools/pages/hiddenWatermark/hiddenWatermark" },
++    { "action": "allow", "page": "pkgAi/pages/aiOutpaint/aiOutpaint" },
++    { "action": "allow", "page": "pkgAi/pages/aiTextToImage/aiTextToImage" },
++    { "action": "allow", "page": "pkgAi/pages/aiAvatar/aiAvatar" },
++    { "action": "allow", "page": "pkgTools/pages/pdfToImage/pdfToImage" }
+   ]
+ }

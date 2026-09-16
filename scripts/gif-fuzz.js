@@ -15,8 +15,8 @@
 'use strict';
 
 const path = require('path');
-const { decodeGif } = require(path.join(__dirname, '..', 'utils', 'gif-decoder.js'));
-const { buildGIFDiff, buildGIF, PALETTE } = require(path.join(__dirname, '..', 'utils', 'gif-encoder.js'));
+const { decodeGif } = require(path.join(__dirname, '..', 'pkgGif', 'utils', 'gif-decoder.js'));
+const { buildGIFDiff, buildGIF, PALETTE } = require(path.join(__dirname, '..', 'pkgGif', 'utils', 'gif-encoder.js'));
 
 // ---- 种子化 PRNG（mulberry32）----
 function mulberry32(seed) {

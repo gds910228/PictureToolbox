@@ -1,4 +1,4 @@
-// pages/aiDescribe/aiDescribe.js
+// pkgAi/pages/aiDescribe/aiDescribe.js
 // AI图片描述页面
 //
 // 定位：aiDescribe = 看懂这张图（客观描述/解读，输出一段描述图本身的话）

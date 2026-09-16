@@ -1,4 +1,4 @@
-// pages/gifEditor/gifEditor.js
+// pkgGif/pages/gifEditor/gifEditor.js
 // GIF 编辑器：选择已有 GIF → 解码帧 → 裁剪/文字/擦除/删除/截取/倒放/调速 → 实时预览 → 差量编码导出
 // 全程前端本地实现，不依赖外部 API。
 // 解码见 utils/gif-decoder.js，编码见 utils/gif-encoder.js，像素操作见 utils/gif-frame-ops.js。

@@ -1,4 +1,4 @@
-// pages/aiCaption/aiCaption.js
+// pkgAi/pages/aiCaption/aiCaption.js
 // AI 智能配文：选图 → 混元 VLM 看图 → 按平台生成 3 条可发布配文 → 一键复制
 //
 // 定位：aiCaption = 帮这张图配句话发出去（可发布文案，按平台口吻 + 话题标签）

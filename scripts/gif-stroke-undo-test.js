@@ -17,7 +17,7 @@
 
 const path = require('path');
 const { eraseCircle, snapshotRect, restoreRect, cloneFrame } =
-  require(path.join(__dirname, '..', 'utils', 'gif-frame-ops.js'));
+  require(path.join(__dirname, '..', 'pkgGif', 'utils', 'gif-frame-ops.js'));
 
 const UNDO_LIMIT = 10;
 let pass = 0, fail = 0;

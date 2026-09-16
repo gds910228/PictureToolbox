@@ -1,4 +1,4 @@
-// pages/aiColorize/aiColorize.js
+// pkgAi/pages/aiColorize/aiColorize.js
 // AI 老照片上色 —— 上传 → 黑白检测 → 风格选择 → 提交任务 → 轮询结果 → 对比/保存
 // 约束：云端不可用时直接提示「当前服务繁忙，请稍后再试」，不做本地 Canvas 伪上色。
 

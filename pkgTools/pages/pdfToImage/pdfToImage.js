@@ -1,4 +1,4 @@
-// pages/pdfToImage/pdfToImage.js
+// pkgTools/pages/pdfToImage/pdfToImage.js
 // PDF 转图片 —— 腾讯云数据万象 CI doc-preview（同步，逐页渲染）
 //
 // 流程：chooseMessageFile 选 PDF（限 20MB）→ uploadFile 拿 fileID →

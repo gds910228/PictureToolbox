@@ -1,4 +1,4 @@
-// pages/makeGif/makeGif.js
+// pkgGif/pages/makeGif/makeGif.js
 // GIF 制作：多图选择 → 顺序调整 → 帧时长/字幕/尺寸 → 本地编码 → 预览/保存
 // 全程前端本地实现，不依赖外部 API。编码逻辑见 utils/gif-encoder.js（已用 omggif 交叉验证）。
 const imageProcess = require('../../../utils/image-process');

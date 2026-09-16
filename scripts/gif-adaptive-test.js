@@ -10,8 +10,8 @@ const path = require('path');
 const {
   buildGIF, buildGIFDiff, buildGIFAdaptive, buildGIFDiffAdaptive,
   buildAdaptivePalette, buildLookupGrid
-} = require(path.join(__dirname, '..', 'utils', 'gif-encoder.js'));
-const { decodeGif } = require(path.join(__dirname, '..', 'utils', 'gif-decoder.js'));
+} = require(path.join(__dirname, '..', 'pkgGif', 'utils', 'gif-encoder.js'));
+const { decodeGif } = require(path.join(__dirname, '..', 'pkgGif', 'utils', 'gif-decoder.js'));
 
 let pass = 0, fail = 0;
 const failures = [];

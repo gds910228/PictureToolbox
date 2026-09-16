@@ -8,8 +8,8 @@
 'use strict';
 
 const path = require('path');
-const { decodeGif } = require(path.join(__dirname, '..', 'utils', 'gif-decoder.js'));
-const { buildGIF, buildGIFDiff, PALETTE } = require(path.join(__dirname, '..', 'utils', 'gif-encoder.js'));
+const { decodeGif } = require(path.join(__dirname, '..', 'pkgGif', 'utils', 'gif-decoder.js'));
+const { buildGIF, buildGIFDiff, PALETTE } = require(path.join(__dirname, '..', 'pkgGif', 'utils', 'gif-encoder.js'));
 
 function formatTime(ms) {
   if (ms < 1000) return ms.toFixed(1) + 'ms';

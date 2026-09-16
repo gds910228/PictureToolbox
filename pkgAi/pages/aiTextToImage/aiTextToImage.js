@@ -1,4 +1,4 @@
-// pages/aiTextToImage/aiTextToImage.js
+// pkgAi/pages/aiTextToImage/aiTextToImage.js
 // AI 文生图 —— 腾讯混元 3.0（异步 submit → 轮询 query）+ VLM 辅助写 prompt
 //
 // 流程：

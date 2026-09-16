@@ -1,4 +1,4 @@
-// pages/aiOCR/aiOCR.js
+// pkgAi/pages/aiOCR/aiOCR.js
 // AI文字识别页面 - 选择图片、识别、查看结果、复制导出
 
 const analytics = require('../../../utils/analytics');

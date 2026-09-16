@@ -1,4 +1,4 @@
-// pages/exif/exif.js
+// pkgTools/pages/exif/exif.js
 // EXIF 元数据查看 / 抹除工具
 // - wx.getImageInfo 读取基础信息（宽高、方向）
 // - piexifjs 读写 EXIF（拍摄时间、设备、GPS、镜头参数等）

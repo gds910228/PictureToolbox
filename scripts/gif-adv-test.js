@@ -10,9 +10,9 @@ const path = require('path');
 const {
   cropFrame, cloneFrame, eraseCircle, snapshotRect, restoreRect,
   nineGridPosition, measureText
-} = require(path.join(__dirname, '..', 'utils', 'gif-frame-ops.js'));
-const { decodeGif } = require(path.join(__dirname, '..', 'utils', 'gif-decoder.js'));
-const { buildGIF, buildGIFDiff } = require(path.join(__dirname, '..', 'utils', 'gif-encoder.js'));
+} = require(path.join(__dirname, '..', 'pkgGif', 'utils', 'gif-frame-ops.js'));
+const { decodeGif } = require(path.join(__dirname, '..', 'pkgGif', 'utils', 'gif-decoder.js'));
+const { buildGIF, buildGIFDiff } = require(path.join(__dirname, '..', 'pkgGif', 'utils', 'gif-encoder.js'));
 
 let pass = 0, fail = 0;
 const failures = [];

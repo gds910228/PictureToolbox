@@ -19,8 +19,8 @@
 
 const path = require('path');
 const fs = require('fs');
-const { decodeGif } = require(path.join(__dirname, '..', 'utils', 'gif-decoder.js'));
-const { buildGIF, PALETTE, nearestIndex } = require(path.join(__dirname, '..', 'utils', 'gif-encoder.js'));
+const { decodeGif } = require(path.join(__dirname, '..', 'pkgGif', 'utils', 'gif-decoder.js'));
+const { buildGIF, PALETTE, nearestIndex } = require(path.join(__dirname, '..', 'pkgGif', 'utils', 'gif-encoder.js'));
 
 let passCount = 0;
 let failCount = 0;

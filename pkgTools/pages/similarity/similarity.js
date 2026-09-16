@@ -1,4 +1,4 @@
-// pages/similarity/similarity.js - 找重复图（双图相似度 + 多图批量查重）
+// pkgTools/pages/similarity/similarity.js - 找重复图（双图相似度 + 多图批量查重）
 //
 // 诚实声明：本功能基于感知哈希（pHash/dHash/aHash）的「像素级近似检测」，
 // 能识别压缩、缩放、轻微修改后的重复图；不识别内容语义相似（同主体不同姿态等）。

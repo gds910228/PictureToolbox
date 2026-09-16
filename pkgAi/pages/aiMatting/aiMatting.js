@@ -1,4 +1,4 @@
-// pages/aiMatting/aiMatting.js
+// pkgAi/pages/aiMatting/aiMatting.js
 // AI智能抠图页面（腾讯云 SegmentPortraitPic，主体清晰即可，人物/动物等均可）
 //
 // 云函数返回约定（见 cloudfunctions/aiMatting/index.js）：

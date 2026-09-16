@@ -1,4 +1,4 @@
-// pages/gifDrafts/gifDrafts.js
+// pkgGif/pages/gifDrafts/gifDrafts.js
 // 编辑草稿管理：列表/恢复/删除/重命名/清理/存储统计。
 const analytics = require('../../../utils/analytics');
 

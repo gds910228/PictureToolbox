@@ -7,7 +7,7 @@
 'use strict';
 
 const path = require('path');
-const report = require(path.join(__dirname, '..', 'utils', 'gif-report.js'));
+const report = require(path.join(__dirname, '..', 'pkgGif', 'utils', 'gif-report.js'));
 
 let pass = 0, fail = 0;
 const failures = [];

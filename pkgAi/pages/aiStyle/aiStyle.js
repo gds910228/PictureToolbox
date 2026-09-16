@@ -1,4 +1,4 @@
-// pages/aiStyle/aiStyle.js
+// pkgAi/pages/aiStyle/aiStyle.js
 const compareHelper = require('../../../utils/compare-helper');
 const analytics = require('../../../utils/analytics');
 

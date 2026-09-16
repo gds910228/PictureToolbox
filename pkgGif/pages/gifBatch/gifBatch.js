@@ -1,4 +1,4 @@
-// pages/gifBatch/gifBatch.js
+// pkgGif/pages/gifBatch/gifBatch.js
 // GIF 批量处理：多选 GIF → 逐个解码 → 应用操作（调速/倒放/压缩/裁剪）→ 批量导出。
 // 串行处理防内存峰值，复用 gif-decoder/gif-encoder/gif-compress 引擎。
 const imageProcess = require('../../../utils/image-process');

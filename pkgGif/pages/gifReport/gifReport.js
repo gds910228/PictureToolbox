@@ -1,4 +1,4 @@
-// pages/gifReport/gifReport.js
+// pkgGif/pages/gifReport/gifReport.js
 // GIF 导出报告：历史列表、趋势概览、详情、对比、文字摘要复制。
 const report = require('../../utils/gif-report');
 const analytics = require('../../../utils/analytics');

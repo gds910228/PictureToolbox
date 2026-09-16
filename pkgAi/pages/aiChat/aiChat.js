@@ -1,4 +1,4 @@
-// pages/aiChat/aiChat.js
+// pkgAi/pages/aiChat/aiChat.js
 // AI图片问答页面：上传图片 + 多轮自由提问 + 打字机伪流式
 // 仅页内内存：返回/关闭即清空，不持久化（工具类小程序轻量定位）
 // 仅首轮带图：history 为空时带 fileID，后续轮只发文本历史

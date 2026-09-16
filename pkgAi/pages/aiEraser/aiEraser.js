@@ -1,4 +1,4 @@
-// pages/aiEraser/aiEraser.js
+// pkgAi/pages/aiEraser/aiEraser.js
 // AI 智能去水印页面 —— Canvas 涂抹 + 云端 AI + 本地模糊兜底
 
 const compareHelper = require('../../../utils/compare-helper');

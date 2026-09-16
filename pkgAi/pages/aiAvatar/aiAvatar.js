@@ -1,4 +1,4 @@
-// pages/aiAvatar/aiAvatar.js
+// pkgAi/pages/aiAvatar/aiAvatar.js
 // AI 百变头像 —— 腾讯混元 GenerateAvatar（同步 10–30s）
 //
 // 流程：人像 / 萌宠双模式 → 选图 → guardImage → 上传云存储拿 fileID →

@@ -1,4 +1,4 @@
-// pages/formatRecommend/formatRecommend.js
+// pkgTools/pages/formatRecommend/formatRecommend.js
 // 图像格式推荐：选图 → 240 画布取像素 → 启发式特征提取 → 规则推荐 → JPG/PNG Canvas 真转换 + 实测算体积
 // 全程前端本地，不依赖云函数与外部 API。引擎见 utils/format-recommend.js（已 53 例交叉验证）。
 const imageProcess = require('../../../utils/image-process');
