@@ -55,6 +55,12 @@
 .empty-text { font-size: 28rpx; color: var(--color-neon-cyan); margin-bottom: var(--space-xs); }
 .empty-hint { font-size: 22rpx; color: var(--color-gray-500); }
 
+/* 辅助入口行：相册尝试 + 导入指引 */
+.source-actions {
+  display: flex; gap: var(--space-sm); margin-top: var(--space-md);
+}
+.source-btn { flex: 1; height: 72rpx; line-height: 72rpx; font-size: 26rpx; }
+
 .hint {
   font-size: 22rpx; color: var(--color-gray-500);
   margin-top: var(--space-sm); line-height: 1.5;

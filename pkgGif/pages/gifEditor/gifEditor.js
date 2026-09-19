@@ -230,6 +230,7 @@ Page({
   /* ---------------- 选择与解码 ---------------- */
 
   chooseGif() {
+    this._lastSource = 'chat';
     wx.chooseMessageFile({
       count: 1,
       type: 'file',
@@ -243,6 +244,38 @@ Page({
         if (err && err.errMsg && /cancel/i.test(err.errMsg)) return;
         wx.showToast({ title: '选择文件失败', icon: 'none' });
       }
+    });
+  },
+
+  // 相册辅助入口：微信通常会把相册 GIF 转码为静态 JPG（取第一帧），
+  // 仅当环境直出 .gif 原文件时可用；GIF8 头部校验兜底，坏文件进不了解码流程。
+  chooseFromAlbum() {
+    this._lastSource = 'album';
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album'],
+      sizeType: ['original'],
+      success: (res) => {
+        const f = res.tempFiles && res.tempFiles[0];
+        if (!f) return;
+        this._loadGifFile(f.tempFilePath, f.size, '相册图片.gif');
+      },
+      fail: (err) => {
+        if (err && err.errMsg && /cancel/i.test(err.errMsg)) return;
+        wx.showToast({ title: '选择图片失败', icon: 'none' });
+      }
+    });
+  },
+
+  // 导入指引：chooseMessageFile type:'file' 只认"文件消息"（蓝色文件卡片），
+  // 以图片/表情发送的 GIF 不可见——这是线上"无记录"的根因，文案必须讲清"以文件发送"这个动作。
+  showImportGuide() {
+    wx.showModal({
+      title: '如何导入 GIF',
+      content: '1. 把 .gif 文件发到聊天（推荐「文件传输助手」）：点 + → 文件 → 选择 .gif，发送后显示为文件卡片\n2. 回到本页点上方卡片「从聊天导入」，选中该聊天即可\n\n注意：\n· 以图片/表情方式发送的 GIF 不是文件，选不到\n· iOS 相册里的 GIF 需先「存储到文件」再发送',
+      showCancel: false,
+      confirmText: '知道了'
     });
   },
 
@@ -272,7 +305,9 @@ Page({
         this.setData({ decoding: false });
         wx.showModal({
           title: '不是 GIF 文件',
-          content: '该文件不是有效的 GIF 格式（可能从相册选择时被转码为 JPG）。请从聊天文件中选择原始 .gif 文件。',
+          content: this._lastSource === 'album'
+            ? '微信把相册里的 GIF 转成了静态图（只取第一帧），拿不到动画帧。请把 .gif 以「文件」发到聊天（+ → 文件），再用「从聊天导入」。'
+            : '该文件不是有效的 GIF 格式（可能发送时被转码为 JPG）。请从聊天文件中选择原始 .gif 文件。',
           showCancel: false
         });
         return;

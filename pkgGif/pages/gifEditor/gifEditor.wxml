@@ -37,10 +37,14 @@
     <view class="section-title"><text>选择 GIF</text></view>
     <view class="empty-state" bindtap="chooseGif">
       <text class="empty-icon">🎞</text>
-      <text class="empty-text">从聊天文件中选择 .gif</text>
+      <text class="empty-text">从聊天导入 .gif</text>
       <text class="empty-hint">支持 GIF89a/87a，最大 {{maxDimension}}px / {{maxFrames}} 帧</text>
     </view>
-    <view class="hint">提示：请从微信聊天记录中选择原始 GIF 文件。从相册选择可能被转码为 JPG 导致无法解析。</view>
+    <view class="source-actions">
+      <button class="btn btn-secondary source-btn" bindtap="chooseFromAlbum">从相册试试</button>
+      <button class="btn btn-secondary source-btn" bindtap="showImportGuide">导入指引</button>
+    </view>
+    <view class="hint">提示：把 .gif 以「文件」发到聊天（如文件传输助手）后导入最稳妥；相册直接选图可能被微信转成静态 JPG。</view>
   </view>
 
   <!-- 已加载 -->

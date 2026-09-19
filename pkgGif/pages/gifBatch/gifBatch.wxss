@@ -48,6 +48,13 @@
 .add-btn:active { background: rgba(0,240,255,0.1); }
 .add-icon { font-size: 40rpx; }
 
+/* 辅助入口行：相册尝试 + 导入指引 */
+.source-actions {
+  display: flex; gap: var(--space-sm); margin-top: var(--space-sm);
+}
+.source-btn { flex: 1; height: 72rpx; line-height: 72rpx; font-size: 26rpx; }
+.import-hint { margin-top: var(--space-sm); }
+
 .file-list { margin-top: var(--space-md); }
 .file-card {
   display: flex; align-items: center; justify-content: space-between;

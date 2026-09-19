@@ -75,6 +75,42 @@ Page({
     });
   },
 
+  // 相册辅助入口：微信通常会把相册 GIF 转码为静态 JPG（取第一帧），
+  // 仅当环境直出 .gif 原文件时可用；GIF8 头部校验兜底，坏文件在解码前即标失败。
+  chooseFromAlbum() {
+    if (this.data.files.length >= MAX_FILES) {
+      wx.showToast({ title: `最多 ${MAX_FILES} 个文件`, icon: 'none' });
+      return;
+    }
+    const remain = MAX_FILES - this.data.files.length;
+    wx.chooseMedia({
+      count: remain,
+      mediaType: ['image'],
+      sourceType: ['album'],
+      sizeType: ['original'],
+      success: (res) => {
+        for (const f of (res.tempFiles || [])) {
+          this._addFile({ name: '相册图片', path: f.tempFilePath, size: f.size, fromAlbum: true });
+        }
+      },
+      fail: (err) => {
+        if (err && err.errMsg && /cancel/i.test(err.errMsg)) return;
+        wx.showToast({ title: '选择图片失败', icon: 'none' });
+      }
+    });
+  },
+
+  // 导入指引：chooseMessageFile type:'file' 只认"文件消息"（蓝色文件卡片），
+  // 以图片/表情发送的 GIF 不可见——这是线上"无记录"的根因，文案必须讲清"以文件发送"这个动作。
+  showImportGuide() {
+    wx.showModal({
+      title: '如何导入 GIF',
+      content: '1. 把 .gif 文件发到聊天（推荐「文件传输助手」）：点 + → 文件 → 选择 .gif，发送后显示为文件卡片\n2. 回到本页点「+ 从聊天导入 GIF」，选中该聊天即可（可多选）\n\n注意：\n· 以图片/表情方式发送的 GIF 不是文件，选不到\n· iOS 相册里的 GIF 需先「存储到文件」再发送',
+      showCancel: false,
+      confirmText: '知道了'
+    });
+  },
+
   _addFile(file) {
     const id = Date.now() + '_' + Math.random().toString(36).slice(2, 6);
     const item = {
@@ -83,6 +119,7 @@ Page({
       size: file.size,
       sizeText: this._formatSize(file.size),
       path: file.path,
+      fromAlbum: !!file.fromAlbum,
       status: 'decoding',
       frameCount: 0,
       width: 0,
@@ -107,7 +144,12 @@ Page({
       const head = new Uint8Array(buffer, 0, Math.min(6, buffer.byteLength));
       const sig = String.fromCharCode(head[0], head[1], head[2], head[3], head[4], head[5]);
       if (sig !== 'GIF87a' && sig !== 'GIF89a') {
-        this._updateFile(item.id, { status: 'failed', error: '非 GIF 文件' });
+        this._updateFile(item.id, {
+          status: 'failed',
+          error: item.fromAlbum
+            ? '非 GIF：相册图被微信转成静态 JPG，请从聊天导入'
+            : '非 GIF 文件'
+        });
         return;
       }
 

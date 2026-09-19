@@ -15,8 +15,13 @@
     </view>
     <view class="add-btn" bindtap="chooseGif" wx:if="{{files.length < maxFiles}}">
       <text class="add-icon">+</text>
-      <text>选择 GIF 文件</text>
+      <text>从聊天导入 GIF</text>
     </view>
+    <view class="source-actions" wx:if="{{files.length < maxFiles}}">
+      <button class="btn btn-secondary source-btn" bindtap="chooseFromAlbum">从相册试试</button>
+      <button class="btn btn-secondary source-btn" bindtap="showImportGuide">导入指引</button>
+    </view>
+    <view class="hint import-hint" wx:if="{{files.length < maxFiles}}">提示：把 .gif 以「文件」发到聊天（如文件传输助手）后导入最稳妥；相册直接选图可能被微信转成静态 JPG。</view>
 
     <!-- 文件列表 -->
     <view class="file-list" wx:if="{{files.length > 0}}">
