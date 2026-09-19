@@ -231,10 +231,11 @@ Page({
 
   chooseGif() {
     this._lastSource = 'chat';
+    // type:'all'：图片气泡/文件卡片形式的 GIF 都出现在可选列表（v2 放宽，原 type:'file' 只认文件卡片，
+    // 用户以图片直发的 GIF 全部"无结果"）。选中后靠 GIF8 头校验兜底，转码图进不了解码流程。
     wx.chooseMessageFile({
       count: 1,
-      type: 'file',
-      extension: ['gif'],
+      type: 'all',
       success: (res) => {
         const file = res.tempFiles && res.tempFiles[0];
         if (!file) return;
@@ -268,12 +269,12 @@ Page({
     });
   },
 
-  // 导入指引：chooseMessageFile type:'file' 只认"文件消息"（蓝色文件卡片），
-  // 以图片/表情发送的 GIF 不可见——这是线上"无记录"的根因，文案必须讲清"以文件发送"这个动作。
+  // 导入指引：type:'all' 下任意形式发送的 GIF 均可选中，但图片直发可能被微信转静态图——
+  // 以「文件」发送（+ → 文件）是最稳妥路径，文案保留该引导。
   showImportGuide() {
     wx.showModal({
       title: '如何导入 GIF',
-      content: '① 发送：聊天中点 + → 文件 → 选 .gif\n（推荐发给「文件传输助手」）\n\n② 导入：回本页点「从聊天导入」\n选中该聊天，勾选刚发的 .gif\n\n· 以图片/表情发送的 GIF 选不到\n· iOS 相册 GIF 需先「存储到文件」',
+      content: '① 发送：把 .gif 发到任意聊天\n（推荐发给「文件传输助手」）\n最稳：点 + → 文件 选中 .gif 发送\n\n② 导入：回本页点「从聊天导入」\n选中该聊天，勾选刚发的 .gif\n\n· 图片直发的 GIF 部分机型会被转静态图\n· iOS 相册 GIF 需先「存储到文件」',
       showCancel: false,
       confirmText: '知道了'
     });
@@ -307,7 +308,7 @@ Page({
           title: '不是 GIF 文件',
           content: this._lastSource === 'album'
             ? '选中的不是 GIF 动图（相册选图通常会被微信转成静态图，只取第一帧）。请把 .gif 以「文件」发到聊天（+ → 文件），再用「从聊天导入」。'
-            : '该文件不是有效的 GIF 格式（可能发送时被转码为 JPG）。请从聊天文件中选择原始 .gif 文件。',
+            : '选中的不是有效的 GIF 文件（可能被微信转成了静态图）。请把 .gif 以「文件」发到聊天（+ → 文件），再重新导入。',
           showCancel: false
         });
         return;
