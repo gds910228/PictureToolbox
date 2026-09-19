@@ -273,7 +273,7 @@ Page({
   showImportGuide() {
     wx.showModal({
       title: '如何导入 GIF',
-      content: '1. 把 .gif 文件发到聊天（推荐「文件传输助手」）：点 + → 文件 → 选择 .gif，发送后显示为文件卡片\n2. 回到本页点上方卡片「从聊天导入」，选中该聊天即可\n\n注意：\n· 以图片/表情方式发送的 GIF 不是文件，选不到\n· iOS 相册里的 GIF 需先「存储到文件」再发送',
+      content: '1. 把 .gif 文件发到聊天（推荐「文件传输助手」）：点 + → 文件 → 选择 .gif，发送后显示为文件卡片\n2. 回到本页点上方卡片「从聊天导入」，选中该聊天，再勾选 .gif 文件\n\n注意：\n· 以图片/表情方式发送的 GIF 不是文件，选不到\n· iOS 相册里的 GIF 需先「存储到文件」再发送',
       showCancel: false,
       confirmText: '知道了'
     });
@@ -306,7 +306,7 @@ Page({
         wx.showModal({
           title: '不是 GIF 文件',
           content: this._lastSource === 'album'
-            ? '微信把相册里的 GIF 转成了静态图（只取第一帧），拿不到动画帧。请把 .gif 以「文件」发到聊天（+ → 文件），再用「从聊天导入」。'
+            ? '选中的不是 GIF 动图（相册选图通常会被微信转成静态图，只取第一帧）。请把 .gif 以「文件」发到聊天（+ → 文件），再用「从聊天导入」。'
             : '该文件不是有效的 GIF 格式（可能发送时被转码为 JPG）。请从聊天文件中选择原始 .gif 文件。',
           showCancel: false
         });
@@ -1890,7 +1890,8 @@ Page({
         }
         try {
           const sourcePath = `${wx.env.USER_DATA_PATH}/${DRAFT_SOURCE}`;
-          // 复用加载流程（会重新解码、生成缩略图）
+          // 复用加载流程（会重新解码、生成缩略图）；草稿源是已过校验的落盘文件，来源按聊天口径
+          this._lastSource = 'chat';
           await this._loadGifFile(sourcePath, 0, draft.fileName || 'draft.gif', { skipSourceSave: true });
 
           // 重放操作

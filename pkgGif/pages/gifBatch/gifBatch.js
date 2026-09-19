@@ -29,7 +29,7 @@ const SPEED_OPTIONS = [
 
 Page({
   data: {
-    files: [],          // [{id, name, size, sizeText, path, status, frameCount, width, height, error}]（帧像素存实例字段 _framesById，绝不进 data——setData 会深拷贝序列化）
+    files: [],          // [{id, name, size, sizeText, path, fromAlbum, status, frameCount, width, height, error}]（帧像素存实例字段 _framesById，绝不进 data——setData 会深拷贝序列化）
     // status: 'pending' | 'decoding' | 'ready' | 'processing' | 'done' | 'failed'
     processing: false,
     overallProgress: 0,
@@ -105,7 +105,7 @@ Page({
   showImportGuide() {
     wx.showModal({
       title: '如何导入 GIF',
-      content: '1. 把 .gif 文件发到聊天（推荐「文件传输助手」）：点 + → 文件 → 选择 .gif，发送后显示为文件卡片\n2. 回到本页点「+ 从聊天导入 GIF」，选中该聊天即可（可多选）\n\n注意：\n· 以图片/表情方式发送的 GIF 不是文件，选不到\n· iOS 相册里的 GIF 需先「存储到文件」再发送',
+      content: '1. 把 .gif 文件发到聊天（推荐「文件传输助手」）：点 + → 文件 → 选择 .gif，发送后显示为文件卡片\n2. 回到本页点「+ 从聊天导入 GIF」，选中该聊天，再勾选 .gif 文件（可多选）\n\n注意：\n· 以图片/表情方式发送的 GIF 不是文件，选不到\n· iOS 相册里的 GIF 需先「存储到文件」再发送',
       showCancel: false,
       confirmText: '知道了'
     });
@@ -147,7 +147,7 @@ Page({
         this._updateFile(item.id, {
           status: 'failed',
           error: item.fromAlbum
-            ? '非 GIF：相册图被微信转成静态 JPG，请从聊天导入'
+            ? '非 GIF：相册图通常被微信转成静态 JPG，请从聊天导入'
             : '非 GIF 文件'
         });
         return;

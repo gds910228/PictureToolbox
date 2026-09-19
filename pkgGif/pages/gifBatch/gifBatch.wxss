@@ -50,7 +50,7 @@
 
 /* 辅助入口行：相册尝试 + 导入指引 */
 .source-actions {
-  display: flex; gap: var(--space-sm); margin-top: var(--space-sm);
+  display: flex; gap: var(--space-sm); margin-top: var(--space-md);
 }
 .source-btn { flex: 1; height: 72rpx; line-height: 72rpx; font-size: 26rpx; }
 .import-hint { margin-top: var(--space-sm); }
