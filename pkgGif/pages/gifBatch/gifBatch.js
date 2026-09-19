@@ -105,7 +105,7 @@ Page({
   showImportGuide() {
     wx.showModal({
       title: '如何导入 GIF',
-      content: '1. 把 .gif 文件发到聊天（推荐「文件传输助手」）：点 + → 文件 → 选择 .gif，发送后显示为文件卡片\n2. 回到本页点「+ 从聊天导入 GIF」，选中该聊天，再勾选 .gif 文件（可多选）\n\n注意：\n· 以图片/表情方式发送的 GIF 不是文件，选不到\n· iOS 相册里的 GIF 需先「存储到文件」再发送',
+      content: '① 发送：聊天中点 + → 文件 → 选 .gif\n（推荐发给「文件传输助手」）\n\n② 导入：回本页点「+ 从聊天导入 GIF」\n选中该聊天，勾选刚发的 .gif（可多选）\n\n· 以图片/表情发送的 GIF 选不到\n· iOS 相册 GIF 需先「存储到文件」',
       showCancel: false,
       confirmText: '知道了'
     });
