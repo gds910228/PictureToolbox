@@ -1,8 +1,8 @@
 // cloudfunctions/aiImageChat/index.js
-// AI图片问答云函数 - 混元多模态大模型(hunyuan-vision)，支持多轮对话
+// AI图片问答云函数 - TokenHub 视觉模型(hy-vision-2.0-instruct)，支持多轮对话
 //
 // 设计：仅首轮带图（省 token / 省流量 / 更快）。
-//   - 首轮(history 为空)：user 消息含 image_url + 问题，模型"看见"图。
+//   - 首轮(history 为空)：user 消息 content 数组含 image_url + 问题，模型"看见"图。
 //   - 后续轮(history 非空)：只发纯文本历史 + 当前问题，不再重传图。
 //     模型靠前文 assistant 回答里的视觉信息延续上下文；短追问通常 OK，
 //     长程多轮可能丢视觉细节——这是有意的成本取舍。
@@ -10,15 +10,12 @@
 // 安全：首轮图片走服务端 assertImageSafe 兜底；问题文本由前端 guardText
 // (调 checkImage 云函数 msgSecCheck) 已拦截，本函数不再重复文本检测。
 //
-// 降级：密钥未配置 → 返回演示文本(标注 demo)；API 调用失败 → success:false，
-//       绝不伪造真实回答。
+// 降级：TokenHub API Key 未配置 → 返回演示文本(标注 demo)；API 调用失败 → success:false，
+//       绝不伪造真实回答。模型迁移背景见 tokenhub.js 头注（原 hunyuan-vision 已下线）。
 
 const cloud = require('wx-server-sdk');
-const tencentcloud = require('tencentcloud-sdk-nodejs');
-const secret = require('./cloud-secret');
+const tokenhub = require('./tokenhub');
 const contentCheck = require('./content-check');
-
-const HunyuanClient = tencentcloud.hunyuan.v20230901.Client;
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -47,14 +44,14 @@ exports.main = async (event, context) => {
     const messages = [];
 
     // 1) 历史轮次 → 纯文本消息（仅首轮曾带图，这里不再带）
-    //    注意：纯文本消息用 Content(单数字符串)，不是 Contents 数组。
-    //    Contents 数组仅用于含图的多模态消息（见下方首轮）。—— 腾讯混元官方示例7/5
+    //    注意：纯文本消息 content 为字符串；含图的多模态消息 content 为数组
+    //    （OpenAI 兼容格式，见下方首轮）。
     const hist = Array.isArray(history) ? history.slice(-MAX_HISTORY) : [];
     for (const h of hist) {
       if (!h || !h.role || !h.content) continue;
       messages.push({
-        Role: h.role === 'assistant' ? 'assistant' : 'user',
-        Content: String(h.content).slice(0, MAX_MSG_LEN)
+        role: h.role === 'assistant' ? 'assistant' : 'user',
+        content: String(h.content).slice(0, MAX_MSG_LEN)
       });
     }
 
@@ -75,22 +72,22 @@ exports.main = async (event, context) => {
       }
 
       messages.push({
-        Role: 'user',
-        Contents: [
-          { Type: 'image_url', ImageUrl: { Url: imageURL } },
-          { Type: 'text', Text: q }
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: tokenhub.normalizeImageUrl(imageURL) } },
+          { type: 'text', text: q }
         ]
       });
     } else {
-      // 后续轮：纯文本追问，不重传图（Content 字符串，非 Contents 数组）
+      // 后续轮：纯文本追问，不重传图（content 字符串）
       messages.push({
-        Role: 'user',
-        Content: q
+        role: 'user',
+        content: q
       });
     }
 
-    // 3) 调混元
-    const r = await callHunyuan(messages);
+    // 3) 调视觉模型
+    const r = await callVision(messages);
     if (r.ok) {
       return { success: true, answer: r.text, demo: !!r.demo };
     }
@@ -105,44 +102,27 @@ exports.main = async (event, context) => {
 };
 
 /**
- * 调用混元 ChatCompletions
+ * 调用 TokenHub 视觉模型 Chat Completions
  * @returns {Promise<{ok:boolean, text?:string, demo?:boolean, error?:string}>}
  */
-async function callHunyuan(messages) {
-  const cred = secret.getCredentials();
-  if (!cred.available) {
-    // 未配置密钥：演示模式（明确标注，不伪装成真实回答）
+async function callVision(messages) {
+  if (!tokenhub.isConfigured()) {
+    // 未配置 API Key：演示模式（明确标注，不伪装成真实回答）
     return { ok: true, demo: true, text: mockAnswer() };
   }
 
   try {
-    const client = new HunyuanClient({
-      credential: { secretId: cred.secretId, secretKey: cred.secretKey },
-      region: cred.region,
-      profile: { signMethod: 'TC3-HMAC-SHA256' }
-    });
-
-    const params = {
-      Model: 'hunyuan-vision',
-      Messages: messages,
-      Stream: false
-    };
-
-    const response = await client.ChatCompletions(params);
-    const result = response.Response || response;
-    if (result.Choices && result.Choices.length > 0 && result.Choices[0].Message) {
-      const content = result.Choices[0].Message.Content;
-      if (content && String(content).trim()) {
-        return { ok: true, text: String(content).trim() };
-      }
+    const text = await tokenhub.chatCompletion({ messages });
+    if (text && String(text).trim()) {
+      return { ok: true, text: String(text).trim() };
     }
     return { ok: false, error: 'AI 未返回有效内容，请重试' };
   } catch (err) {
-    console.error('调用混元API失败:', err);
+    console.error('调用 TokenHub API 失败:', err);
     return { ok: false, error: 'AI 服务暂时不可用，请稍后重试' };
   }
 }
 
 function mockAnswer() {
-  return '（演示模式）我已收到你的提问。配置腾讯云混元 API 密钥后即可获得真实的图片问答能力——在微信云开发控制台为本云函数设置环境变量 TENCENTCLOUD_SECRET_ID / TENCENTCLOUD_SECRET_KEY 即可。';
+  return '（演示模式）我已收到你的提问。配置 TokenHub API Key 后即可获得真实的图片问答能力——在微信云开发控制台为本云函数设置环境变量 TOKENHUB_API_KEY 即可（TokenHub 控制台 → API Key 管理页创建）。';
 }

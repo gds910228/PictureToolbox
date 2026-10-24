@@ -1,24 +1,21 @@
 // cloudfunctions/aiImageDescribe/index.js
-// AI图片描述云函数 - 使用混元大模型生成图片描述
+// AI图片描述云函数 - 使用 TokenHub 视觉模型(hy-vision-2.0-instruct)生成图片描述
 //
 // 定位：生成客观描述/解读（看懂图）。社媒发布文案请用 aiCaption 云函数；
 // 本函数 social 风格已移除以避免与 aiCaption 配文重叠。
 //
 // 安全/诚实性约定（对齐 aiCaption）：
-// 1. 密钥未配置 → 返回 mock 示例描述（附 isMock:true，仅供本地开发），前端标注「示例文案」；
-//    密钥已配置但调用/解析失败 → 返回 success:false（不再静默 mock，避免假描述冒充 AI）。
+// 1. TokenHub API Key 未配置 → 返回 mock 示例描述（附 isMock:true，仅供本地开发），前端标注「示例文案」；
+//    已配置但调用/解析失败 → 返回 success:false（不再静默 mock，避免假描述冒充 AI）。
 // 2. 限流：复用统一模块 rate-limiter，featureKey='describe'，每功能独立计数。
 //    限额走环境变量 RATE_LIMIT_DAILY（缺省 20），控制台可改免重新部署。
 // 3. 服务端内容安全兜底：下载原图过 assertImageSafe，违规即拒（不暴露原因）。
+// 4. 模型：原 hunyuan-vision 已下线（2026-10），迁移 TokenHub 平台，见 tokenhub.js 头注。
 
 const cloud = require('wx-server-sdk');
-const tencentcloud = require('tencentcloud-sdk-nodejs');
-const secret = require('./cloud-secret');
+const tokenhub = require('./tokenhub');
 const contentCheck = require('./content-check');
 const rateLimiter = require('./rate-limiter');
-
-// 导入混元产品模块
-const HunyuanClient = tencentcloud.hunyuan.v20230901.Client;
 
 // 初始化云开发环境
 cloud.init({
@@ -39,7 +36,7 @@ exports.main = async (event, context) => {
   if (action === 'quota') {
     const wxCtxQ = cloud.getWXContext();
     const openidQ = wxCtxQ && wxCtxQ.OPENID;
-    if (!secret.getCredentials().available) {
+    if (!tokenhub.isConfigured()) {
       return { success: true, demo: true, used: 0, limit: rateLimiter.resolveLimit() };
     }
     return await rateLimiter.queryQuota(openidQ, FEATURE_KEY, cloud);
@@ -70,10 +67,9 @@ exports.main = async (event, context) => {
       };
     }
 
-    // 密钥可用 → 限流（mock 态不消耗额度，不计数）
-    const cred = secret.getCredentials();
+    // TokenHub API Key 可用 → 限流（mock 态不消耗额度，不计数）
     let rl = null;
-    if (cred.available) {
+    if (tokenhub.isConfigured()) {
       const wxCtx = cloud.getWXContext();
       const openid = wxCtx && wxCtx.OPENID;
       rl = await rateLimiter.checkRateLimit(openid, FEATURE_KEY, cloud);
@@ -88,8 +84,8 @@ exports.main = async (event, context) => {
       }
     }
 
-    // 调用混元大模型API生成描述（失败抛错，由 catch 返回失败，不再静默 mock）
-    const { description, isMock } = await callHunyuanAPI(imageURL, style);
+    // 调用视觉模型生成描述（失败抛错，由 catch 返回失败，不再静默 mock）
+    const { description, isMock } = await callVisionAPI(imageURL, style);
 
 
     return {
@@ -111,29 +107,14 @@ exports.main = async (event, context) => {
 };
 
 /**
- * 调用混元大模型API生成图片描述。
- * 密钥未配置 → mock 描述 + isMock:true；密钥可用但调用/解析失败 → 抛错（不 mock）。
+ * 调用视觉模型生成图片描述（TokenHub，OpenAI 兼容）。
+ * TokenHub API Key 未配置 → mock 描述 + isMock:true；已配置但调用/解析失败 → 抛错（不 mock）。
  * @returns {{description:string, isMock:boolean}}
  */
-async function callHunyuanAPI(imageURL, style) {
-  // 统一通过 cloud-secret 模块读取密钥（控制台环境变量优先）
-  const cred = secret.getCredentials();
-
-  if (!cred.available) {
+async function callVisionAPI(imageURL, style) {
+  if (!tokenhub.isConfigured()) {
     return { description: mockDescription(style), isMock: true };
   }
-
-  // 实例化混元客户端
-  const client = new HunyuanClient({
-    credential: {
-      secretId: cred.secretId,
-      secretKey: cred.secretKey,
-    },
-    region: cred.region,
-    profile: {
-      signMethod: "TC3-HMAC-SHA256",
-    }
-  });
 
   // 根据风格构建不同的提示词
   const stylePrompts = {
@@ -186,38 +167,19 @@ async function callHunyuanAPI(imageURL, style) {
 
   const prompt = stylePrompts[style] || stylePrompts.professional;
 
-  // 构建请求参数（多模态消息用规范 Contents 数组格式：image_url + text）
-  const params = {
-    Model: "hunyuan-vision",
-    Messages: [
-      {
-        Role: "user",
-        Contents: [
-          {
-            Type: "image_url",
-            ImageUrl: {
-              Url: imageURL
-            }
-          },
-          {
-            Type: "text",
-            Text: prompt
-          }
-        ]
-      }
-    ],
-    Stream: false
-  };
+  // 多模态消息：OpenAI 兼容 content 数组（image_url + text）
+  const messages = [
+    {
+      role: 'user',
+      content: [
+        { type: 'image_url', image_url: { url: tokenhub.normalizeImageUrl(imageURL) } },
+        { type: 'text', text: prompt }
+      ]
+    }
+  ];
 
   // 调用API（失败抛错，由主流程 catch 返回 success:false，不再静默 mock）
-  const response = await client.ChatCompletions(params);
-
-  // 解析返回结果（腾讯云SDK返回结构可能是 response.Response 或直接 response）
-  const result = response.Response || response;
-  if (!result.Choices || !result.Choices.length || !result.Choices[0].Message) {
-    throw new Error('AI 返回为空');
-  }
-  const content = result.Choices[0].Message.Content;
+  const content = await tokenhub.chatCompletion({ messages });
   if (!content) {
     throw new Error('AI 返回格式无法解析');
   }

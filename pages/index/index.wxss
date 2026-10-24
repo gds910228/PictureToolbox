@@ -1997,3 +1997,43 @@
   0%, 100% { transform: translate(8rpx, 8rpx); opacity: 0.7; }
   50% { transform: translate(12rpx, 12rpx); opacity: 1; }
 }
+
+/* 今日问候：日出（圆日 + 地平线，暖色调但沿用全局 token） */
+.icon-greeting {
+  width: 96rpx;
+  height: 96rpx;
+  position: relative;
+}
+.icon-greeting::before {
+  content: '';
+  position: absolute;
+  width: 44rpx;
+  height: 44rpx;
+  top: 24rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 2rpx solid var(--color-solar-flare, #FFB13C);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 177, 60, 0.55) 0%, rgba(10, 14, 39, 0.55) 70%);
+  box-shadow: 0 0 14rpx rgba(255, 177, 60, 0.45);
+  animation: greeting-sun-breathe 2.4s ease-in-out infinite;
+}
+.icon-greeting::after {
+  content: '';
+  position: absolute;
+  width: 64rpx;
+  height: 2rpx;
+  bottom: 22rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, transparent, var(--color-solar-flare, #FFB13C), transparent);
+  animation: greeting-horizon 2.4s ease-in-out infinite;
+}
+@keyframes greeting-sun-breathe {
+  0%, 100% { transform: translateX(-50%) scale(1); box-shadow: 0 0 10rpx rgba(255, 177, 60, 0.35); }
+  50% { transform: translateX(-50%) scale(1.08); box-shadow: 0 0 18rpx rgba(255, 177, 60, 0.6); }
+}
+@keyframes greeting-horizon {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}

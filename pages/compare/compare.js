@@ -1,6 +1,7 @@
 // pages/compare/compare.js - 图片对比查看器
 const compareHelper = require('../../utils/compare-helper');
 const imageProcess = require('../../utils/image-process');
+const analytics = require('../../utils/analytics');
 
 const MAX_SCALE = 4;
 const MIN_SCALE = 1;
@@ -23,6 +24,8 @@ Page({
   },
 
   onLoad() {
+    // P0 埋点补齐：compare 是全站唯一未接入埋点的页面（32/33）
+    analytics.track('tool_view', { toolId: 'compare' });
     const pending = compareHelper.consumePendingCompare();
     if (!pending || !pending.originalPath || !pending.processedPath) {
       this.setData({ loading: false, loadError: '没有可对比的图片' });
@@ -144,6 +147,7 @@ Page({
           patch.processedSizeText = pInfo ? `${pInfo.width}×${pInfo.height}` : '';
         }
         this.setData(patch);
+        analytics.track('tool_complete', { toolId: 'compare' });
 
         // 滑动模式需要预加载到 Canvas Image
         if (this.data.mode === 'slide') {

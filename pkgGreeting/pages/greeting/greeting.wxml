@@ -1,0 +1,109 @@
+<!--pkgGreeting/pages/greeting/greeting.wxml-->
+<!--今日问候：三步流程（选照片 → 样式祝福 → 成品），浅色大字长辈友好皮肤-->
+<view class="g-page">
+
+  <!-- 顶部氛围带：随"今天是什么日子"变色（节日红金 / 节气青绿 / 平常日暖橙） -->
+  <view class="g-band g-band--{{occasionType || 'plain'}}">
+    <view class="g-band-date">{{dateText}}{{occasion ? ' · ' + occasion : ''}}</view>
+  </view>
+
+  <!-- 步骤 1：选照片 -->
+  <view wx:if="{{step === 1}}" class="g-step">
+    <view class="g-h1">选几张照片</view>
+    <view class="g-h2">家人的照片、花草、风景都可以</view>
+
+    <view class="g-photo-grid">
+      <view class="g-photo-item" wx:for="{{photos}}" wx:key="src">
+        <image class="g-photo-img" src="{{item.src}}" mode="aspectFill"/>
+        <view class="g-photo-del" data-index="{{index}}" bindtap="onRemovePhoto">×</view>
+      </view>
+      <view class="g-photo-add" wx:if="{{photos.length < 4}}" bindtap="onChoose">
+        <view class="g-photo-add-icon">＋</view>
+        <view class="g-photo-add-text">选照片</view>
+      </view>
+    </view>
+
+    <button class="g-btn g-btn-primary" bindtap="onChoose">从相册选 / 拍一张</button>
+    <button class="g-btn g-btn-next" disabled="{{!photos.length}}" bindtap="goStep2">下一步</button>
+  </view>
+
+  <!-- 步骤 2：样式与祝福语 -->
+  <view wx:elif="{{step === 2}}" class="g-step">
+    <view class="g-h1">挑个好看的样式</view>
+    <view class="g-tpl-row">
+      <view
+        class="g-tpl {{tplId === item.id ? 'is-on' : ''}}"
+        wx:for="{{templates}}"
+        wx:key="id"
+        style="background:linear-gradient(165deg, {{item.bg[0]}}, {{item.bg[2]}}); color: {{item.text}};"
+        data-id="{{item.id}}"
+        bindtap="selectTpl"
+      >{{item.name}}</view>
+    </view>
+
+    <view class="g-h1">什么问候</view>
+    <view class="g-slot-row">
+      <view
+        class="g-slot {{slotId === item.id ? 'is-on' : ''}}"
+        wx:for="{{slots}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        bindtap="selectSlot"
+      >{{item.label}}</view>
+    </view>
+    <view class="g-occasion" wx:if="{{occasion}}">今天是{{occasion}} · {{dateText}}</view>
+
+    <view class="g-h1 g-h1-row">
+      <text>写句祝福</text>
+      <text class="g-h1-tip">点一下选一句，也可以自己改</text>
+    </view>
+    <view class="g-pool">
+      <view
+        class="g-pool-item {{poolIdx === index ? 'is-on' : ''}}"
+        wx:for="{{pool}}"
+        wx:key="*this"
+        data-index="{{index}}"
+        bindtap="pickBlessing"
+      >{{item}}</view>
+    </view>
+
+    <button class="g-btn g-btn-shuffle" bindtap="shuffleBlessing">🎲 没灵感？换一句</button>
+
+    <button class="g-btn g-btn-ai" disabled="{{aiLoading}}" bindtap="aiWrite">✨ AI 帮我写</button>
+    <view class="g-ai-list" wx:if="{{aiCaptions.length}}">
+      <view
+        class="g-ai-item {{blessingText === item ? 'is-on' : ''}}"
+        wx:for="{{aiCaptions}}"
+        wx:key="*this"
+        data-index="{{index}}"
+        bindtap="aiPick"
+      >{{item}}</view>
+      <view class="g-ai-mock" wx:if="{{aiMock}}">以上为示例文案（AI 未配置）</view>
+    </view>
+
+    <textarea
+      class="g-textarea"
+      value="{{blessingText}}"
+      maxlength="32"
+      placeholder="也可以自己写一句（32 字内）"
+      bindinput="onTextChange"
+    />
+
+    <button class="g-btn g-btn-primary" disabled="{{exporting}}" bindtap="goPreview">生成问候图</button>
+    <button class="g-btn g-btn-ghost" bindtap="restart">上一步</button>
+  </view>
+
+  <!-- 步骤 3：成品 -->
+  <view wx:elif="{{step === 3}}" class="g-step">
+    <view class="g-h1">做好啦！</view>
+    <view class="g-h2">可以发给亲友，也可以存到相册</view>
+    <image class="g-preview" src="{{outSrc}}" mode="widthFix" show-menu-by-longpress="{{true}}"/>
+    <button class="g-btn g-btn-primary" bindtap="sendToFriend">发给亲友</button>
+    <button class="g-btn g-btn-secondary" loading="{{saving}}" bindtap="saveToAlbum">保存到相册</button>
+    <button class="g-btn g-btn-secondary" open-type="share">分享给微信好友</button>
+    <button class="g-btn g-btn-ghost" bindtap="backToEdit">改一改</button>
+  </view>
+
+  <!-- 离屏渲染画布（不参与展示，仅出图） -->
+  <canvas type="2d" id="greetingCanvas" class="g-canvas"></canvas>
+</view>

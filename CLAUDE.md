@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Frontend**: Native WeChat Mini Program (WXML/WXSS/JS). **No UI library** — Vant Weapp is *not* used despite old specs mentioning it (verified: zero `@vant` references). Pure native components.
 - **Backend**: WeChat Cloud Development (云开发) — Cloud Functions + Cloud Storage + Cloud Database. Cloud env: `cloud1-1gk79pjqd5e1ed35` (in `app.js`). AppID: `wx8ed5d72746a75703`.
-- **AI**: Tencent Hunyuan VLM (`hunyuan-vision`) via `tencentcloud-sdk-nodejs`, called from cloud functions only.
+- **AI**: Tencent TokenHub 大模型服务平台（OpenAI 兼容，视觉模型 `hy-vision-2.0-instruct`），经共享助手 `tokenhub.js` 调用（cloud functions only）。原混元 `hunyuan-vision` 已于 2026-10 下线；生图类仍走 `tencentcloud-sdk-nodejs` 的 aiart 产品（SubmitTextToImageJob）。
 - **On-device imaging**: Canvas 2D API + hand-written JS encoders (custom GIF encoder, LSB steganography, perceptual hash, EXIF via `piexifjs`).
 
 ## Development Workflow
@@ -40,8 +40,8 @@ The single most important architectural fact: **features split between on-device
 - `format-recommend.js`, `id-photo-geometry.js`, `compare-helper.js`, `upscale-local.js`, `saliency-detect.js`, `colorize-detect.js`.
 - Pages: compress, crop, convert, watermark, filter, splice, makeGif, colorAnalysis, similarity, hiddenWatermark, formatRecommend, exif, idPhoto.
 
-**Cloud (cloud function + Hunyuan VLM)** — AI features that cannot run on-device:
-- `aiCaption`, `aiImageChat` (multi-turn, image only first turn), `aiImageDescribe`, `aiMatting`, `aiStyleTransfer`, `aiUpscale`, `aiColorize`, `aiEraser`, `aiOCR`.
+**Cloud (cloud function + TokenHub 视觉模型)** — AI features that cannot run on-device:
+- `aiCaption`, `aiImageChat` (multi-turn, image only first turn), `aiImageDescribe`, `aiTextToImage` (生图 aiart + prompt 辅助走视觉模型), `analyzeImage`.
 - Infrastructure functions: `secretCheck` (cred probe), `checkImage` (content security `imgSecCheck`/`msgSecCheck`), `analyzeImage`, `detectFace`, `imgToPdf`, `makeGif` (cloud variant).
 
 ## Cloud Function Anatomy
@@ -50,6 +50,7 @@ Each cloud function is an **isolated deployment unit** — it cannot `require` a
 
 - `index.js` — main logic.
 - `cloud-secret.js` — credential reader (identical copy per function).
+- `tokenhub.js` — TokenHub 平台（OpenAI 兼容）调用助手；需视觉/语言模型的函数各持一份（identical copy）。
 - `content-check.js` — server-side `imgSecCheck` (identical copy per function).
 - `rate-limiter.js` — unified per-feature daily rate limiter (identical copy per function that limits; see Rate Limiting below).
 - `package.json` — `wx-server-sdk` + `tencentcloud-sdk-nodejs`.
@@ -76,10 +77,13 @@ Two layers, both using standardized prompts that **never expose the label or spe
 
 **FAIL_OPEN**: a *service anomaly* (permissions, rate limit, timeout) degrades to **allow** — transient faults must not block legitimate users. Only a confirmed *violation* blocks. Images >1MB skip server-side check (frontend thumbnail check is primary). Note the lazy `require('./image-process')` inside `content-check.js` — it breaks a circular-dependency deadlock with `image-process.chooseImage`; do not hoist it to module top.
 
-## Hunyuan VLM Integration
+## TokenHub Vision Integration
 
-- Client: `tencentcloud.hunyuan.v20230901.Client`, method `ChatCompletions`, `Model: 'hunyuan-vision'`, `Stream: false`, `signMethod: 'TC3-HMAC-SHA256'`.
-- **Message format gotcha**: multimodal (image-bearing) messages use the **`Contents` array** (`[{Type:'image_url', ImageUrl:{Url}}, {Type:'text', Text}]`); pure-text messages use the **`Content` string** field. Mixing the two across multi-turn history breaks the call — see `cloudfunctions/aiImageChat/index.js` for the canonical pattern (first turn carries the image via `Contents`; follow-up turns are plain `Content` strings, image is not re-uploaded to save tokens).
+- 腾讯云混元旧模型（`hunyuan-vision` 等）已于 2026-10 全量下线，迁移至「大模型服务平台 TokenHub」（迁移指南 cloud.tencent.com/document/product/1729/131925）。
+- Client: 共享助手 `cloudfunctionTemplate/tokenhub.js`（每函数一份副本），内置 `https` 直连 `https://tokenhub.tencentmaas.com/v1/chat/completions`，Bearer 鉴权，`Stream: false`，OpenAI Chat Completions 兼容协议。
+- **鉴权**：环境变量 `TOKENHUB_API_KEY`（TokenHub 控制台 → API Key 管理页创建；旧腾讯云 SecretId/Key 继续供 aiart/OCR 等 TC3 签名产品使用，勿删）。占位符检测与 cloud-secret 同规则。
+- **模型**：`hy-vision-2.0-instruct`（图片→文本；混元语言模型 hy3 不支持图片输入，勿混用）。
+- **Message 格式 gotcha**：OpenAI 原生小写 `role`/`content`——纯文本轮 `content` 为字符串；含图轮 `content` 为数组 `[{type:'image_url', image_url:{url}}, {type:'text', text}]`。第一轮带图、后续纯文本的既有约定不变（见 `cloudfunctions/aiImageChat/index.js`）。图片 URL 传公网 URL 或 `data:image/...;base64` data URL，裸 base64 必须经 `tokenhub.normalizeImageUrl()` 包裹。
 - AI functions that return structured output (e.g. `aiCaption`'s 3 candidate captions) use a **3-tier JSON parse**: direct `JSON.parse` → strip ```` ```json ```` fence → regex-extract `[...]`. Strengthen prompts with hard constraints (字数/话题数) and end with "只返回纯 JSON 字符串数组，不要 markdown 代码块".
 
 ## Design System (app.wxss)

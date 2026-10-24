@@ -1,43 +1,49 @@
 // cloudfunctions/aiTextToImage/index.js
-// AI 文生图云函数 —— 腾讯混元生图 3.0（异步双 action）+ VLM 辅助写 prompt
+// AI 文生图云函数 —— 腾讯混元生图 3.0（异步双 action）+ TokenHub 视觉模型辅助写 prompt
 //
-// 定位：顶级流量入口。差异化在于用 hunyuan-vision（免费 10 亿 token）看参考图 / 模糊需求
+// 定位：顶级流量入口。差异化在于用视觉模型看参考图 / 模糊需求
 //      自动写专业 prompt，再交混元 3.0 生图——降低"不会写 prompt"的摩擦。
 //
 // 四个 action（单云函数承载，对齐 aiUpscale 异步模式 + aiOutpaint 诚信 / 限流约定）：
-//   action:'submit'（默认）: 收 prompt + 参考图(≤3) + 比例 → 内容安全 → 限流 → SubmitTextToImageJob → 返 JobId
-//   action:'query':         按 JobId 轮询 QueryTextToImageJob → running / done(下载结果存云存储返 fileID) / fail
+//   action:'submit'（默认）: 收 prompt + 参考图(≤1) + 比例 → 内容安全 → 限流 → SubmitHunyuanImageJob → 返 JobId
+//   action:'query':         按 JobId 轮询 QueryHunyuanImageJob → running / done(下载结果存云存储返 fileID) / fail
 //   action:'quota':         只读当日已用次数（前端进页面展示额度条），不计数
-//   action:'enhancePrompt': VLM 辅助写 prompt（看可选参考图 + 模糊需求 → 专业生图 prompt），走免费 token，不限流
+//   action:'enhancePrompt': 视觉模型辅助写 prompt（看可选参考图 + 模糊需求 → 专业生图 prompt），不限流
 //
 // 接口字段（以官方 API 实测为准，非 spec 字面）：
-//   SubmitTextToImageJob({ Prompt, Images.N(字符串数组, Base64 或 Url), Resolution, Revise:1, LogoAdd:1 }) → { JobId }
-//   QueryTextToImageJob({ JobId }) → { JobStatusCode('1'等待/'2'运行/'4'失败/'5'完成), JobStatusMsg,
-//                                       JobErrorCode, JobErrorMsg, ResultImage(Url 数组, 1h 有效), RevisedPrompt }
+//   SubmitHunyuanImageJob({ Prompt, ContentImage:{ImageUrl}(单参考图,可选), Resolution, Revise:1, LogoAdd:1 }) → { JobId }
+//   QueryHunyuanImageJob({ JobId }) → { JobStatusCode('1'等待/'2'运行/'4'失败/'5'完成), JobStatusMsg,
+//                                       JobErrorCode, JobErrorMsg, ResultImage(Url 数组, 1h 有效), RevisedPrompt(数组) }
 //   注意：异步任务接口无 RspImgType 参数，ResultImage 恒为 Url 数组且 1h 过期 → done 时必须下载 + 存自己云存储返 fileID。
+//   迁移注：SDK 4.1.x 已删除 aiart.SubmitTextToImageJob（旧 aiart 产品只剩 TextToImagePro 系），
+//   混元生图任务归 hunyuan 产品（2026-10 对 4.1.331 实测方法存在性后迁移）；
+//   且该接口官方仅支持 ap-guangzhou 地域（与全局 TENCENTCLOUD_REGION 解耦，newClient 内钉死）。
 //
 // 诚信约定（对齐 aiCaption / aiOutpaint）：
-//   1. 密钥未配置 → enhance/submit 返 demo:true（前端标注"示例"，submit 不轮询不伪造图）；query 不应在 demo 态被调用。
-//   2. 密钥已配置但调用 / 解析失败 → success:false + 归一化错误，绝不静默伪造生成图。
+//   1. TokenHub API Key 未配置 → enhance 返 demo:true（前端标注"示例"）；
+//      腾讯云密钥未配置 → submit 返 demo:true（不轮询不伪造图）；query 不应在 demo 态被调用。
+//   2. 已配置但调用 / 解析失败 → success:false + 归一化错误，绝不静默伪造生成图。
 //
 // 内容安全双层：参考图走 assertImageSafe（imgSecCheck）；prompt 文本走服务端 msgSecCheck（assertTextSafe）。
 //   违规 → 标准化提示，绝不暴露 label / 原因；服务异常 FAIL_OPEN 放行（腾讯侧仍会兜底拒违规）。
 // 合规：LogoAdd=1 保持默认（结果图"图片由 AI 生成"水印，深度合成类目义务，不隐藏）。
 // 限流：featureKey='text2img'，每功能独立计数；限额走环境变量 RATE_LIMIT_DAILY（缺省 20）。
 //      仅 submit 计数（query 轮询 / enhance 辅助不消耗生图额度）。时区：云函数跑 UTC，按日计数用北京时间。
+// 模型：prompt 辅助原用 hunyuan-vision，已下线（2026-10）→ TokenHub hy-vision-2.0-instruct（见 tokenhub.js）；
+//      生图走 hunyuan 产品（SubmitHunyuanImageJob），与 TokenHub 迁移无关。
 
 const cloud = require('wx-server-sdk');
 const https = require('https');
 const http = require('http');
 const tencentcloud = require('tencentcloud-sdk-nodejs');
 const secret = require('./cloud-secret');
+const tokenhub = require('./tokenhub');
 const contentCheck = require('./content-check');
 const rateLimiter = require('./rate-limiter');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
-const AiartClient = tencentcloud.aiart.v20221229.Client; // 与 aiStyleTransfer / aiOutpaint 同源
-const HunyuanClient = tencentcloud.hunyuan.v20230901.Client; // VLM 辅助写 prompt
+const HunyuanClient = tencentcloud.hunyuan.v20230901.Client; // 混元生图 3.0（SDK 4.1.x 起生图任务从 aiart 迁至 hunyuan 产品）
 const FEATURE_KEY = 'text2img';
 
 // 比例 → 官方尺寸列表中的合法 Resolution（均为 API 文档「尺寸列表」内取值）
@@ -49,7 +55,7 @@ const RATIO_RESOLUTION = {
   '9:16': '720:1280'
 };
 const DEFAULT_RESOLUTION = '1024:1024';
-const MAX_REFERENCES = 3;
+const MAX_REFERENCES = 1; // 新接口参考图为单个 ContentImage（原 Images 数组能力收窄，多选时仅第一张生效）
 const MAX_PROMPT_LEN = 2000; // 送检 / 透传上限（API 上限 8192，前端输入框已限更短）
 
 /**
@@ -114,7 +120,7 @@ async function submitTask(event) {
       return { success: true, demo: true };
     }
 
-    // 3. 参考图：每张 downloadFile + 服务端 imgSecCheck + getTempFileURL → 组成 Images.N（公网 Url 数组）
+    // 3. 参考图：每张 downloadFile + 服务端 imgSecCheck + getTempFileURL → 组装 ContentImage（公网 Url，单张）
     const refs = Array.isArray(referenceFileIDs) ? referenceFileIDs.slice(0, MAX_REFERENCES) : [];
     const imageUrls = [];
     for (const refFileID of refs) {
@@ -147,16 +153,21 @@ async function submitTask(event) {
     const resolution = RATIO_RESOLUTION[ratio] || DEFAULT_RESOLUTION;
 
     // 7. 提交任务（Revise:1 开启 prompt 改写，官方建议默认开，预计增加约 20s 生成耗时——异步轮询不影响 submit 返回速度）
+    //    SDK 版本日志：生图任务接口曾随 SDK 版本迁移产品（aiart→hunyuan），
+    //    再遇 "not a function" 先看这行确认部署的 SDK 版本。
+    const sdkVersion = (() => { try { return require('tencentcloud-sdk-nodejs/package.json').version; } catch (e) { return 'unknown'; } })();
+    console.log('[aiTextToImage] tencentcloud-sdk-nodejs 版本:', sdkVersion, '| 生图地域: ap-guangzhou(官方唯一支持)');
     const client = newClient(cred);
     const params = {
       Prompt: promptText,
       Resolution: resolution,
-      Revise: 1,
-      LogoAdd: 1
+      Revise: 1,   // prompt 扩写开关（官方建议默认开）
+      LogoAdd: 1   // 显式 AI 生成水印（深度合成合规义务，保持默认，不隐藏）
     };
-    if (imageUrls.length > 0) params.Images = imageUrls;
+    // 参考图：新接口为单个 ContentImage（取第一张，MAX_REFERENCES 已收窄为 1）
+    if (imageUrls.length > 0) params.ContentImage = { ImageUrl: imageUrls[0] };
 
-    const response = await client.SubmitTextToImageJob(params);
+    const response = await client.SubmitHunyuanImageJob(params);
     const jobId = response && response.JobId;
     if (!jobId) {
       throw new Error('AI 未返回任务 ID');
@@ -194,7 +205,7 @@ async function queryTask(event) {
     }
 
     const client = newClient(cred);
-    const resp = await client.QueryTextToImageJob({ JobId: taskId });
+    const resp = await client.QueryHunyuanImageJob({ JobId: taskId });
     const r = (resp && resp.Response) || resp || {};
     const code = String(r.JobStatusCode || ''); // '1'等待 '2'运行 '4'失败 '5'完成
 
@@ -238,12 +249,10 @@ async function enhancePrompt(event) {
   const ideaText = String(idea || '').trim().slice(0, 500);
 
   try {
-    const cred = secret.getCredentials();
-
-    // 参考图：最多取 1 张交给 VLM「看」（多图 VLM 也能看，但 1 张足够且省 token）
+    // 参考图：最多取 1 张交给视觉模型「看」（多图也能看，但 1 张足够且省 token）
     let imageURL = '';
     const refs = Array.isArray(referenceFileIDs) ? referenceFileIDs.slice(0, 1) : [];
-    if (refs.length > 0 && cred.available) {
+    if (refs.length > 0 && tokenhub.isConfigured()) {
       const refFileID = refs[0];
       const dl = await cloud.downloadFile({ fileID: refFileID });
       await contentCheck.assertImageSafe(dl.fileContent, cloud, detectContentType(refFileID));
@@ -251,39 +260,27 @@ async function enhancePrompt(event) {
       imageURL = urlRes.fileList[0] && urlRes.fileList[0].tempFileURL;
     }
 
-    // 密钥未配置 → 返固定示例 prompt + demo:true（前端标注"示例"）
-    if (!cred.available) {
+    // TokenHub API Key 未配置 → 返固定示例 prompt + demo:true（前端标注"示例"）
+    if (!tokenhub.isConfigured()) {
       return { success: true, demo: true, prompt: SAMPLE_PROMPT };
     }
 
-    // 构造混元消息：有参考图用 Contents 数组（多模态），无参考图用 Content 字符串（纯文本）—— 不可混用
+    // 构造消息：有参考图用 content 数组（多模态），无参考图用 content 字符串（纯文本）—— 不可混用
     const instruction = buildEnhanceInstruction(ideaText, !!imageURL);
     const messages = [];
     if (imageURL) {
       messages.push({
-        Role: 'user',
-        Contents: [
-          { Type: 'image_url', ImageUrl: { Url: imageURL } },
-          { Type: 'text', Text: instruction }
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: tokenhub.normalizeImageUrl(imageURL) } },
+          { type: 'text', text: instruction }
         ]
       });
     } else {
-      messages.push({ Role: 'user', Content: instruction });
+      messages.push({ role: 'user', content: instruction });
     }
 
-    const client = new HunyuanClient({
-      credential: { secretId: cred.secretId, secretKey: cred.secretKey },
-      region: cred.region,
-      profile: { signMethod: 'TC3-HMAC-SHA256' }
-    });
-    const resp = await client.ChatCompletions({
-      Model: 'hunyuan-vision',
-      Messages: messages,
-      Stream: false
-    });
-    const result = (resp && resp.Response) || resp || {};
-    const choice = result.Choices && result.Choices[0];
-    const text = choice && choice.Message && String(choice.Message.Content).trim();
+    const text = await tokenhub.chatCompletion({ messages });
     if (!text) {
       return { success: false, error: 'AI 未能生成提示词，请重试' };
     }
@@ -302,12 +299,15 @@ async function enhancePrompt(event) {
 // ============================================================
 
 /**
- * 构造 aiart 客户端（TC3 签名，与 aiStyleTransfer / aiOutpaint 同源）
+ * 构造混元生图客户端（TC3 签名）。
+ * 地域钉死 ap-guangzhou：SubmitHunyuanImageJob / QueryHunyuanImageJob 官方仅支持广州地域
+ * （docs 1729/105969、1729/110429），与全局 TENCENTCLOUD_REGION 解耦——
+ * 旧 aiart 接口支持多地域，迁移后环境变量若配了其他 region 会报 UnsupportedRegion。
  */
 function newClient(cred) {
-  return new AiartClient({
+  return new HunyuanClient({
     credential: { secretId: cred.secretId, secretKey: cred.secretKey },
-    region: cred.region,
+    region: 'ap-guangzhou',
     profile: { signMethod: 'TC3-HMAC-SHA256' }
   });
 }
@@ -372,7 +372,7 @@ async function assertTextSafe(text, cloud) {
 }
 
 /**
- * 把 SubmitTextToImageJob 抛出的错误归一化为友好文案 + errorCode
+ * 把生图任务接口抛出的错误归一化为友好文案 + errorCode
  *  - 文本违规（TextIllegalDetected）→ 标准化违规提示
  *  - 图片违规（ImageIllegalDetected）→ 参考图违规提示
  *  - 审核不通过（GenerateImageFailed）→ 标准化提示

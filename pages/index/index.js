@@ -29,7 +29,8 @@ const LAUNCH_DATES = {
   aiAvatar: '2026-07-07',
   pdfToImage: '2026-07-07',
   gifEditor: '2026-09-06',
-  gifBatch: '2026-09-06'
+  gifBatch: '2026-09-06',
+  greeting: '2026-10-23'
 };
 
 function isToolNew(toolId) {
@@ -61,8 +62,8 @@ Page({
       { id: 'eraser', name: '去水印/消除', icon: '🩹', url: '/pkgAi/pages/aiEraser/aiEraser' },
       { id: 'idphoto', name: '证件照制作', icon: '🪪', url: '/pages/idPhoto/idPhoto' },
       { id: 'colorize', name: '老照片上色', icon: '🌈', url: '/pkgAi/pages/aiColorize/aiColorize' },
-      { id: 'pdf2img', name: 'PDF转图片', icon: '📄', url: '/pkgTools/pages/pdfToImage/pdfToImage' },
-      { id: 't2i', name: 'AI 画画', icon: '🎨', url: '/pkgAi/pages/aiTextToImage/aiTextToImage' }
+      { id: 't2i', name: 'AI 画画', icon: '🎨', url: '/pkgAi/pages/aiTextToImage/aiTextToImage' },
+      { id: 'greeting', name: '今日问候', icon: '🌅', url: '/pkgGreeting/pages/greeting/greeting' }
     ],
     // 分组
     groups: [
@@ -272,6 +273,14 @@ Page({
         subtitle: '让图片更有趣',
         expanded: true,
         tools: [
+          {
+            id: 'greeting',
+            name: '今日问候',
+            desc: '选照片配祝福，一键发亲友群',
+            url: '/pkgGreeting/pages/greeting/greeting',
+            available: true,
+            isNew: true
+          },
           {
             id: 'makeGif',
             name: 'GIF制作',

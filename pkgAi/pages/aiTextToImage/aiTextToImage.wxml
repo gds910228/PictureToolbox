@@ -30,10 +30,10 @@
     <view class="enhance-demo-tip" wx:if="{{enhanceDemo}}">示例提示词（未配置 AI 密钥）</view>
 
     <!-- 参考图 -->
-    <view class="section-title">参考图（可选，最多 3 张）</view>
+    <view class="section-title">参考图（可选，1 张）</view>
     <image-uploader
       id="refUploader"
-      maxCount="3"
+      maxCount="1"
       value="{{refPaths}}"
       sizeType="{{['original']}}"
       sourceType="{{['album', 'camera']}}"
