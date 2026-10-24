@@ -41,6 +41,17 @@
       >{{item.name}}</view>
     </view>
 
+    <view class="g-h1">要不要动一动</view>
+    <view class="g-slot-row">
+      <view
+        class="g-slot {{animKind === item.id ? 'is-on' : ''}}"
+        wx:for="{{animKinds}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        bindtap="selectAnim"
+      >{{item.label}}</view>
+    </view>
+
     <view class="g-h1">什么问候</view>
     <view class="g-slot-row">
       <view
@@ -95,8 +106,8 @@
 
   <!-- 步骤 3：成品 -->
   <view wx:elif="{{step === 3}}" class="g-step">
-    <view class="g-h1">做好啦！</view>
-    <view class="g-h2">可以发给亲友，也可以存到相册</view>
+    <view class="g-h1">{{outIsGif ? '动图做好啦！' : '做好啦！'}}</view>
+    <view class="g-h2">{{outIsGif ? '发给亲友，聊天里就会动' : '可以发给亲友，也可以存到相册'}}</view>
     <image class="g-preview" src="{{outSrc}}" mode="widthFix" show-menu-by-longpress="{{true}}"/>
     <button class="g-btn g-btn-primary" bindtap="sendToFriend">发给亲友</button>
     <button class="g-btn g-btn-secondary" loading="{{saving}}" bindtap="saveToAlbum">保存到相册</button>

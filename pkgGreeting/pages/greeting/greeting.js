@@ -14,6 +14,7 @@
 
 const analytics = require('../../../utils/analytics');
 const { guardImage, guardText } = require('../../../utils/content-check');
+const { buildGIF } = require('../../utils/gif-encoder');
 const {
   TEMPLATES, SLOTS, getOccasion, formatDate, slotIdByHour, getBlessingPool
 } = require('../../data/templates');
@@ -24,12 +25,27 @@ const CANVAS_H = 1440;
 const TAIL_SIGN = '图个简单 · 今日问候';
 const MAX_TEXT_LEN = 32;
 
+// 动图（GIF）参数：帧用设计坐标的 2/3（720×960）控制体积，100ms/帧无限循环
+const ANIM_W = 720;
+const ANIM_H = 960;
+const ANIM_DELAY_CS = 10;
+const BREATH_FRAMES = 12;   // 文字呼吸：一个正弦周期
+const TYPEIN_FRAMES = 16;   // 逐字浮现：10 帧打字 + 6 帧停留
+const TYPEIN_RAMP = 0.6;    // 时间线前 60% 完成打字，其后整句停留
+
 Page({
   data: {
     step: 1,               // 1 选照片 / 2 样式祝福 / 3 成品
     photos: [],            // [{src}]
     templates: TEMPLATES,
     tplId: TEMPLATES[0].id,
+    animKinds: [
+      { id: 'none', label: '不动' },
+      { id: 'breath', label: '文字呼吸' },
+      { id: 'typein', label: '逐字浮现' }
+    ],
+    animKind: 'none',      // none=静图JPG / breath / typein=GIF
+    outIsGif: false,       // 成品是否动图（决定发送/保存分支）
     slots: SLOTS,
     slotId: 'morning',
     pool: [],              // 当前时段祝福池
@@ -127,6 +143,10 @@ Page({
 
   selectTpl(e) {
     this.setData({ tplId: e.currentTarget.dataset.id });
+  },
+
+  selectAnim(e) {
+    this.setData({ animKind: e.currentTarget.dataset.id });
   },
 
   selectSlot(e) {
@@ -247,17 +267,19 @@ Page({
     if (!(await guardText(text))) return;
 
     if (this.data.exporting) return;
+    const isAnim = this.data.animKind !== 'none';
     this.setData({ exporting: true });
-    wx.showLoading({ title: '生成问候图中...', mask: true });
+    wx.showLoading({ title: isAnim ? '动图生成中...' : '生成问候图中...', mask: true });
     try {
-      const outSrc = await this._render();
+      const outSrc = isAnim ? await this._renderAnim() : await this._render();
       wx.hideLoading();
       analytics.track('greeting_render', {
         photos: this.data.photos.length,
         tpl: this.data.tplId,
-        slot: this.data.slotId
+        slot: this.data.slotId,
+        anim: this.data.animKind
       });
-      this.setData({ outSrc, exporting: false, step: 3 });
+      this.setData({ outSrc, outIsGif: isAnim, exporting: false, step: 3 });
     } catch (e) {
       wx.hideLoading();
       this.setData({ exporting: false });
@@ -266,8 +288,13 @@ Page({
     }
   },
 
-  _ensureCanvas() {
-    if (this._canvas) return Promise.resolve(this._canvas);
+  /** 获取画布节点；每次调用按需重设内部分辨率（静图 1080×1440 / 动图帧 720×960） */
+  _ensureCanvas(w, h) {
+    if (this._canvas) {
+      this._canvas.width = w;
+      this._canvas.height = h;
+      return Promise.resolve(this._canvas);
+    }
     return new Promise((resolve, reject) => {
       wx.createSelectorQuery().in(this)
         .select('#greetingCanvas')
@@ -278,8 +305,8 @@ Page({
             reject(new Error('canvas node not found'));
             return;
           }
-          node.width = CANVAS_W;
-          node.height = CANVAS_H;
+          node.width = w;
+          node.height = h;
           this._canvas = node;
           resolve(node);
         });
@@ -295,24 +322,91 @@ Page({
     });
   },
 
+  /** 静图：设计坐标 1080×1440 单帧出 JPG（t=1 全显、无动效） */
   async _render() {
-    const canvas = await this._ensureCanvas();
+    const canvas = await this._ensureCanvas(CANVAS_W, CANVAS_H);
     const ctx = canvas.getContext('2d');
-    const tpl = TEMPLATES.find(t => t.id === this.data.tplId) || TEMPLATES[0];
-    const slotLabel = (SLOTS.find(s => s.id === this.data.slotId) || {}).label || '';
-    const occ = this.data.occasion;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const imgs = await this._loadPhotos(canvas);
+    this._drawGreeting(ctx, 1, imgs, 'none');
+    return new Promise((resolve, reject) => {
+      wx.canvasToTempFilePath({
+        canvas,
+        fileType: 'jpg',
+        quality: 0.92,
+        success: res => resolve(res.tempFilePath),
+        fail: reject
+      });
+    });
+  },
 
-    // 背景：三段渐变 + 两团柔光
+  /** 动图：帧画布 720×960（设计坐标缩放 2/3）→ 帧循环绘制 → buildGIF → 写用户目录 */
+  async _renderAnim() {
+    const canvas = await this._ensureCanvas(ANIM_W, ANIM_H);
+    const ctx = canvas.getContext('2d');
+    if (typeof ctx.getImageData !== 'function') {
+      throw new Error('当前微信版本不支持像素读取，请升级微信');
+    }
+    const s = ANIM_W / CANVAS_W;
+    ctx.setTransform(s, 0, 0, s, 0, 0);
+    const imgs = await this._loadPhotos(canvas);
+
+    const kind = this.data.animKind;
+    const frameCount = kind === 'typein' ? TYPEIN_FRAMES : BREATH_FRAMES;
+    const frames = [];
+    for (let i = 0; i < frameCount; i++) {
+      this._drawGreeting(ctx, i / frameCount, imgs, kind);
+      const imgData = ctx.getImageData(0, 0, ANIM_W, ANIM_H);
+      frames.push({ width: ANIM_W, height: ANIM_H, rgba: imgData.data, delayCs: ANIM_DELAY_CS });
+      // 让出主线程，避免低端机长时间阻塞 UI
+      await new Promise(r => setTimeout(r, 0));
+    }
+
+    // dither 开启（真机验证后用户拍板：照片渐变色带改善优先于体积）
+    const gifBytes = buildGIF(frames, { width: ANIM_W, height: ANIM_H, loop: 0, dither: true });
+    const filePath = `${wx.env.USER_DATA_PATH}/greeting_${Date.now()}.gif`;
+    await new Promise((resolve, reject) => {
+      wx.getFileSystemManager().writeFile({
+        filePath,
+        data: gifBytes.buffer,
+        encoding: 'binary',
+        success: resolve,
+        fail: reject
+      });
+    });
+    return filePath;
+  },
+
+  async _loadPhotos(canvas) {
+    return Promise.all(this.data.photos.map(p => this._loadImage(canvas, p.src)));
+  },
+
+  /**
+   * 全量绘制（设计坐标系 1080×1440，调用方负责 ctx 缩放）。
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} t 时间参数 ∈[0,1]，驱动文字动效；animKind='none' 时全显静帧
+   * @param {Image[]} imgs 已加载照片
+   * @param {string} animKind 'none' | 'breath' | 'typein'
+   */
+  _drawGreeting(ctx, t, imgs, animKind) {
+    const tpl = TEMPLATES.find(x => x.id === this.data.tplId) || TEMPLATES[0];
+    const slotLabel = (SLOTS.find(x => x.id === this.data.slotId) || {}).label || '';
+    const occ = this.data.occasion;
+    const glow = animKind === 'none' ? 0 : 0.5 + 0.5 * Math.sin(2 * Math.PI * t);
+
+    // 背景：三段渐变 + 两团柔光（动效时轻微呼吸）
     const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
     grad.addColorStop(0, tpl.bg[0]);
     grad.addColorStop(0.55, tpl.bg[1]);
     grad.addColorStop(1, tpl.bg[2]);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-    ctx.globalAlpha = 0.16;
+    ctx.globalAlpha = 0.13 + 0.05 * glow;
     ctx.fillStyle = '#FFFFFF';
     ctx.beginPath();
     ctx.arc(-80, -60, 260, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
     ctx.arc(CANVAS_W + 60, CANVAS_H * 0.42, 220, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
@@ -326,7 +420,7 @@ Page({
     ctx.font = '38px sans-serif';
     ctx.fillText(occ ? `${this.data.dateText} · ${slotLabel}` : this.data.dateText, CANVAS_W / 2, 264);
 
-    // 照片卡：白底圆角相框，内部按张数分格
+    // 照片卡：白底圆角相框，内部按张数分格（各帧相同）
     const frame = { x: 90, y: 330, w: 900, h: 680, r: 36 };
     ctx.save();
     ctx.shadowColor = 'rgba(0, 0, 0, 0.10)';
@@ -339,20 +433,38 @@ Page({
 
     const inner = { x: frame.x + 24, y: frame.y + 24, w: frame.w - 48, h: frame.h - 48 };
     const cells = this._photoCells(this.data.photos.length, inner);
-    const imgs = await Promise.all(
-      this.data.photos.map(p => this._loadImage(canvas, p.src))
-    );
+    // 照片缓推（Ken Burns）：呼吸式推近 1 → 1.05 → 1，与循环无缝衔接（cos 相位保证首尾同帧）
+    const photoZoom = animKind === 'none' ? 1 : 1 + 0.05 * (0.5 - 0.5 * Math.cos(2 * Math.PI * t));
     for (let i = 0; i < cells.length && i < imgs.length; i++) {
-      this._drawCover(ctx, imgs[i], cells[i]);
+      this._drawCover(ctx, imgs[i], cells[i], photoZoom);
     }
 
-    // 祝福语：最多两行，逐字折行
-    const lines = this._wrapText(ctx, this.data.blessingText.trim(), inner.w, 52);
+    // 祝福语（动效作用区）：呼吸 = 透明度+暖光晕正弦脉动；逐字 = 前 60% 时间线打字，其后停留
+    const lines = this._wrapText(ctx, this.data.blessingText.trim(), inner.w, 52).slice(0, 2);
     ctx.fillStyle = tpl.text;
     ctx.font = 'bold 52px sans-serif';
-    lines.slice(0, 2).forEach((line, i) => {
-      ctx.fillText(line, CANVAS_W / 2, 1130 + i * 78);
-    });
+    if (animKind === 'breath') {
+      ctx.globalAlpha = 0.78 + 0.22 * glow;
+      ctx.shadowColor = tpl.bg[2];
+      ctx.shadowBlur = 8 + 16 * glow;
+    } else {
+      ctx.globalAlpha = 1;
+    }
+    const totalChars = lines.reduce((n, l) => n + l.length, 0);
+    const shown = animKind === 'typein'
+      ? Math.round(totalChars * Math.min(t / TYPEIN_RAMP, 1))
+      : Infinity;
+    let used = 0;
+    for (let i = 0; i < lines.length; i++) {
+      let text = lines[i];
+      if (used + text.length > shown) {
+        text = text.slice(0, Math.max(0, shown - used));
+      }
+      used += lines[i].length;
+      ctx.fillText(text, CANVAS_W / 2, 1130 + i * 78);
+    }
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
 
     // 尾签：低调传播出口
     ctx.globalAlpha = 0.5;
@@ -360,16 +472,6 @@ Page({
     ctx.font = '26px sans-serif';
     ctx.fillText(TAIL_SIGN, CANVAS_W / 2, CANVAS_H - 56);
     ctx.globalAlpha = 1;
-
-    return new Promise((resolve, reject) => {
-      wx.canvasToTempFilePath({
-        canvas,
-        fileType: 'jpg',
-        quality: 0.92,
-        success: res => resolve(res.tempFilePath),
-        fail: reject
-      });
-    });
   },
 
   /** 照片分格：1 张满幅 / 2 张上下 / 3 张一上二下 / 4 张田字 */
@@ -409,14 +511,14 @@ Page({
     ctx.closePath();
   },
 
-  /** 圆角裁切 + cover 适配绘制（Canvas 2D 同步绘制，无需等待） */
-  _drawCover(ctx, img, cell) {
+  /** 圆角裁切 + cover 适配绘制（Canvas 2D 同步绘制）；zoom>1 时向内缓推（Ken Burns） */
+  _drawCover(ctx, img, cell, zoom) {
     ctx.save();
     this._pathRound(ctx, cell.x, cell.y, cell.w, cell.h, 20);
     ctx.clip();
     const iw = img.width || 1;
     const ih = img.height || 1;
-    const scale = Math.max(cell.w / iw, cell.h / ih);
+    const scale = Math.max(cell.w / iw, cell.h / ih) * (zoom || 1);
     const sw = cell.w / scale;
     const sh = cell.h / scale;
     const sx = (iw - sw) / 2;
@@ -444,9 +546,34 @@ Page({
 
   // ---------- 第 3 步：发送 / 保存 ----------
 
-  /** 直发成品图到会话（长辈主路径）；低版本库降级为保存相册 */
+  /** 发送：静图走图片面板直发；动图走 GIF 套件验证过的文件分享（聊天中自动播放） */
   sendToFriend() {
     if (!this.data.outSrc) return;
+
+    if (this.data.outIsGif) {
+      if (wx.shareFileMessage) {
+        wx.shareFileMessage({
+          filePath: this.data.outSrc,
+          fileName: '今日问候.gif',
+          success: () => {
+            analytics.track('greeting_share', { via: 'file' });
+          },
+          fail: err => {
+            if (err && /cancel/i.test(err.errMsg || '')) return;
+            wx.showModal({
+              title: '转发',
+              content: '当前微信版本不支持直接转发动图，已帮你保存到相册，从相册发给亲友即可',
+              showCancel: false,
+              success: () => this.saveToAlbum()
+            });
+          }
+        });
+      } else {
+        this.saveToAlbum();
+      }
+      return;
+    }
+
     if (!wx.canIUse || !wx.canIUse('showShareImageMenu')) {
       this.saveToAlbum();
       return;
@@ -472,8 +599,12 @@ Page({
       filePath: this.data.outSrc,
       success() {
         that.setData({ saving: false });
-        analytics.track('greeting_save', {});
-        wx.showToast({ title: '已保存到相册', icon: 'success' });
+        analytics.track('greeting_save', { gif: that.data.outIsGif ? 1 : 0 });
+        wx.showToast({
+          title: that.data.outIsGif ? '已存相册，发亲友会动哦' : '已保存到相册',
+          icon: 'none',
+          duration: 2200
+        });
       },
       fail(err) {
         that.setData({ saving: false });
@@ -506,7 +637,8 @@ Page({
     return {
       title: '我做了张今日问候，你也来一张？',
       path: `/pkgGreeting/pages/greeting/greeting?src=share&tpl=${this.data.tplId}`,
-      imageUrl: this.data.outSrc || ''
+      // 动图不作卡片封面（卡片取静帧不可靠），空串走默认截图
+      imageUrl: this.data.outIsGif ? '' : (this.data.outSrc || '')
     };
   },
 
@@ -514,7 +646,7 @@ Page({
     analytics.trackShare('greeting', 'timeline');
     return {
       title: '我做了张今日问候，你也来一张？',
-      imageUrl: this.data.outSrc || ''
+      imageUrl: this.data.outIsGif ? '' : (this.data.outSrc || '')
     };
   }
 });
