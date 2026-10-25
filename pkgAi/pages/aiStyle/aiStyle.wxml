@@ -111,4 +111,11 @@
       </view>
     </view>
   </view>
+
+  <!-- 肖像权授权弹窗（生成前拦截，与 aiAvatar 同一套合规承诺） -->
+  <face-consent
+    show="{{showConsent}}"
+    bind:agree="onConsentAgree"
+    bind:cancel="onConsentCancel"
+  />
 </view>

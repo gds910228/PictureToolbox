@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "照片转风格·油画/动漫风格迁移",
   "usingComponents": {
-    "image-uploader": "/components/image-uploader/image-uploader"
+    "image-uploader": "/components/image-uploader/image-uploader",
+    "face-consent": "/components/face-consent/face-consent"
   }
 }

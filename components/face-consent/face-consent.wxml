@@ -1,0 +1,25 @@
+<!--components/face-consent/face-consent.wxml-->
+<!--肖像权与个人信息授权弹窗：AI 人像生成类功能在生成前拦截展示-->
+<view class="fc-mask" wx:if="{{show}}" catchtouchmove="noop">
+  <view class="fc-card">
+    <view class="fc-title">肖像权与个人信息授权提示</view>
+
+    <view class="fc-body">
+      <view class="fc-line">本功能使用深度合成（AI）技术，根据你上传的照片生成新形象。</view>
+      <view class="fc-line">· 请确认照片为本人，或你已获得照片中人物的同意授权；</view>
+      <view class="fc-line fc-warn">· 请勿上传公众人物或未经授权的他人照片；</view>
+      <view class="fc-line">· 生成结果仅供个人社交娱乐，禁止冒充他人或用于违法用途；</view>
+      <view class="fc-line">· 照片仅用于本次生成体验，离开页面后自动删除，不作其他用途。</view>
+    </view>
+
+    <view class="fc-remember" bindtap="toggleRemember">
+      <view class="fc-checkbox {{remember ? 'is-on' : ''}}">{{remember ? '✓' : ''}}</view>
+      <text>7 天内不再提示</text>
+    </view>
+
+    <view class="fc-actions">
+      <button class="fc-btn fc-btn-ghost" bindtap="onCancel">暂不使用</button>
+      <button class="fc-btn fc-btn-primary" bindtap="onAgree">同意并生成</button>
+    </view>
+  </view>
+</view>

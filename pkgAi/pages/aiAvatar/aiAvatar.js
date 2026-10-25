@@ -10,6 +10,10 @@
 
 const compareHelper = require('../../../utils/compare-helper');
 const analytics = require('../../../utils/analytics');
+const faceConsent = require('../../../utils/face-consent');
+
+// 用后即删：上传原图的清理标记（storage），离开页面/下次进入时兜底删除云端原图
+const CLEANUP_KEY = 'ai_avatar_pending_cleanup';
 
 // 官方「百变头像风格列表」15 个风格（仅人像模式生效；编号不臆造）。
 // 来源：https://cloud.tencent.com/document/product/1668/107741
@@ -52,12 +56,20 @@ Page({
     loading: false,
     errorMsg: '',
     errorHint: '',          // 错误引导（如人像质检：建议重新上传清晰正面单人照）
-    usedText: ''            // 今日额度文案 "今日已用 X/20"
+    usedText: '',           // 今日额度文案 "今日已用 X/20"
+    showConsent: false      // 肖像权授权弹窗（人像模式生成前拦截）
   },
 
   onLoad() {
     analytics.track('tool_view', { toolId: 'aiAvatar' });
     this.loadQuota();
+    // 兜底清理：上次会话可能因杀进程未删除的云端原图
+    this._cleanupStaleFile();
+  },
+
+  /** 离开页面即删除云端原图（弹窗数据承诺的兑现） */
+  onUnload() {
+    this._cleanupUploadedFile();
   },
 
   /**
@@ -149,6 +161,8 @@ Page({
         filePath: filePath
       });
       this.setData({ fileID: uploadRes.fileID });
+      // 记录清理标记：异常退出时下次进入兜底删除
+      this._markCleanup(uploadRes.fileID);
     } catch (err) {
       console.error('[aiAvatar] 上传失败', err);
       wx.showToast({ title: '上传失败，请重试', icon: 'none' });
@@ -199,10 +213,40 @@ Page({
   },
 
   /**
+   * 生成入口（生成按钮 / 随机盲盒 / 再生成 共用）：
+   * 人像模式先过肖像权授权弹窗（合规整改 2026-10-25），同意后进入真实生成。
+   * @param {string} [overrideStyle] 随机盲盒 / 再生成时传入，覆盖 selectedStyle
+   */
+  startGenerate(overrideStyle) {
+    const { mode } = this.data;
+    if (mode === 'human' && !faceConsent.isValid()) {
+      // 挂起本次风格参数，授权回调后续跑
+      this._pendingGenerateOverride = (typeof overrideStyle === 'string') ? overrideStyle : '';
+      this.setData({ showConsent: true });
+      return;
+    }
+    this._doGenerate(overrideStyle);
+  },
+
+  onConsentAgree(e) {
+    const detail = (e && e.detail) || {};
+    if (detail.remember) faceConsent.remember();
+    this.setData({ showConsent: false });
+    const override = this._pendingGenerateOverride || '';
+    this._pendingGenerateOverride = '';
+    this._doGenerate(override);
+  },
+
+  onConsentCancel() {
+    this.setData({ showConsent: false });
+    this._pendingGenerateOverride = '';
+  },
+
+  /**
    * 调云函数生成头像
    * @param {string} [overrideStyle] 随机盲盒 / 再生成时传入，覆盖 selectedStyle
    */
-  async startGenerate(overrideStyle) {
+  async _doGenerate(overrideStyle) {
     const { fileID, mode, loading } = this.data;
     if (loading) return;
     if (!fileID) {
@@ -372,6 +416,7 @@ Page({
   },
 
   resetAll() {
+    this._cleanupUploadedFile();
     this.setData({
       imageSrc: '', fileID: '',
       resultSrc: '', resultFileID: '',
@@ -379,6 +424,37 @@ Page({
       demo: false, errorMsg: '', errorHint: '',
       selectedStyle: 'flower', selectedStyleDesc: styleDescOf('flower'), usedText: ''
     });
+  },
+
+  /** 标记待清理的云端原图（storage，异常退出时下次进入兜底删） */
+  _markCleanup(fileID) {
+    try { wx.setStorageSync(CLEANUP_KEY, fileID); } catch (e) { /* 静默 */ }
+  },
+
+  /** 删除当前会话上传的云端原图并清掉清理标记 */
+  _cleanupUploadedFile() {
+    const fid = this.data.fileID;
+    if (fid) {
+      wx.cloud.callFunction({
+        name: 'aiAvatar',
+        data: { action: 'cleanup', fileID: fid }
+      }).catch(() => { /* 清理失败不阻断，兜底有下次进入补删 */ });
+    }
+    try { wx.removeStorageSync(CLEANUP_KEY); } catch (e) { /* 静默 */ }
+  },
+
+  /** 兜底清理：上次会话残留的云端原图（杀进程导致 onUnload 未执行时） */
+  _cleanupStaleFile() {
+    try {
+      const stale = wx.getStorageSync(CLEANUP_KEY);
+      if (!stale) return;
+      wx.removeStorageSync(CLEANUP_KEY);
+      wx.cloud.callFunction({
+        name: 'aiAvatar',
+        data: { action: 'cleanup', fileID: stale }
+      }).catch(() => { /* 静默 */ });
+      console.log('[aiAvatar] 已兜底清理上次残留原图');
+    } catch (e) { /* 静默 */ }
   },
 
   /**

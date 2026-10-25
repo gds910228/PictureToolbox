@@ -1,6 +1,7 @@
 // pkgAi/pages/aiStyle/aiStyle.js
 const compareHelper = require('../../../utils/compare-helper');
 const analytics = require('../../../utils/analytics');
+const faceConsent = require('../../../utils/face-consent');
 
 Page({
   data: {
@@ -8,6 +9,7 @@ Page({
     fileID: '',
     resultSrc: '',
     resultFileID: '',
+    showConsent: false,     // 肖像权授权弹窗（生成前拦截，与 aiAvatar 同一套合规承诺）
     selectedStyle: 'anime',
     selectedStyleLabel: '日系动漫',
     styles: [
@@ -159,7 +161,32 @@ Page({
     });
   },
 
-  async transferStyle() {
+  /**
+   * 生成入口：先过肖像权授权弹窗（深度合成合规整改 2026-10-25），同意后进入真实迁移。
+   */
+  transferStyle() {
+    if (!this.data.fileID) {
+      wx.showToast({ title: '请先选择图片', icon: 'none' });
+      return;
+    }
+    if (!faceConsent.isValid()) {
+      this.setData({ showConsent: true });
+      return;
+    }
+    this._doTransfer();
+  },
+
+  onConsentAgree(e) {
+    if ((e && e.detail && e.detail.remember)) faceConsent.remember();
+    this.setData({ showConsent: false });
+    this._doTransfer();
+  },
+
+  onConsentCancel() {
+    this.setData({ showConsent: false });
+  },
+
+  async _doTransfer() {
     const that = this;
     if (!that.data.fileID) {
       wx.showToast({ title: '请先选择图片', icon: 'none' });

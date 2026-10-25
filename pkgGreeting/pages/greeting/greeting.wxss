@@ -14,7 +14,7 @@ page::before {
   display: none;
 }
 
-/* 顶部氛围带：随节日/节气变色（full-bleed 圆角收底，日期一眼可见） */
+/* 顶部氛围带：随节日/节气变色（full-bleed 圆角收底，问候词+日期+今日祝福） */
 .g-band {
   margin: -32rpx -32rpx 20rpx;
   padding: 44rpx 40rpx 40rpx;
@@ -22,10 +22,27 @@ page::before {
   color: #FFFFFF;
 }
 
-.g-band-date {
-  font-size: 32rpx;
+.g-band-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.g-band-greet {
+  font-size: 42rpx;
   font-weight: bold;
   letter-spacing: 2rpx;
+}
+
+.g-band-date {
+  font-size: 26rpx;
+  opacity: 0.92;
+}
+
+.g-band-blessing {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  opacity: 0.95;
 }
 
 .g-band--festival {
@@ -41,7 +58,197 @@ page::before {
 }
 
 .g-page {
-  padding: 32rpx 32rpx 64rpx;
+  padding: 32rpx 32rpx 360rpx; /* 底部让出固定操作区 */
+}
+
+/* 步骤指示（全步常驻） */
+.g-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+  margin: 8rpx 0 20rpx;
+}
+
+.g-progress-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  color: #B9A488;
+  font-size: 26rpx;
+}
+
+.g-progress-item.is-done {
+  color: #8A6A45;
+}
+
+.g-progress-item.is-now {
+  color: #B0631F;
+  font-weight: bold;
+}
+
+.g-progress-num {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: #F0DFC8;
+  color: #8A6A45;
+  font-size: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.g-progress-item.is-now .g-progress-num {
+  background: #F0821E;
+  color: #FFFFFF;
+}
+
+.g-progress-item.is-done .g-progress-num {
+  background: #E8C89A;
+  color: #FFFFFF;
+}
+
+.g-progress-arrow {
+  width: 28rpx;
+  height: 2rpx;
+  background: #E8C89A;
+}
+
+/* 分享落地欢迎条 */
+.g-hint {
+  display: flex;
+  align-items: center;
+  background: #FFF6E6;
+  border: 2rpx solid #F0DFC8;
+  border-radius: 16rpx;
+  padding: 16rpx 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.g-hint-text {
+  flex: 1;
+  font-size: 26rpx;
+  color: #8A6A45;
+}
+
+.g-hint-close {
+  padding: 0 8rpx;
+  color: #B9A488;
+  font-size: 30rpx;
+}
+
+/* 今日祝福卡 */
+.g-daily-card {
+  background: #FFFFFF;
+  border: 3rpx solid #F0DFC8;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  margin-top: 32rpx;
+}
+
+.g-daily-label {
+  font-size: 26rpx;
+  color: #B08A5C;
+}
+
+.g-daily-text {
+  font-size: 34rpx;
+  font-weight: bold;
+  color: #4A3520;
+  margin: 12rpx 0 20rpx;
+}
+
+.g-daily-use {
+  height: 72rpx;
+  background: #FFF1DC;
+  color: #B0631F;
+  border: 2rpx solid #E8C89A;
+  border-radius: 16rpx;
+  font-size: 30rpx;
+  font-weight: normal;
+  margin-top: 0;
+}
+
+/* 近期节日条 */
+.g-fest-card {
+  background: #FFFFFF;
+  border: 3rpx solid #F0DFC8;
+  border-radius: 24rpx;
+  padding: 24rpx 28rpx;
+  margin-top: 20rpx;
+}
+
+.g-fest-label {
+  font-size: 26rpx;
+  color: #B08A5C;
+  margin-bottom: 16rpx;
+}
+
+.g-fest-row {
+  display: flex;
+  gap: 16rpx;
+}
+
+.g-fest-item {
+  flex: 1;
+  background: #FFFBF3;
+  border-radius: 16rpx;
+  padding: 16rpx 8rpx;
+  text-align: center;
+}
+
+.g-fest-name {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #4A3520;
+}
+
+.g-fest-date {
+  font-size: 24rpx;
+  color: #8A6A45;
+  margin-top: 6rpx;
+}
+
+.g-fest-count {
+  display: inline-block;
+  margin-top: 10rpx;
+  padding: 2rpx 14rpx;
+  border-radius: 999rpx;
+  background: #FFF1DC;
+  color: #B0631F;
+  font-size: 22rpx;
+}
+
+/* 底部固定操作区（单手拇指可达，含 safe-area） */
+.g-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  padding: 20rpx 32rpx calc(20rpx + env(safe-area-inset-bottom));
+  background: #FAEDDB;
+  box-shadow: 0 -6rpx 24rpx rgba(122, 74, 16, 0.08);
+}
+
+.g-footer > .g-btn {
+  margin-top: 0;
+}
+
+.g-footer > .g-btn + .g-btn {
+  margin-top: 16rpx;
+}
+
+.g-footer-row {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.g-footer-row .g-btn {
+  flex: 1;
+  margin-top: 0;
 }
 
 /* ---------- 标题 ---------- */
@@ -309,6 +516,12 @@ page::before {
   background: #FFFFFF;
   color: #B0631F;
   border: 3rpx solid #E8C89A;
+}
+
+.g-btn-secondary[disabled] {
+  background: #F7EBDD;
+  color: #C9B594;
+  border-color: #EBDFCB;
 }
 
 .g-btn-ai {

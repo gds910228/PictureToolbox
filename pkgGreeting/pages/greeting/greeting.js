@@ -16,7 +16,7 @@ const analytics = require('../../../utils/analytics');
 const { guardImage, guardText } = require('../../../utils/content-check');
 const { buildGIF } = require('../../utils/gif-encoder');
 const {
-  TEMPLATES, SLOTS, getOccasion, formatDate, slotIdByHour, getBlessingPool
+  TEMPLATES, SLOTS, getOccasion, formatDate, slotIdByHour, getBlessingPool, getUpcomingOccasions
 } = require('../../data/templates');
 
 const MAX_PHOTOS = 4;
@@ -56,9 +56,15 @@ Page({
     aiMock: false,
     occasion: '',          // 今日节日/节气名，空 = 无
     occasionType: '',      // 'festival' | 'term'，顶部氛围带配色用
+    slotLabel: '',         // 时段问候词（早安/日安/晚安），页头大字用
+    dailyBlessing: '',     // 今日祝福（日期轮换句），页头/祝福卡共用
+    upcoming: [],          // 近期节日/节气（天文数据推算，含倒计天数）
+    showShareHint: false,  // 分享落地欢迎条
     dateText: '',          // "10月23日"
     outSrc: '',            // 成品临时文件
-    exporting: false
+    coverSrc: '',          // 分享卡片专属 5:4 封面
+    exporting: false,
+    saving: false
   },
 
   onLoad(options) {
@@ -81,15 +87,25 @@ Page({
     const seed = now.getFullYear() * 400 + (now.getMonth() + 1) * 40 + now.getDate();
     this._dailyIdx = seed % pool.length;
     this._textEdited = false;
+    let showShareHint = false;
+    if (fromShare) {
+      try {
+        showShareHint = !wx.getStorageSync('greeting_share_hint_closed');
+      } catch (e) { showShareHint = true; }
+    }
     this.setData({
       slotId,
+      slotLabel: (SLOTS.find(x => x.id === slotId) || {}).label || '',
       tplId,
       occasion: occ ? occ.name : '',
       occasionType: occ ? occ.type : '',
       dateText: formatDate(now),
       pool,
       poolIdx: this._dailyIdx,
-      blessingText: pool[this._dailyIdx]
+      blessingText: pool[this._dailyIdx],
+      dailyBlessing: pool[this._dailyIdx],
+      upcoming: getUpcomingOccasions(now, 3),
+      showShareHint
     });
   },
 
@@ -147,6 +163,19 @@ Page({
 
   selectAnim(e) {
     this.setData({ animKind: e.currentTarget.dataset.id });
+  },
+
+  /** 今日祝福卡「用这句」：一键把每日轮换句选进祝福语 */
+  useDailyBlessing() {
+    this._textEdited = true;
+    const idx = this.data.pool.indexOf(this.data.dailyBlessing);
+    this.setData({ blessingText: this.data.dailyBlessing, poolIdx: idx });
+    wx.showToast({ title: '已选好祝福，先选照片吧', icon: 'none' });
+  },
+
+  closeShareHint() {
+    this.setData({ showShareHint: false });
+    try { wx.setStorageSync('greeting_share_hint_closed', 1); } catch (e) { /* 存储异常静默 */ }
   },
 
   selectSlot(e) {
@@ -272,6 +301,7 @@ Page({
     wx.showLoading({ title: isAnim ? '动图生成中...' : '生成问候图中...', mask: true });
     try {
       const outSrc = isAnim ? await this._renderAnim() : await this._render();
+      const coverSrc = await this._renderCover();
       wx.hideLoading();
       analytics.track('greeting_render', {
         photos: this.data.photos.length,
@@ -279,7 +309,7 @@ Page({
         slot: this.data.slotId,
         anim: this.data.animKind
       });
-      this.setData({ outSrc, outIsGif: isAnim, exporting: false, step: 3 });
+      this.setData({ outSrc, coverSrc, outIsGif: isAnim, exporting: false, step: 3 });
     } catch (e) {
       wx.hideLoading();
       this.setData({ exporting: false });
@@ -379,6 +409,82 @@ Page({
 
   async _loadPhotos(canvas) {
     return Promise.all(this.data.photos.map(p => this._loadImage(canvas, p.src)));
+  },
+
+  /**
+   * 分享卡片专属 5:4 封面（1080×864）：小标题 + 照片卡 + 祝福语放大置底。
+   * 微信卡片按 5:4 居中裁切，3:4 成品图会被裁掉标题和祝福语，故单独出一张
+   * 裁切安全构图；静图/动图统一用此封面（动图不再走默认截图混入界面文字）。
+   */
+  async _renderCover() {
+    const W = 1080;
+    const H = 864; // 5:4
+    const canvas = await this._ensureCanvas(W, H);
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const tpl = TEMPLATES.find(x => x.id === this.data.tplId) || TEMPLATES[0];
+    const headWord = this.data.occasion || this.data.slotLabel;
+
+    // 背景 + 柔光
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, tpl.bg[0]);
+    grad.addColorStop(0.55, tpl.bg[1]);
+    grad.addColorStop(1, tpl.bg[2]);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 0.15;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(-80, -60, 220, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(W + 40, H * 0.5, 180, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // 标题 + 日期
+    ctx.textAlign = 'center';
+    ctx.fillStyle = tpl.text;
+    ctx.font = 'bold 72px sans-serif';
+    ctx.fillText(headWord, W / 2, 108);
+    ctx.fillStyle = tpl.sub;
+    ctx.font = '32px sans-serif';
+    ctx.fillText(this.data.dateText, W / 2, 166);
+
+    // 照片卡
+    const frame = { x: 90, y: 210, w: 900, h: 400, r: 32 };
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.10)';
+    ctx.shadowBlur = 24;
+    ctx.shadowOffsetY = 8;
+    this._pathRound(ctx, frame.x, frame.y, frame.w, frame.h, frame.r);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fill();
+    ctx.restore();
+    const inner = { x: frame.x + 24, y: frame.y + 24, w: frame.w - 48, h: frame.h - 48 };
+    const cells = this._photoCells(this.data.photos.length, inner);
+    const imgs = await this._loadPhotos(canvas);
+    for (let i = 0; i < cells.length && i < imgs.length; i++) {
+      this._drawCover(ctx, imgs[i], cells[i], 1);
+    }
+
+    // 祝福语放大置底
+    const lines = this._wrapText(ctx, this.data.blessingText.trim(), inner.w, 46).slice(0, 2);
+    ctx.fillStyle = tpl.text;
+    ctx.font = 'bold 46px sans-serif';
+    lines.forEach((line, i) => {
+      ctx.fillText(line, W / 2, 690 + i * 62);
+    });
+
+    return new Promise((resolve, reject) => {
+      wx.canvasToTempFilePath({
+        canvas,
+        fileType: 'jpg',
+        quality: 0.9,
+        success: res => resolve(res.tempFilePath),
+        fail: reject
+      });
+    });
   },
 
   /**
@@ -634,19 +740,21 @@ Page({
 
   onShareAppMessage() {
     analytics.trackShare('greeting', 'friend');
+    const headWord = this.data.occasion || this.data.slotLabel;
     return {
-      title: '我做了张今日问候，你也来一张？',
+      title: `我做了张${headWord}问候，你也来一张？`,
       path: `/pkgGreeting/pages/greeting/greeting?src=share&tpl=${this.data.tplId}`,
-      // 动图不作卡片封面（卡片取静帧不可靠），空串走默认截图
-      imageUrl: this.data.outIsGif ? '' : (this.data.outSrc || '')
+      // 专属 5:4 封面（标题+照片+祝福语全可见）；未生成过封面时兜底默认截图
+      imageUrl: this.data.coverSrc || ''
     };
   },
 
   onShareTimeline() {
     analytics.trackShare('greeting', 'timeline');
+    const headWord = this.data.occasion || this.data.slotLabel;
     return {
-      title: '我做了张今日问候，你也来一张？',
-      imageUrl: this.data.outIsGif ? '' : (this.data.outSrc || '')
+      title: `我做了张${headWord}问候，你也来一张？`,
+      imageUrl: this.data.coverSrc || ''
     };
   }
 });

@@ -36,7 +36,7 @@
 
   <!-- 拍摄建议（有图无结果时） -->
   <view class="tip-card" wx:if="{{imageSrc && !resultSrc}}">
-    <text wx:if="{{mode === 'human'}}">建议使用正面、单人、人脸占比大的清晰照片（单边 500 像素以上），避免侧脸 / 多人 / 遮挡</text>
+    <text wx:if="{{mode === 'human'}}">建议使用正面、单人、人脸占比大的清晰照片（单边 500 像素以上），避免侧脸 / 多人 / 遮挡。请使用本人或已获授权的照片，请勿上传公众人物照片</text>
     <text wx:else>建议使用清晰的动物正脸照片，避免多只动物或动物过小</text>
   </view>
 
@@ -112,5 +112,12 @@
   </view>
 
   <!-- 合规提示 -->
-  <view class="compliance-tip">结果图由腾讯混元生成，右下角带「图片由 AI 生成」标识</view>
+  <view class="compliance-tip">结果图由腾讯混元生成，右下角带「图片由 AI 生成」标识，仅供个人娱乐使用</view>
+
+  <!-- 肖像权授权弹窗（人像模式生成前拦截） -->
+  <face-consent
+    show="{{showConsent}}"
+    bind:agree="onConsentAgree"
+    bind:cancel="onConsentCancel"
+  />
 </view>

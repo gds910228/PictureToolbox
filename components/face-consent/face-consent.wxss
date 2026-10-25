@@ -1,0 +1,108 @@
+/* components/face-consent/face-consent.wxss
+   深色霓虹皮肤，与 AI 智能（pkgAi）页面主题一致。 */
+
+.fc-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+  background: rgba(4, 8, 24, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48rpx;
+}
+
+.fc-card {
+  width: 100%;
+  max-width: 620rpx;
+  background: #101632;
+  border: 2rpx solid rgba(0, 240, 255, 0.35);
+  border-radius: 24rpx;
+  padding: 36rpx 32rpx 28rpx;
+  box-shadow: 0 0 40rpx rgba(0, 240, 255, 0.18);
+}
+
+.fc-title {
+  font-size: 34rpx;
+  font-weight: bold;
+  color: #00F0FF;
+  text-align: center;
+  margin-bottom: 24rpx;
+}
+
+.fc-body {
+  margin-bottom: 24rpx;
+}
+
+.fc-line {
+  font-size: 26rpx;
+  line-height: 1.7;
+  color: #C8D4F0;
+  margin-bottom: 8rpx;
+}
+
+.fc-warn {
+  color: #FF6E9C;
+}
+
+.fc-remember {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 28rpx;
+  color: #8FA0C8;
+  font-size: 26rpx;
+}
+
+.fc-checkbox {
+  width: 34rpx;
+  height: 34rpx;
+  border: 2rpx solid rgba(0, 240, 255, 0.5);
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #00F0FF;
+  font-size: 24rpx;
+}
+
+.fc-checkbox.is-on {
+  background: rgba(0, 240, 255, 0.15);
+}
+
+.fc-actions {
+  display: flex;
+  gap: 20rpx;
+}
+
+.fc-btn {
+  flex: 1;
+  height: 84rpx;
+  border-radius: 16rpx;
+  font-size: 30rpx;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  line-height: 84rpx;
+}
+
+.fc-btn::after {
+  border: none;
+}
+
+.fc-btn-ghost {
+  background: transparent;
+  border: 2rpx solid rgba(200, 212, 240, 0.4);
+  color: #C8D4F0;
+}
+
+.fc-btn-primary {
+  background: linear-gradient(135deg, #00F0FF, #FF0080);
+  color: #FFFFFF;
+}

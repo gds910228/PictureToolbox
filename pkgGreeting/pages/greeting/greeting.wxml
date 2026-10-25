@@ -2,9 +2,37 @@
 <!--今日问候：三步流程（选照片 → 样式祝福 → 成品），浅色大字长辈友好皮肤-->
 <view class="g-page">
 
-  <!-- 顶部氛围带：随"今天是什么日子"变色（节日红金 / 节气青绿 / 平常日暖橙） -->
+  <!-- 顶部页头：时段/节日问候 + 日期 + 今日祝福（随节日/节气变色） -->
   <view class="g-band g-band--{{occasionType || 'plain'}}">
-    <view class="g-band-date">{{dateText}}{{occasion ? ' · ' + occasion : ''}}</view>
+    <view class="g-band-top">
+      <text class="g-band-greet">{{occasion || slotLabel}}</text>
+      <text class="g-band-date">{{dateText}}</text>
+    </view>
+    <view class="g-band-blessing">今日祝福 · {{dailyBlessing}}</view>
+  </view>
+
+  <!-- 步骤指示（全步常驻） -->
+  <view class="g-progress">
+    <view class="g-progress-item {{step === 1 ? 'is-now' : 'is-done'}}">
+      <view class="g-progress-num">1</view>
+      <text>选照片</text>
+    </view>
+    <view class="g-progress-arrow"></view>
+    <view class="g-progress-item {{step === 2 ? 'is-now' : (step > 2 ? 'is-done' : '')}}">
+      <view class="g-progress-num">2</view>
+      <text>写祝福</text>
+    </view>
+    <view class="g-progress-arrow"></view>
+    <view class="g-progress-item {{step === 3 ? 'is-now' : ''}}">
+      <view class="g-progress-num">3</view>
+      <text>发亲友</text>
+    </view>
+  </view>
+
+  <!-- 分享落地欢迎条（仅步骤 1 展示，可关闭，关闭后永久记忆） -->
+  <view class="g-hint" wx:if="{{showShareHint && step === 1}}">
+    <text class="g-hint-text">朋友分享给你的问候小工具，选张照片试试吧</text>
+    <view class="g-hint-close" bindtap="closeShareHint">✕</view>
   </view>
 
   <!-- 步骤 1：选照片 -->
@@ -17,14 +45,31 @@
         <image class="g-photo-img" src="{{item.src}}" mode="aspectFill"/>
         <view class="g-photo-del" data-index="{{index}}" bindtap="onRemovePhoto">×</view>
       </view>
-      <view class="g-photo-add" wx:if="{{photos.length < 4}}" bindtap="onChoose">
+      <!-- 未选照片时大按钮是唯一入口；有照片后格子变追加入口 -->
+      <view class="g-photo-add" wx:if="{{photos.length > 0 && photos.length < 4}}" bindtap="onChoose">
         <view class="g-photo-add-icon">＋</view>
-        <view class="g-photo-add-text">选照片</view>
+        <view class="g-photo-add-text">再加一张</view>
       </view>
     </view>
 
-    <button class="g-btn g-btn-primary" bindtap="onChoose">从相册选 / 拍一张</button>
-    <button class="g-btn g-btn-next" disabled="{{!photos.length}}" bindtap="goStep2">下一步</button>
+    <!-- 今日祝福卡：每天轮换的祝福句，一键选入 -->
+    <view class="g-daily-card">
+      <view class="g-daily-label">今日祝福</view>
+      <view class="g-daily-text">{{dailyBlessing}}</view>
+      <button class="g-daily-use" bindtap="useDailyBlessing">用这句</button>
+    </view>
+
+    <!-- 近期节日条：农历/节气天文数据实时推算（今天/明天/N天后） -->
+    <view class="g-fest-card" wx:if="{{upcoming.length}}">
+      <view class="g-fest-label">近期节日</view>
+      <view class="g-fest-row">
+        <view class="g-fest-item" wx:for="{{upcoming}}" wx:key="name">
+          <view class="g-fest-name">{{item.name}}</view>
+          <view class="g-fest-date">{{item.monthDay}}</view>
+          <view class="g-fest-count">{{item.daysUntil === 0 ? '今天' : (item.daysUntil === 1 ? '明天' : item.daysUntil + '天后')}}</view>
+        </view>
+      </view>
+    </view>
   </view>
 
   <!-- 步骤 2：样式与祝福语 -->
@@ -99,9 +144,6 @@
       placeholder="也可以自己写一句（32 字内）"
       bindinput="onTextChange"
     />
-
-    <button class="g-btn g-btn-primary" disabled="{{exporting}}" bindtap="goPreview">生成问候图</button>
-    <button class="g-btn g-btn-ghost" bindtap="restart">上一步</button>
   </view>
 
   <!-- 步骤 3：成品 -->
@@ -109,10 +151,26 @@
     <view class="g-h1">{{outIsGif ? '动图做好啦！' : '做好啦！'}}</view>
     <view class="g-h2">{{outIsGif ? '发给亲友，聊天里就会动' : '可以发给亲友，也可以存到相册'}}</view>
     <image class="g-preview" src="{{outSrc}}" mode="widthFix" show-menu-by-longpress="{{true}}"/>
-    <button class="g-btn g-btn-primary" bindtap="sendToFriend">发给亲友</button>
-    <button class="g-btn g-btn-secondary" loading="{{saving}}" bindtap="saveToAlbum">保存到相册</button>
-    <button class="g-btn g-btn-secondary" open-type="share">分享给微信好友</button>
     <button class="g-btn g-btn-ghost" bindtap="backToEdit">改一改</button>
+  </view>
+
+  <!-- 底部固定操作区（单手拇指可达） -->
+  <view class="g-footer">
+    <block wx:if="{{step === 1}}">
+      <button class="g-btn g-btn-primary" bindtap="onChoose">从相册选 / 拍一张</button>
+      <button class="g-btn g-btn-secondary" disabled="{{!photos.length}}" bindtap="goStep2">下一步</button>
+    </block>
+    <block wx:elif="{{step === 2}}">
+      <button class="g-btn g-btn-primary" disabled="{{exporting}}" bindtap="goPreview">生成问候图</button>
+      <button class="g-btn g-btn-ghost" bindtap="restart">上一步</button>
+    </block>
+    <block wx:elif="{{step === 3}}">
+      <button class="g-btn g-btn-primary" bindtap="sendToFriend">发给亲友</button>
+      <view class="g-footer-row">
+        <button class="g-btn g-btn-secondary" loading="{{saving}}" bindtap="saveToAlbum">保存到相册</button>
+        <button class="g-btn g-btn-secondary" open-type="share">分享给微信好友</button>
+      </view>
+    </block>
   </view>
 
   <!-- 离屏渲染画布（不参与展示，仅出图） -->

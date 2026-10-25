@@ -50,6 +50,8 @@ const DEFAULT_STYLE = 'flower';
  *   - 默认（或 action:'generate'）: { fileID, type:'human'|'pet', style? } → 生成头像
  *       type 缺省按 'human'；style 仅 human 生效，须为 STYLE_CODES 之一，缺省 'flower'。
  *   - action:'quota': 只读当日已用次数，不计数、不消耗额度（前端进页面展示额度条用）
+ *   - action:'cleanup': { fileID } → 删除上传原图（肖像数据用后即删，合规整改 2026-10-25）。
+ *       前端离开页面/重置照片时调用；不计额度、不做内容检测（仅删除）。
  * @returns {Object} - { success, fileID, demo?, used?, limit?, style?, type? | error?, errorCode?, hint? }
  */
 exports.main = async (event, context) => {
@@ -65,6 +67,23 @@ exports.main = async (event, context) => {
     }
     const q = await rateLimiter.queryQuota(openidQ, FEATURE_KEY, cloud);
     return q; // { success, used, limit, degraded?, reason? }
+  }
+
+  // 清理分支：删除上传原图（肖像数据用后即删）。只删不动他人数据，fail 静默容忍
+  // （前端 fire-and-forget，异常退出由下次进入的兜底清理补删）
+  if (action === 'cleanup') {
+    const { fileID: delFileID } = event;
+    if (!delFileID) {
+      return { success: false, error: '缺少 fileID' };
+    }
+    try {
+      await cloud.deleteFile({ fileList: [delFileID] });
+      console.log('[aiAvatar] cleanup 已删除上传原图', delFileID);
+      return { success: true };
+    } catch (e) {
+      console.warn('[aiAvatar] cleanup 失败（下次进入兜底补删）', e && (e.errMsg || e.message));
+      return { success: false, error: '清理失败' };
+    }
   }
 
   const { fileID, style } = event;

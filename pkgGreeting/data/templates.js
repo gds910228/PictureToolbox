@@ -5,9 +5,12 @@
 //   TEMPLATES      6 套浅色渐变模板（bg 三段渐变 / text 主文字色 / sub 次要文字色）
 //   SLOTS          时段问候（按当前小时自动预选）
 //   BLESSING_POOLS 各时段本地祝福池（无 AI 时功能完整可用的兜底）
-//   FESTIVALS_2026 / SOLAR_TERMS_2026 年度节日/节气表（**年度维护点：每年需更新日期**）
-//   getOccasion(date) / formatDate(date)  供页面取"今天是什么日子"
+//   FESTIVAL_POOL / TERM_POOL  场合祝福池（节日/节气日排在时段池前面）
+//   getOccasion(date) / getUpcomingOccasions(from, count) / formatDate(date) / slotIdByHour(hour)
 //
+// 日期引擎（v2）：农历节日与节气由 vendor 的 solarlunar 天文数据换算（覆盖 1900-2100，
+//   闰月有标记），公历固定节日为日历恒真，母亲节/父亲节按星期规则推算——
+//   **不再维护年度写死表**，跨年无需更新代码。
 // 语气约定：面向长辈，短句、口语、无网络梗、无生僻字。
 
 // 六套浅色模板：颜色只用于问候图渲染，与全局赛博朋克主题互不影响
@@ -92,55 +95,119 @@ const TERM_POOL = [
   '愿你三餐四季，平安喜乐'
 ];
 
-// 2026 年公历节日（月-日 → 名称）。农历/星期类节日已按 2026 年历换算；
-// 年度维护点：跨年时更新本表与 SOLAR_TERMS_2026。
-const FESTIVALS_2026 = {
+// ---------- 日期引擎（农历换算 + 天文节气，见文件头说明） ----------
+
+const lunarLib = (require('../utils/solarlunar.js').default) || require('../utils/solarlunar.js');
+
+// 二十四节气名（getTerm 的 n 为 1 基序数：n=1 小寒 … n=24 冬至，月份 = ceil(n/2)）
+const TERM_NAMES = [
+  '小寒', '大寒', '立春', '雨水', '惊蛰', '春分',
+  '清明', '谷雨', '立夏', '小满', '芒种', '夏至',
+  '小暑', '大暑', '立秋', '处暑', '白露', '秋分',
+  '寒露', '霜降', '立冬', '小雪', '大雪', '冬至'
+];
+
+// 公历固定节日（月-日 → 名称，年年恒准）
+const GREGORIAN_FESTIVALS = {
   '01-01': '元旦',
-  '02-17': '春节',
-  '03-03': '元宵节',
   '03-08': '妇女节',
   '03-12': '植树节',
-  '04-05': '清明节',
   '05-01': '劳动节',
-  '05-10': '母亲节',
   '06-01': '儿童节',
-  '06-19': '端午节',
-  '06-21': '父亲节',
   '07-01': '建党节',
   '08-01': '建军节',
   '09-10': '教师节',
-  '09-25': '中秋节',
   '10-01': '国庆节',
-  '10-18': '重阳节',
   '12-25': '圣诞节'
 };
 
-// 2026 年二十四节气（公历近似日，个别年份 ±1 天，跨年时校准）
-const SOLAR_TERMS_2026 = {
-  '01-05': '小寒', '01-20': '大寒',
-  '02-04': '立春', '02-19': '雨水',
-  '03-05': '惊蛰', '03-20': '春分',
-  '04-05': '清明', '04-20': '谷雨',
-  '05-05': '立夏', '05-21': '小满',
-  '06-05': '芒种', '06-21': '夏至',
-  '07-07': '小暑', '07-23': '大暑',
-  '08-07': '立秋', '08-23': '处暑',
-  '09-08': '白露', '09-23': '秋分',
-  '10-08': '寒露', '10-23': '霜降',
-  '11-07': '立冬', '11-22': '小雪',
-  '12-07': '大雪', '12-22': '冬至'
+// 农历节日（农历月-日 → 名称；民间习惯不按闰月过，isLeap 的日期不匹配）
+const LUNAR_FESTIVALS = {
+  '1-1': '春节',
+  '1-15': '元宵节',
+  '5-5': '端午节',
+  '7-7': '七夕节',
+  '8-15': '中秋节',
+  '9-9': '重阳节',
+  '12-8': '腊八节'
 };
 
+/** 某年某月第 n 个星期 w（0=周日）的日期（母亲节/父亲节用） */
+function nthWeekday(year, month, weekday, n) {
+  const first = new Date(year, month - 1, 1);
+  const offset = (weekday - first.getDay() + 7) % 7;
+  return 1 + offset + (n - 1) * 7;
+}
+
+/** 当天的节日（公历固定 / 星期规则 / 农历 / 除夕），无则 null */
+function festivalOfDay(date) {
+  const y = date.getFullYear();
+  const m = date.getMonth() + 1;
+  const d = date.getDate();
+  const mdKey = `${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+  if (GREGORIAN_FESTIVALS[mdKey]) return { name: GREGORIAN_FESTIVALS[mdKey], type: 'festival' };
+
+  if (m === 5 && d === nthWeekday(y, 5, 0, 2)) return { name: '母亲节', type: 'festival' };
+  if (m === 6 && d === nthWeekday(y, 6, 0, 3)) return { name: '父亲节', type: 'festival' };
+
+  const lunar = lunarLib.solar2lunar(y, m, d);
+  if (lunar && !lunar.isLeap) {
+    const lunarKey = `${lunar.lMonth}-${lunar.lDay}`;
+    if (LUNAR_FESTIVALS[lunarKey]) return { name: LUNAR_FESTIVALS[lunarKey], type: 'festival' };
+  }
+
+  // 除夕：明天是正月初一（非闰月），今天即除夕（腊月廿九或三十都覆盖）
+  const next = new Date(y, m - 1, d + 1);
+  const nextLunar = lunarLib.solar2lunar(next.getFullYear(), next.getMonth() + 1, next.getDate());
+  if (nextLunar && nextLunar.lMonth === 1 && nextLunar.lDay === 1 && !nextLunar.isLeap) {
+    return { name: '除夕', type: 'festival' };
+  }
+
+  return null;
+}
+
+/** 当天的节气（只查本月两个序数），无则 null */
+function termOfDay(date) {
+  const y = date.getFullYear();
+  const m = date.getMonth() + 1;
+  const d = date.getDate();
+  const n1 = (m - 1) * 2 + 1;
+  if (lunarLib.getTerm(y, n1) === d) return { name: TERM_NAMES[n1 - 1], type: 'term' };
+  if (lunarLib.getTerm(y, n1 + 1) === d) return { name: TERM_NAMES[n1], type: 'term' };
+  return null;
+}
+
 /**
- * 今天是什么日子：节日优先于节气（如 4月5日 清明节 > 清明）。
+ * 今天是什么日子：节日优先于节气（如清明当天同时是节气清明，返回节气的"清明"）。
  * @param {Date} date
  * @returns {{name:string, type:'festival'|'term'}|null}
  */
 function getOccasion(date) {
-  const key = `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  if (FESTIVALS_2026[key]) return { name: FESTIVALS_2026[key], type: 'festival' };
-  if (SOLAR_TERMS_2026[key]) return { name: SOLAR_TERMS_2026[key], type: 'term' };
-  return null;
+  return festivalOfDay(date) || termOfDay(date);
+}
+
+/**
+ * 近期节日/节气：从 from 当天起顺扫（最多 120 天），返回前 count 个。
+ * @param {Date} from
+ * @param {number} count
+ * @returns {Array<{name:string, type:'festival'|'term', monthDay:string, daysUntil:number}>}
+ */
+function getUpcomingOccasions(from, count) {
+  const result = [];
+  for (let i = 0; i < 120 && result.length < count; i++) {
+    const d = new Date(from.getFullYear(), from.getMonth(), from.getDate() + i);
+    const occ = festivalOfDay(d) || termOfDay(d);
+    if (occ) {
+      result.push({
+        name: occ.name,
+        type: occ.type,
+        monthDay: `${d.getMonth() + 1}月${d.getDate()}日`,
+        daysUntil: i
+      });
+    }
+  }
+  return result;
 }
 
 /**
@@ -175,6 +242,7 @@ module.exports = {
   SLOTS,
   BLESSING_POOLS,
   getOccasion,
+  getUpcomingOccasions,
   formatDate,
   slotIdByHour,
   getBlessingPool
